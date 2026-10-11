@@ -131,9 +131,12 @@ export function parseInvoiceText(lines: string[]): Partial<ParsedInvoice> & { fo
     r.tienThue = money(ba[2])
     r.tongTien = money(ba[3])
   } else {
-    r.tienTruocThue = congHang
-    r.tienThue = money(ch?.[2]) || tienThueRieng
-    r.tongTien = money(tt?.[1]) || congHang + (r.tienThue ?? 0)
+    // ACMAN: nhãn KHÔNG có dấu hai chấm — "Tổng tiền thanh toán 17.180.910", "Tiền thuế GTGT 8% 1.272.660".
+    // Chỉ dùng khi kiểu có dấu ":" không thấy; lấy con số ở CUỐI dòng (bỏ qua "8%")
+    const cuoiDong = (nhan: string) => money(new RegExp(`${nhan}[^:\\n]*?[ \\t](\\d[\\d.,]*\\d)[ \\t]*$`, 'im').exec(all)?.[1])
+    r.tienTruocThue = congHang || cuoiDong('(?:Tổng )?Cộng tiền (?:bán )?hàng')
+    r.tienThue = money(ch?.[2]) || tienThueRieng || cuoiDong('Tiền thuế (?:GTGT|giá trị gia tăng)')
+    r.tongTien = money(tt?.[1]) || cuoiDong('Tổng (?:cộng )?(?:số )?tiền thanh toán') || r.tienTruocThue + r.tienThue
   }
   r.tienBangChu = first(all, /(?:(?:Số tiền|Tổng tiền)[^:\n]*bằng chữ|^[ \t]*Bằng chữ)[^:\n]*:[ \t]*(.+)/im)
   if (!r.tienBangChu) {

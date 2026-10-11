@@ -67,6 +67,19 @@ describe('các mẫu gặp khi gom thư mục chi phí (dữ liệu giả, đún
   })
 })
 
+describe('ACMAN: nhãn tiền KHÔNG có dấu hai chấm', () => {
+  it('đọc đúng tiền hàng, thuế, tổng (số ở cuối dòng, bỏ qua "8%")', () => {
+    const r = parseInvoiceText([
+      'Mẫu số: 1', 'HÓA ĐƠN GIÁ TRỊ GIA TĂNG', 'Ký hiệu: C26TTT', 'Ngày 07 tháng 10 năm 2026', 'Số hóa đơn: 00000012',
+      'Đơn vị bán hàng: CÔNG TY THỬ', 'Mã số thuế: 0100000009 Điện thoại: 0900000000', 'Đơn vị mua hàng: BÊN MUA',
+      '1 Cước vận chuyển thử 19C-00000 Tấn 10,5 100.000 1.050.000',
+      'Tổng cộng tiền hàng hóa, dịch vụ 1.050.000', 'Tiền thuế GTGT 8% 84.000', 'Tổng tiền thanh toán 1.134.000',
+      'Số tiền viết bằng chữ: Một triệu một trăm ba mươi tư nghìn đồng./.',
+    ])
+    expect(r).toMatchObject({ soHd: '12', tienTruocThue: 1050000, tienThue: 84000, tongTien: 1134000 })
+  })
+})
+
 describe('VNPT: số tách từng chữ số, chữ ở dòng dưới', () => {
   it('đọc đúng', () => {
     const r = parseInvoiceText([
