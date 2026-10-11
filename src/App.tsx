@@ -88,7 +88,11 @@ export default function App() {
 
 function Main({ user }: { user: User }) {
   const [tab, setTab] = useState<Tab>('hoSo')
-  const [editingId, setEditingId] = useState<string | null>(null)
+  // ?hs=<id>: mở thẳng hồ sơ đó (link bot Telegram gửi về sau khi tạo hồ sơ)
+  const [editingId, setEditingId] = useState<string | null>(() => new URLSearchParams(location.search).get('hs'))
+  useEffect(() => {
+    if (new URLSearchParams(location.search).has('hs')) history.replaceState(null, '', location.pathname)
+  }, [])
   return (
     <div className="min-h-screen">
       {/* Thanh đầu trang cố định khi cuộn */}

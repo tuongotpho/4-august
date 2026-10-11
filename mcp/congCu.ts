@@ -283,9 +283,12 @@ export async function suaHoaDon(du: DuLieu, ghi: NoiGhi, a: { ho_so: string; hoa
   return { daLuu: true, thayDoi: doi, canhBao: warningsOf(moi, du.caiDat, banDoThayThe(du.hoSo)) }
 }
 
+/** File gốc đính kèm hóa đơn (vd PDF anh gửi qua Telegram) */
+export interface TepKem { ten: string; type: string; data: Uint8Array }
+
 export interface ThamSoTaoHoSo extends Omit<ThamSoSuaHoSo, 'id'> {
   xml?: { ten_file: string; noi_dung: string }[]
-  hoa_don_nhap_tay?: (SuaHoaDon & { items?: Invoice['items'] })[]
+  hoa_don_nhap_tay?: (SuaHoaDon & { items?: Invoice['items']; /** file gốc kèm theo (bot Telegram gửi PDF) — AI không gửi được ô này */ tep?: TepKem })[]
   vao_ho_so?: string
 }
 
@@ -299,7 +302,7 @@ export async function taoHoSo(du: DuLieu, ghi: NoiGhi, a0: ThamSoTaoHoSo) {
   const tay = a.hoa_don_nhap_tay ?? []
   if (!xml.length && !tay.length && !a.vao_ho_so && !a.noiDung) throw new LoiNguoiDung('Cần ít nhất 1 hóa đơn (xml hoặc hoa_don_nhap_tay), hoặc nội dung công việc để tạo hồ sơ trống')
 
-  const moi: { inv: Invoice; file?: { ten: string; data: Uint8Array } }[] = []
+  const moi: { inv: Invoice; file?: { ten: string; type: string; data: Uint8Array } }[] = []
   for (const x of xml) {
     let p
     try {
@@ -307,14 +310,14 @@ export async function taoHoSo(du: DuLieu, ghi: NoiGhi, a0: ThamSoTaoHoSo) {
     } catch (e) {
       throw new LoiNguoiDung(`${x.ten_file}: ${e instanceof InvoiceXmlError ? e.message : 'không đọc được XML'}`)
     }
-    moi.push({ inv: { ...emptyInvoice(), ...p }, file: { ten: x.ten_file, data: new TextEncoder().encode(x.noi_dung) } })
+    moi.push({ inv: { ...emptyInvoice(), ...p }, file: { ten: x.ten_file, type: 'text/xml', data: new TextEncoder().encode(x.noi_dung) } })
   }
-  for (const t of tay) {
+  for (const { tep, ...t } of tay) {
     if (t.ngayHd) kiemNgay('ngayHd', t.ngayHd)
     const inv = { ...emptyInvoice(), ...t, items: t.items ?? [] }
     if (!inv.tongTien && (inv.tienTruocThue || inv.tienThue)) inv.tongTien = inv.tienTruocThue + inv.tienThue
     if (!inv.tienBangChu && inv.tongTien) inv.tienBangChu = moneyInWords(inv.tongTien)
-    moi.push({ inv })
+    moi.push({ inv, file: tep })
   }
 
   // Chặn trùng: so với kho và với nhau trong cùng lần gọi
@@ -339,7 +342,7 @@ export async function taoHoSo(du: DuLieu, ghi: NoiGhi, a0: ThamSoTaoHoSo) {
   for (const m of moi) {
     if (!m.file) continue
     const id = crypto.randomUUID()
-    await ghi.luuFile({ id, name: m.file.ten, type: 'text/xml', data: m.file.data })
+    await ghi.luuFile({ id, name: m.file.ten, type: m.file.type, data: m.file.data })
     du.tenFile.set(id, m.file.ten)
     m.inv.fileIds = [id]
   }

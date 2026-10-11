@@ -8,7 +8,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.mcp.json",
     "gan-o-mau": "node scripts/gan-o-mau.mjs",
-    "test:firebase": "firebase emulators:exec --only auth,firestore,storage --project demo-hoadon \"vitest run tests/firebase-store.test.ts tests/mcp-firebase.test.ts\"",
+    "test:firebase": "firebase emulators:exec --only auth,firestore,storage --project demo-hoadon \"vitest run tests/firebase-store.test.ts tests/mcp-firebase.test.ts tests/telegram-firebase.test.ts\"",
     "deploy:rules": "firebase deploy --only firestore:hoadon,storage:hoadon --project app-from-ai",
     "deploy": "npm run build && firebase deploy --only hosting:hoadon-npsc --project app-from-ai",
     "mcp:web": "tsx mcp/chayWeb.ts"

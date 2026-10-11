@@ -6,3 +6,4 @@ const xuLy = taoXuLy()
 export const GET = xuLy
 export const POST = xuLy
 export const DELETE = xuLy
+export const OPTIONS = xuLy

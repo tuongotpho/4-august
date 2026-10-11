@@ -7,6 +7,7 @@
 //   POST /oauth/cho-phep                       trang trên gửi mã làm mới Firebase -> tạo phiên AI, trả mã
 //   POST /oauth/token                          AI đổi mã lấy vé truy cập (1 giờ) + vé làm mới
 //   POST /mcp                                  AI gọi công cụ (kèm vé truy cập)
+//   /telegram/*                                bot Telegram: gửi PDF hóa đơn -> tạo hồ sơ (mcp/telegram.ts)
 //
 // Không lưu gì ngoài Firebase của chính người dùng (phiên AI, nhật ký). Biến môi trường trên Vercel:
 //   HOADON_MCP_KHOA (bắt buộc, bí mật) · HOADON_GOC_URL (tuỳ chọn) · HOADON_MCP_NOI_NHAN_THEM (tuỳ chọn)
@@ -18,6 +19,7 @@ import { taoMayChu } from './mayChu.js'
 import { cauHinhFirebase, doiMa, FirebaseNguoiDung, LoiFirebase, type CauHinhFirebase } from './firebaseRest.js'
 import * as kho from './kho.js'
 import { khoaTuChuoi, khopPKCE, moVe, niemPhong, noiNhanHopLe, type Ve } from './oauth.js'
+import { xuLyTelegram } from './telegram.js'
 
 // Ngày "hôm nay" (hạn chờ kế toán, gợi ý ngày ĐNTT) tính theo giờ Việt Nam, dù máy chủ đặt ở nước ngoài
 process.env.TZ = 'Asia/Ho_Chi_Minh'
@@ -84,6 +86,7 @@ export function taoXuLy(env: Env = process.env) {
       if (duong === '/oauth/cho-phep' && req.method === 'POST') return await choPhep(await req.json().catch(() => ({})))
       if (duong === '/oauth/token' && req.method === 'POST') return await capVe(req)
       if (duong === '/mcp' || duong === '/api/mcp') return await mcp(req)
+      if (duong.startsWith('/telegram/')) return await xuLyTelegram(req, duong, { env, khoa, cfg, goc, maFirebase })
       return jsonRes({ loi: 'Không có đường dẫn này' }, 404)
     } catch (e) {
       const thongDiep = e instanceof LoiFirebase ? e.message : 'Lỗi máy chủ'

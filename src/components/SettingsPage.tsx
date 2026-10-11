@@ -6,6 +6,7 @@ import { store, type DongNhatKyAI, type PhienAI } from '../lib/store'
 import type { Settings } from '../lib/types'
 import FileDrop from './FileDrop'
 import MoneyInput from './MoneyInput'
+import KetNoiTelegram from './KetNoiTelegram'
 import { TU_KHOA_CAM_MAC_DINH } from '../lib/hangCam'
 import { bao, hoi } from '../lib/dialog'
 
@@ -200,6 +201,7 @@ export default function SettingsPage() {
         </FileDrop>
       </div>
 
+      <KetNoiTelegram />
       <KetNoiAI />
     </div>
   )
