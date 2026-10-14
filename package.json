@@ -11,7 +11,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json",
     "test:firebase": "firebase emulators:exec --only auth,firestore --project demo-atld \"vitest run tests/firebase.test.ts\"",
-    "deploy:rules": "firebase deploy --only firestore:atld --project app-from-ai",
+    "deploy:rules": "firebase deploy --only firestore:antoan --project app-from-ai",
     "server": "tsx server/chayMay.ts"
   },
   "dependencies": {

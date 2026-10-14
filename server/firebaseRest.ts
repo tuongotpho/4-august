@@ -7,7 +7,7 @@
 
 /** Thông số công khai của web app (giống src/lib/firebase.ts) */
 const API_KEY = 'AIzaSyCfCX-xKHVnvv2tEb_AVdxL_xvqnnSjgcQ'
-const DATABASE = 'atld'
+const DATABASE = 'antoan'
 
 export interface CauHinhFirebase {
   apiKey: string

@@ -4,7 +4,7 @@ import {
 import { CAI_DAT_MAC_DINH, chuanLop, type CaiDat, type LopGiang } from '../model'
 import type { DataStore, PhienMay } from './DataStore'
 
-/** Firestore, database "atld" (dự án app-from-ai dùng chung với app khác). Mọi thứ dưới users/{uid}/… */
+/** Firestore, database "antoan" (dự án app-from-ai dùng chung với app khác). Mọi thứ dưới users/{uid}/… */
 export class FirebaseStore implements DataStore {
   private db: Firestore
   private uid: string

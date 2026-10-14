@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Quy tắc cho database "atld" (dự án app-from-ai dùng chung với app khác — file này CHỈ áp cho "atld").
+// Quy tắc cho database "antoan" (dự án app-from-ai dùng chung với app khác — file này CHỈ áp cho "antoan").
 // Mỗi tài khoản Google chỉ đọc/ghi được dữ liệu của chính mình: users/{uid}/...
 service cloud.firestore {
   match /databases/{database}/documents {

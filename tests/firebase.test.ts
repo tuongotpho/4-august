@@ -11,7 +11,7 @@ import { taoXuLy } from '../server/web'
 
 const AUTH = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? '127.0.0.1:9198'
 const FS = process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8188'
-const DB = `http://${FS}/v1/projects/demo-atld/databases/atld/documents`
+const DB = `http://${FS}/v1/projects/demo-atld/databases/antoan/documents`
 const coGiaLap = !!process.env.FIRESTORE_EMULATOR_HOST
 
 async function taoNguoiDung(email: string) {

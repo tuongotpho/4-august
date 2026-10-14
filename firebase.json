@@ -1,7 +1,7 @@
 {
   "firestore": [
     {
-      "database": "atld",
+      "database": "antoan",
       "rules": "firestore.rules"
     }
   ],

@@ -18,8 +18,8 @@ const giaLap = import.meta.env.VITE_GIA_LAP === '1'
 const app = initializeApp(giaLap ? { ...firebaseConfig, projectId: 'demo-atld' } : firebaseConfig)
 export const auth = getAuth(app)
 
-// Database riêng "atld" (dự án dùng chung với app hoadon và app khác)
-const db = getFirestore(app, 'atld')
+// Database riêng "antoan" (dự án dùng chung với app hoadon và app khác)
+const db = getFirestore(app, 'antoan')
 if (giaLap) {
   connectAuthEmulator(auth, 'http://127.0.0.1:9198', { disableWarnings: true })
   connectFirestoreEmulator(db, '127.0.0.1', 8188)

@@ -1,7 +1,7 @@
 # Lịch giảng ATLĐ
 
 Web app quản lý lịch giảng an toàn lao động, thay cho AppSheet. Đăng nhập Google, dữ liệu cất trên Firebase
-(dự án `app-from-ai`, database Firestore riêng `atld`). Mỗi tài khoản chỉ thấy dữ liệu của mình.
+(dự án `app-from-ai`, database Firestore riêng `antoan`). Mỗi tài khoản chỉ thấy dữ liệu của mình.
 
 ## Dùng
 - **Lịch**: lịch tháng, lớp sắp tới 30 ngày. **Danh sách**: lọc theo năm / đối tác / trạng thái, đánh dấu đã nhận tiền hàng loạt, xuất CSV.
@@ -41,6 +41,6 @@ npm run dev            # http://localhost:5190 (dữ liệu THẬT); thêm --mod
 npm run server         # máy chủ chạy thử cổng 8790 (vite chuyển /ai, /telegram sang)
 npm test               # kiểm tra tự động
 npm run test:firebase  # trên Firebase giả lập (cần Java): quy tắc bảo mật + trọn vòng bot Telegram, Calendar, cron
-npm run deploy:rules   # đặt quy tắc cho database "atld" (CHỈ database này)
+npm run deploy:rules   # đặt quy tắc cho database "antoan" (CHỈ database này)
 ```
 Đẩy lên `main` → Vercel tự build. File Excel và test đọc file thật (`tests/file-that.test.ts`) không đưa lên git (có tên khách hàng thật).
