@@ -1,8 +1,49 @@
 import { useMemo, useState } from 'react'
-import { congNgay, homNay, ngayCuoi, ngayVN, trangThai, type LopGiang } from '../lib/model'
-import { DongLop, MAU_TRANG_THAI } from './TheLop'
+import { congNgay, dinhDangTien, homNay, ngayCuoi, ngayVN, TEN_BUOI, thu, trangThai, type LopGiang } from '../lib/model'
+import { MAU_TRANG_THAI, NhanTrangThai, VIEN_TRANG_THAI } from './TheLop'
 
 const THU = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+
+/** Một lớp trong khung "ngày được chọn": đủ thông tin, tên khách hàng không bị cắt */
+function TheLopNgay({ l, onMo, coNgay = false }: { l: LopGiang; onMo: (l: LopGiang) => void; coNgay?: boolean }) {
+  const tt = trangThai(l)
+  const hn = homNay()
+  const tenNgay = l.ngay === hn ? 'Hôm nay' : l.ngay === congNgay(hn, 1) ? 'Mai' : `${thu(l.ngay)} ${ngayVN(l.ngay, false)}`
+  const dong: [string, string][] = [
+    ['Đối tác', [l.doiTac, l.lienHe].filter(Boolean).join(' · ')],
+    ['Ở đâu', l.hinhThuc === 'online' ? 'Online' : l.diaDiem],
+    ['Nội dung', l.noiDung],
+  ]
+  return (
+    <button
+      className={`block w-full rounded-md border border-l-4 border-slate-200 ${VIEN_TRANG_THAI[tt]} px-3 py-2 text-left hover:bg-slate-50 ${l.huy ? 'opacity-60' : ''}`}
+      onClick={() => onMo(l)}
+    >
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-semibold tabular-nums text-slate-700">
+          {coNgay && <span className="text-teal-700">{tenNgay} · </span>}
+          {l.gioBD ? `${l.gioBD}–${l.gioKT}` : TEN_BUOI[l.buoi]}
+          {l.soNgay > 1 && <span className="font-normal text-slate-500"> · {ngayVN(l.ngay, false)}–{ngayVN(ngayCuoi(l), false)}</span>}
+        </span>
+        <span className="ml-auto"><NhanTrangThai l={l} /></span>
+      </div>
+      <div className={`mt-0.5 font-semibold leading-snug text-slate-900 ${l.huy ? 'line-through' : ''}`}>
+        {l.hinhThuc === 'online' && '💻 '}
+        {l.khachHang || '(chưa rõ khách hàng)'}
+      </div>
+      <dl className="mt-1 grid grid-cols-[4.5rem_1fr] gap-x-2 gap-y-0.5 text-xs">
+        {dong.filter(([, v]) => v).map(([k, v]) => (
+          <div key={k} className="contents">
+            <dt className="text-slate-400">{k}</dt>
+            <dd className="text-slate-700">{v}</dd>
+          </div>
+        ))}
+        <dt className="text-slate-400">Thù lao</dt>
+        <dd className="font-medium text-slate-800">{l.chiPhi === null ? 'chưa ghi' : `${dinhDangTien(l.chiPhi)} đ`}</dd>
+      </dl>
+    </button>
+  )
+}
 
 export default function LichThang({ ds, onMo, onThem }: { ds: LopGiang[]; onMo: (l: LopGiang) => void; onThem: (ngay: string) => void }) {
   const hn = homNay()
@@ -26,17 +67,20 @@ export default function LichThang({ ds, onMo, onThem }: { ds: LopGiang[]; onMo: 
   }, [thang])
   const hienO = o.slice(0, o[35].slice(0, 7) === thang ? 42 : 35)
 
-  const sapToi = ds.filter((l) => !l.huy && ngayCuoi(l) >= hn && l.ngay <= congNgay(hn, 30))
+  const sapToi = ds
+    .filter((l) => !l.huy && ngayCuoi(l) >= hn && l.ngay <= congNgay(hn, 30))
+    .sort((a, b) => (a.ngay + (a.gioBD || '99')).localeCompare(b.ngay + (b.gioBD || '99')))
   const doiThang = (n: number) => {
     const d = new Date(thang + '-01T00:00:00Z')
     d.setUTCMonth(d.getUTCMonth() + n)
     setThang(d.toISOString().slice(0, 7))
   }
   const trongThang = ds.filter((l) => l.ngay.startsWith(thang) && !l.huy)
+  const lopChon = [...(theoNgay.get(chon) ?? [])].sort((a, b) => (a.gioBD || '99').localeCompare(b.gioBD || '99'))
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-      <div className="card !p-2 sm:!p-4">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="card min-w-0 !p-2 sm:!p-4">
         <div className="mb-2 flex items-center gap-2">
           <button className="btn !px-2" onClick={() => doiThang(-1)} aria-label="Tháng trước">‹</button>
           <h2 className="text-center font-semibold whitespace-nowrap text-slate-800 sm:min-w-36">Tháng {thang.slice(5)}/{thang.slice(0, 4)}</h2>
@@ -69,22 +113,31 @@ export default function LichThang({ ds, onMo, onThem }: { ds: LopGiang[]; onMo: 
             )
           })}
         </div>
-        <p className="mt-2 text-xs text-slate-400">Chạm vào ngày để xem lớp; dùng nút “+ Thêm lớp ngày này” bên dưới để thêm.</p>
+        <p className="mt-2 text-xs text-slate-400">Chạm vào ngày để xem lớp; nút “+ Thêm lớp” ở khung ngày để thêm (máy tính: bấm đúp vào ngày).</p>
       </div>
 
       <div className="space-y-4">
         <div className="card !p-3">
-          <div className="mb-1 flex items-center justify-between">
-            <h3 className="font-semibold text-slate-800">{ngayVN(chon)}</h3>
-            <button className="btn !py-0.5 !text-xs" onClick={() => onThem(chon)}>+ Thêm lớp ngày này</button>
+          <div className="mb-2 flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-slate-800">{thu(chon) === 'CN' ? 'Chủ nhật' : `Thứ ${Number(thu(chon).slice(1))}`}, {ngayVN(chon)}</h3>
+              {lopChon.length > 0 && (
+                <p className="text-xs text-slate-500">{lopChon.length} lớp · {lopChon.reduce((s, l) => s + (l.huy ? 0 : l.chiPhi ?? 0), 0).toLocaleString('vi-VN')} đ</p>
+              )}
+            </div>
+            <button className="btn shrink-0 !py-1 !text-xs" onClick={() => onThem(chon)}>+ Thêm lớp</button>
           </div>
-          {(theoNgay.get(chon) ?? []).length === 0 && <p className="text-sm text-slate-400">Không có lớp.</p>}
-          {(theoNgay.get(chon) ?? []).map((l) => <DongLop key={l.id} l={l} onMo={onMo} coNgay={false} />)}
+          {lopChon.length === 0 && <p className="text-sm text-slate-400">Không có lớp.</p>}
+          <div className="space-y-2">
+            {lopChon.map((l) => <TheLopNgay key={l.id} l={l} onMo={onMo} />)}
+          </div>
         </div>
         <div className="card !p-3">
-          <h3 className="mb-1 font-semibold text-slate-800">Sắp tới (30 ngày)</h3>
+          <h3 className="mb-2 font-semibold text-slate-800">Sắp tới (30 ngày)</h3>
           {sapToi.length === 0 && <p className="text-sm text-slate-400">Chưa có lịch.</p>}
-          {sapToi.map((l) => <DongLop key={l.id} l={l} onMo={onMo} />)}
+          <div className="space-y-2">
+            {sapToi.map((l) => <TheLopNgay key={l.id} l={l} onMo={onMo} coNgay />)}
+          </div>
         </div>
       </div>
     </div>

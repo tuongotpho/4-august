@@ -25,7 +25,8 @@ function Chip({ chon, onClick, children }: { chon?: boolean; onClick: () => void
   )
 }
 
-const Hang = ({ children }: { children: React.ReactNode }) => <div className="no-scrollbar -mx-4 flex gap-1.5 overflow-x-auto px-4">{children}</div>
+// điện thoại: một hàng vuốt ngang; máy tính (chuột không vuốt được): xuống dòng cho thấy hết
+const Hang = ({ children }: { children: React.ReactNode }) => <div className="no-scrollbar -mx-4 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">{children}</div>
 
 const trieu = (n: number) => (n % 1_000_000 === 0 ? `${n / 1_000_000}tr` : n >= 1_000_000 ? `${Math.floor(n / 1_000_000)}tr${String((n % 1_000_000) / 1000).replace(/0+$/, '')}` : `${n / 1000}k`)
 
@@ -132,7 +133,7 @@ export default function SuaLop({ lop, tatCa, moi, onDong }: Props) {
               ))}
               <label className={`relative shrink-0 rounded-full border px-3 py-1.5 text-sm ${ngayNhanh.includes(l.ngay) ? 'border-slate-300 text-slate-700' : 'border-teal-700 bg-teal-700 text-white'}`}>
                 📅 {ngayNhanh.includes(l.ngay) ? 'Ngày khác' : ngayVN(l.ngay, false)}
-                <input type="date" className="absolute inset-0 opacity-0" value={l.ngay} onChange={(e) => e.target.value && dat({ ngay: e.target.value })} />
+                <input type="date" className="absolute inset-0 cursor-pointer opacity-0" onClick={(e) => e.currentTarget.showPicker?.()} value={l.ngay} onChange={(e) => e.target.value && dat({ ngay: e.target.value })} />
               </label>
             </Hang>
             <Hang>

@@ -8,6 +8,15 @@ export const MAU_TRANG_THAI: Record<TrangThai, string> = {
   xong: 'bg-emerald-100 text-emerald-800',
 }
 
+/** Viền trái theo trạng thái (thẻ lớp trong ngày) */
+export const VIEN_TRANG_THAI: Record<TrangThai, string> = {
+  huy: 'border-l-slate-300',
+  sap_toi: 'border-l-sky-500',
+  cho_tien: 'border-l-amber-500',
+  thieu_thu_lao: 'border-l-red-500',
+  xong: 'border-l-emerald-500',
+}
+
 export function NhanTrangThai({ l }: { l: LopGiang }) {
   const tt = trangThai(l)
   return <span className={`chip ${MAU_TRANG_THAI[tt]}`}>{TEN_TRANG_THAI[tt]}</span>
