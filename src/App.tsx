@@ -26,12 +26,11 @@ export default function App() {
   const [loginErr, setLoginErr] = useState('')
 
   useEffect(() => {
-    // tải sẵn bộ đọc PDF: web có cập nhật giữa chừng thì trang đang mở vẫn đọc được PDF
-    taiBoDocPdf().catch(() => {})
-    // thư viện Word / zip tách khỏi gói chính để trang hiện nhanh — tải nền ngay sau đó, cùng lý do trên
-    for (const tai of [() => import('./lib/docx'), () => import('./lib/backup'), () => import('./lib/ruiRoExcel')]) tai().catch(() => {})
     let unsub = () => {}
     fb().then(({ onUser, storeFor }) => {
+      // Firebase (cần để đăng nhập) tải trước; xong mới tải nền các phần nặng khác.
+      // Tải sẵn: web có cập nhật giữa chừng thì trang đang mở vẫn đọc được PDF, xuất được Word
+      for (const tai of [taiBoDocPdf, () => import('./lib/docx'), () => import('./lib/backup'), () => import('./lib/ruiRoExcel')]) tai().catch(() => {})
       unsub = onUser((u) => {
         if (u) {
           setStore(storeFor(u))
