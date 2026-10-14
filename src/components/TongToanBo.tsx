@@ -14,6 +14,12 @@ const CACH: [CachChia, string, string][] = [
 ]
 const MOT_TRANG = 15
 
+/** Danh sách đối tác đi kèm dài (dòng "chưa ghi" có cả chục) -> 3 cái đầu + "+N", rê chuột xem đủ */
+function gon(phu: string): string {
+  const ds = phu.split(', ')
+  return ds.length > 3 ? `${ds.slice(0, 3).join(', ')} +${ds.length - 3}` : phu
+}
+
 /** Tổng toàn bộ các lớp đã giảng tính đến hôm nay, chia theo đối tác / người liên hệ / khách hàng / ... */
 export default function TongToanBo({ ds, onLoc }: { ds: LopGiang[]; onLoc: (loc: { doiTac?: string; lienHe?: string; tim?: string; nam: string }) => void }) {
   const [chia, setChia] = useState<CachChia>('doiTac')
@@ -76,11 +82,11 @@ export default function TongToanBo({ ds, onLoc }: { ds: LopGiang[]; onLoc: (loc:
             <tr>
               <th className="w-8 py-1">#</th>
               <th className="py-1">{ten}</th>
-              <th className="py-1 text-right">Lớp</th>
-              <th className="py-1 text-right">Thù lao</th>
-              <th className="w-28 py-1 pl-2">Tỷ lệ</th>
-              <th className="py-1 text-right">Chưa nhận</th>
-              <th className="py-1 text-right">Giảng từ – gần nhất</th>
+              <th className="w-14 whitespace-nowrap py-1 pl-3 text-right">Lớp</th>
+              <th className="w-28 whitespace-nowrap py-1 pl-3 text-right">Thù lao</th>
+              <th className="w-32 whitespace-nowrap py-1 pl-3">Tỷ lệ</th>
+              <th className="w-28 whitespace-nowrap py-1 pl-3 text-right">Chưa nhận</th>
+              <th className="w-44 whitespace-nowrap py-1 pl-3 text-right">Giảng từ – gần nhất</th>
             </tr>
           </thead>
           <tbody>
@@ -89,11 +95,11 @@ export default function TongToanBo({ ds, onLoc }: { ds: LopGiang[]; onLoc: (loc:
                 <td className="py-1 text-slate-400">{i + 1}</td>
                 <td className="py-1">
                   <span className={bamDuoc ? 'text-teal-700 underline decoration-dotted underline-offset-2' : ''}>{d.khoa}</span>
-                  {d.phu && <span className="ml-1 text-xs text-slate-400">{d.phu}</span>}
+                  {d.phu && <span className="ml-1 text-xs text-slate-400" title={d.phu}>{gon(d.phu)}</span>}
                 </td>
-                <td className="py-1 text-right">{d.soLop}</td>
-                <td className="py-1 text-right">{dinhDangTien(d.tien)}</td>
-                <td className="py-1 pl-2">
+                <td className="whitespace-nowrap py-1 pl-3 text-right">{d.soLop}</td>
+                <td className="whitespace-nowrap py-1 pl-3 text-right">{dinhDangTien(d.tien)}</td>
+                <td className="py-1 pl-3">
                   <span className="flex items-center gap-1">
                     <span className="h-2 flex-1 rounded bg-slate-100">
                       <span className="block h-2 rounded bg-teal-600" style={{ width: `${(d.tien / max) * 100}%` }} />
@@ -101,8 +107,8 @@ export default function TongToanBo({ ds, onLoc }: { ds: LopGiang[]; onLoc: (loc:
                     <span className="w-9 text-right text-xs text-slate-500">{tong.tien ? ((d.tien / tong.tien) * 100).toFixed(1) : 0}%</span>
                   </span>
                 </td>
-                <td className={`py-1 text-right ${d.tien - d.daTT ? 'text-amber-700' : 'text-slate-300'}`}>{dinhDangTien(d.tien - d.daTT)}</td>
-                <td className="whitespace-nowrap py-1 text-right text-xs text-slate-500">{ngayVN(d.tu)} – {ngayVN(d.den)}</td>
+                <td className={`whitespace-nowrap py-1 pl-3 text-right ${d.tien - d.daTT ? 'text-amber-700' : 'text-slate-300'}`}>{dinhDangTien(d.tien - d.daTT)}</td>
+                <td className="whitespace-nowrap py-1 pl-3 text-right text-xs text-slate-500">{ngayVN(d.tu)} – {ngayVN(d.den)}</td>
               </tr>
             ))}
           </tbody>
@@ -110,10 +116,10 @@ export default function TongToanBo({ ds, onLoc }: { ds: LopGiang[]; onLoc: (loc:
             <tr className="border-t border-slate-300 font-semibold">
               <td />
               <td className="py-1">Cộng {dong.length} dòng</td>
-              <td className="py-1 text-right">{tong.soLop}</td>
-              <td className="py-1 text-right">{dinhDangTien(tong.tien)}</td>
-              <td className="py-1 pl-2 text-xs text-slate-500">100%</td>
-              <td className="py-1 text-right">{dinhDangTien(tong.tien - tong.daTT)}</td>
+              <td className="whitespace-nowrap py-1 pl-3 text-right">{tong.soLop}</td>
+              <td className="whitespace-nowrap py-1 pl-3 text-right">{dinhDangTien(tong.tien)}</td>
+              <td className="py-1 pl-3 text-xs text-slate-500">100%</td>
+              <td className="whitespace-nowrap py-1 pl-3 text-right">{dinhDangTien(tong.tien - tong.daTT)}</td>
               <td />
             </tr>
           </tfoot>
