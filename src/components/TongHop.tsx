@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
 import { dinhDangTien, homNay, type LopGiang } from '../lib/model'
 import { theoDoiTac, theoLienHe, theoNam, theoThang } from '../lib/tinh'
+import TongToanBo from './TongToanBo'
 
 const trieu = (n: number) => (n / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })
 
 /** onLoc: bấm một đối tác / người liên hệ -> sang Danh sách, lọc sẵn theo đó + năm đang xem */
-export default function TongHop({ ds, onLoc }: { ds: LopGiang[]; onLoc: (loc: { doiTac?: string; lienHe?: string; nam: string }) => void }) {
+export default function TongHop({ ds, onLoc }: { ds: LopGiang[]; onLoc: (loc: { doiTac?: string; lienHe?: string; tim?: string; nam: string }) => void }) {
   const nam = useMemo(() => theoNam(ds), [ds])
   // chon = '' -> tất cả các năm
   const [chon, setChon] = useState(homNay().slice(0, 4))
@@ -131,6 +132,8 @@ export default function TongHop({ ds, onLoc }: { ds: LopGiang[]; onLoc: (loc: { 
           <p className="mt-2 text-xs text-slate-400">Bấm vào một người để xem danh sách lớp họ giao.</p>
         </div>
       </div>
+
+      <TongToanBo ds={ds} onLoc={onLoc} />
     </div>
   )
 }

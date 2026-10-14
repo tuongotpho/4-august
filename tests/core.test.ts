@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { suKienTu } from '../src/lib/lichGoogle'
 import { CAI_DAT_MAC_DINH, daGiang, docTien, lopMoi, trangThai } from '../src/lib/model'
-import { congNo, goiY, theoLienHe, theoThang, timLopChoTien, timTrung, trungGio } from '../src/lib/tinh'
+import { congNo, goiY, theoLienHe, theoThang, tongDenNay, timLopChoTien, timTrung, trungGio } from '../src/lib/tinh'
 import { lopTuAI, type LopAI } from '../src/lib/trichTin'
 
 // 14/10/2026 10:00 giờ Việt Nam
@@ -102,5 +102,26 @@ describe('tổng hợp theo người liên hệ', () => {
       { khoa: 'A Hiếu', soLop: 3, tien: 3_500_000, daTT: 1_000_000, doiTac: 'ESC, Green' },
       { khoa: '(chưa rõ)', soLop: 1, tien: 700_000, daTT: 0, doiTac: 'VNB' },
     ])
+  })
+})
+
+describe('tổng toàn bộ đến hôm nay', () => {
+  const ds = [
+    lopMoi({ ngay: '2021-03-01', doiTac: 'TIEC', lienHe: 'Linh-T', khachHang: 'PSA', chiPhi: 1_000_000, thanhToan: 'da' }),
+    lopMoi({ ngay: '2026-09-01', doiTac: 'TIEC', lienHe: 'Linh-T', khachHang: 'psa ', chiPhi: 2_000_000 }),
+    lopMoi({ ngay: '2026-09-02', doiTac: 'ESC', lienHe: 'A Hiếu', khachHang: 'FFC', chiPhi: 500_000, hinhThuc: 'online' }),
+    lopMoi({ ngay: '2026-09-03', doiTac: 'ESC', lienHe: 'A Hiếu', khachHang: 'Huỷ', chiPhi: 9_000_000, huy: true }),
+    lopMoi({ ngay: '2026-10-20', doiTac: 'ESC', lienHe: 'A Hiếu', khachHang: 'Sắp tới', chiPhi: 9_000_000 }),
+  ]
+  it('chỉ tính lớp đã giảng, bỏ huỷ và sắp tới', () => {
+    expect(tongDenNay(ds, 'doiTac', BAY_GIO)).toEqual([
+      { khoa: 'TIEC', soLop: 2, tien: 3_000_000, daTT: 1_000_000, tu: '2021-03-01', den: '2026-09-01', phu: '' },
+      { khoa: 'ESC', soLop: 1, tien: 500_000, daTT: 0, tu: '2026-09-02', den: '2026-09-02', phu: '' },
+    ])
+  })
+  it('gộp khách hàng khác hoa/thường, kèm đối tác; năm xếp tăng dần', () => {
+    expect(tongDenNay(ds, 'khachHang', BAY_GIO)[0]).toMatchObject({ khoa: 'PSA', soLop: 2, phu: 'TIEC' })
+    expect(tongDenNay(ds, 'hinhThuc', BAY_GIO).map((d) => [d.khoa, d.soLop])).toEqual([['Trực tiếp', 2], ['Online', 1]])
+    expect(tongDenNay(ds, 'nam', BAY_GIO).map((d) => d.khoa)).toEqual(['2021', '2026'])
   })
 })

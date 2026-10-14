@@ -12,6 +12,7 @@ export interface LocBanDau {
   nam: string
   doiTac?: string
   lienHe?: string
+  tim?: string
 }
 
 export default function DanhSach({ ds, onMo, locBanDau }: { ds: LopGiang[]; onMo: (l: LopGiang) => void; locBanDau?: LocBanDau }) {
@@ -20,7 +21,7 @@ export default function DanhSach({ ds, onMo, locBanDau }: { ds: LopGiang[]; onMo
   const [doiTac, setDoiTac] = useState(locBanDau?.doiTac ?? '')
   const [lienHe, setLienHe] = useState(locBanDau?.lienHe ?? '')
   const [tt, setTt] = useState<TrangThai | ''>('')
-  const [tim, setTim] = useState('')
+  const [tim, setTim] = useState(locBanDau?.tim ?? '')
   const [chon, setChon] = useState<Set<string>>(new Set())
   const [ngayTT, setNgayTT] = useState(homNay())
 

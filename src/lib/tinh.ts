@@ -85,6 +85,46 @@ export function theoLienHe(ds: LopGiang[], nam?: string): DongLienHe[] {
     .sort((a, b) => b.tien - a.tien)
 }
 
+export interface DongTong extends DongTongHop {
+  tu: string // ngày giảng đầu tiên
+  den: string // ngày giảng gần nhất
+  phu: string // thông tin phụ: đối tác của người liên hệ / khách hàng
+}
+
+export type CachChia = 'doiTac' | 'lienHe' | 'khachHang' | 'hinhThuc' | 'diaDiem' | 'nam'
+
+const KHOA_CHIA: Record<CachChia, (l: LopGiang) => string> = {
+  doiTac: (l) => l.doiTac.trim() || '(chưa rõ)',
+  lienHe: (l) => l.lienHe.trim() || '(chưa rõ)',
+  // gộp khách hàng viết hoa/thường, có dấu cách thừa khác nhau
+  khachHang: (l) => l.khachHang.trim().replace(/\s+/g, ' ') || '(chưa rõ)',
+  hinhThuc: (l) => (l.hinhThuc === 'online' ? 'Online' : 'Trực tiếp'),
+  diaDiem: (l) => (l.hinhThuc === 'online' ? 'Online' : l.diaDiem.trim() || '(chưa ghi)'),
+  nam: (l) => l.ngay.slice(0, 4),
+}
+
+/** Tổng toàn bộ các lớp ĐÃ GIẢNG tính đến hôm nay (bỏ lớp huỷ, lớp sắp tới), chia theo một cách */
+export function tongDenNay(ds: LopGiang[], chia: CachChia, bayGio = new Date()): DongTong[] {
+  const loc = ds.filter((l) => daGiang(l, bayGio))
+  const f = KHOA_CHIA[chia]
+  const k = (l: LopGiang) => (chia === 'khachHang' ? boDau(f(l)) : f(l))
+  const m = new Map<string, DongTong & { dem: Map<string, number> }>()
+  for (const l of loc) {
+    const key = k(l)
+    const d = m.get(key) ?? { khoa: f(l), soLop: 0, tien: 0, daTT: 0, tu: l.ngay, den: l.ngay, phu: '', dem: new Map<string, number>() }
+    d.soLop++
+    d.tien += l.chiPhi ?? 0
+    if (l.thanhToan === 'da') d.daTT += l.chiPhi ?? 0
+    if (l.ngay < d.tu) d.tu = l.ngay
+    if (l.ngay > d.den) d.den = l.ngay
+    if (l.doiTac && chia !== 'doiTac') d.dem.set(l.doiTac, (d.dem.get(l.doiTac) ?? 0) + 1)
+    m.set(key, d)
+  }
+  return [...m.values()]
+    .map(({ dem, ...d }) => ({ ...d, phu: [...dem].sort((a, b) => b[1] - a[1]).map(([x]) => x).join(', ') }))
+    .sort((a, b) => (chia === 'nam' ? a.khoa.localeCompare(b.khoa) : b.tien - a.tien || b.soLop - a.soLop))
+}
+
 export interface GoiY {
   doiTac: string[]
   lienHe: { ten: string; doiTac: string }[]
