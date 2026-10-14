@@ -2,7 +2,7 @@ import type { User } from 'firebase/auth'
 import { useEffect, useState } from 'react'
 import CaiDatPage from './components/CaiDatPage'
 import CongNo from './components/CongNo'
-import DanhSach from './components/DanhSach'
+import DanhSach, { type LocBanDau } from './components/DanhSach'
 import DanTin from './components/DanTin'
 import LichThang from './components/LichThang'
 import SuaLop from './components/SuaLop'
@@ -76,6 +76,8 @@ function ManHinh({ user }: { user: User }) {
   const [tab, setTab] = useState<Tab>('lich')
   const [sua, setSua] = useState<{ lop: LopGiang; moi: boolean } | null>(null)
   const [danTin, setDanTin] = useState(false)
+  // Bộ lọc mang từ trang Tổng hợp sang Danh sách; đổi `lan` để Danh sách dựng lại với bộ lọc mới
+  const [loc, setLoc] = useState<LocBanDau & { lan: number }>()
 
   // Mở thẳng một lớp: link từ Google Calendar / bot Telegram (?lop=id)
   useEffect(() => {
@@ -144,9 +146,18 @@ function ManHinh({ user }: { user: User }) {
       {loiLich && <p className="mb-2 rounded bg-amber-50 px-3 py-1.5 text-xs text-amber-800">📅 Chưa đồng bộ được Google Calendar: {loiLich}</p>}
 
       {tab === 'lich' && <LichThang ds={ds} onMo={mo} onThem={them} />}
-      {tab === 'danhSach' && <DanhSach ds={ds} onMo={mo} />}
+      {tab === 'danhSach' && <DanhSach key={loc?.lan ?? 0} ds={ds} onMo={mo} locBanDau={loc} />}
       {tab === 'congNo' && <CongNo ds={ds} onMo={mo} />}
-      {tab === 'tongHop' && <TongHop ds={ds} />}
+      {tab === 'tongHop' && (
+        <TongHop
+          ds={ds}
+          onLocDoiTac={(doiTac, nam) => {
+            setLoc({ doiTac, nam, lan: Date.now() })
+            setTab('danhSach')
+            scrollTo(0, 0)
+          }}
+        />
+      )}
       {tab === 'caiDat' && <CaiDatPage ds={ds} />}
 
       {danTin && <DanTin onDong={() => setDanTin(false)} onMo={(l) => setSua({ lop: l, moi: true })} />}

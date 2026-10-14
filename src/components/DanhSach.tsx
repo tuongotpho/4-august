@@ -5,21 +5,32 @@ import {
 } from '../lib/model'
 import { NhanTrangThai } from './TheLop'
 
-export default function DanhSach({ ds, onMo }: { ds: LopGiang[]; onMo: (l: LopGiang) => void }) {
+/** Đối tác bỏ trống: trang Tổng hợp gom dưới tên này */
+export const CHUA_RO = '(chưa rõ)'
+
+export interface LocBanDau {
+  nam: string
+  doiTac: string
+}
+
+export default function DanhSach({ ds, onMo, locBanDau }: { ds: LopGiang[]; onMo: (l: LopGiang) => void; locBanDau?: LocBanDau }) {
   const cacNam = useMemo(() => [...new Set(ds.map((l) => l.ngay.slice(0, 4)))].sort().reverse(), [ds])
-  const [nam, setNam] = useState(homNay().slice(0, 4))
-  const [doiTac, setDoiTac] = useState('')
+  const [nam, setNam] = useState(locBanDau?.nam ?? homNay().slice(0, 4))
+  const [doiTac, setDoiTac] = useState(locBanDau?.doiTac ?? '')
   const [tt, setTt] = useState<TrangThai | ''>('')
   const [tim, setTim] = useState('')
   const [chon, setChon] = useState<Set<string>>(new Set())
   const [ngayTT, setNgayTT] = useState(homNay())
 
-  const cacDoiTac = useMemo(() => [...new Set(ds.map((l) => l.doiTac).filter(Boolean))].sort(), [ds])
+  const cacDoiTac = useMemo(() => {
+    const d = [...new Set(ds.map((l) => l.doiTac).filter(Boolean))].sort()
+    return ds.some((l) => !l.doiTac) ? [...d, CHUA_RO] : d
+  }, [ds])
   const loc = useMemo(() => {
     const k = boDau(tim)
     return ds
       .filter((l) => !nam || l.ngay.startsWith(nam))
-      .filter((l) => !doiTac || l.doiTac === doiTac)
+      .filter((l) => !doiTac || (doiTac === CHUA_RO ? !l.doiTac : l.doiTac === doiTac))
       .filter((l) => !tt || trangThai(l) === tt)
       .filter((l) => !k || boDau([l.khachHang, l.lienHe, l.doiTac, l.diaDiem, l.noiDung, l.ghiChu].join(' ')).includes(k))
       .slice()

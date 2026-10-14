@@ -4,7 +4,8 @@ import { theoDoiTac, theoNam, theoThang } from '../lib/tinh'
 
 const trieu = (n: number) => (n / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })
 
-export default function TongHop({ ds }: { ds: LopGiang[] }) {
+/** onLocDoiTac: bấm một đối tác -> sang Danh sách, lọc sẵn đối tác + năm đang xem */
+export default function TongHop({ ds, onLocDoiTac }: { ds: LopGiang[]; onLocDoiTac: (doiTac: string, nam: string) => void }) {
   const nam = useMemo(() => theoNam(ds), [ds])
   const [chon, setChon] = useState(homNay().slice(0, 4))
   const thang = useMemo(() => theoThang(ds, chon), [ds, chon])
@@ -63,8 +64,8 @@ export default function TongHop({ ds }: { ds: LopGiang[] }) {
             </thead>
             <tbody>
               {dt.map((d) => (
-                <tr key={d.khoa} className="border-t border-slate-100">
-                  <td className="py-1">{d.khoa}</td>
+                <tr key={d.khoa} className="cursor-pointer border-t border-slate-100 hover:bg-teal-50" title={`Xem các lớp của ${d.khoa} năm ${chon}`} onClick={() => onLocDoiTac(d.khoa, chon)}>
+                  <td className="py-1 text-teal-700 underline decoration-dotted underline-offset-2">{d.khoa}</td>
                   <td className="py-1 text-right">{d.soLop}</td>
                   <td className="py-1 text-right">{dinhDangTien(d.tien)}</td>
                   <td className={`py-1 text-right ${d.tien - d.daTT ? 'text-amber-700' : 'text-slate-300'}`}>{dinhDangTien(d.tien - d.daTT)}</td>
@@ -72,6 +73,7 @@ export default function TongHop({ ds }: { ds: LopGiang[] }) {
               ))}
             </tbody>
           </table>
+          <p className="mt-2 text-xs text-slate-400">Bấm vào một đối tác để xem danh sách lớp.</p>
         </div>
       </div>
     </div>
