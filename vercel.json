@@ -1,0 +1,12 @@
+{
+  "framework": "vite",
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/telegram/:buoc", "destination": "/api/index?duong=/telegram/:buoc" },
+    { "source": "/ai/:buoc", "destination": "/api/index?duong=/ai/:buoc" },
+    { "source": "/cron/:buoc", "destination": "/api/index?duong=/cron/:buoc" }
+  ],
+  "crons": [{ "path": "/cron/nhac", "schedule": "0 13 * * *" }]
+}

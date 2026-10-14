@@ -1,0 +1,13 @@
+node_modules
+dist
+*.log
+.claude/
+.firebase/
+.env*
+.vercel
+# Dữ liệu thật (tên khách hàng, người liên hệ, thù lao) — chỉ để trên máy, KHÔNG đưa lên GitHub
+*.xlsx
+*.xlsm
+sao-luu-*.json
+tests/file-that.test.ts
+.env.gialap
