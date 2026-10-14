@@ -13,6 +13,17 @@ Web app **chỉ chạy online**: https://hoadon-npsc.web.app (Firebase Hosting, 
 
 Cảnh báo: rượu/bia trên hóa đơn, hóa đơn **đã bị thay thế / điều chỉnh**, bản nháp "chưa cấp số", chữ ≠ số tiền, ngày ngược.
 
+## DN rủi ro về hóa đơn
+Cài đặt → **Danh sách DN rủi ro về hóa đơn**: thả file Excel cơ quan thuế gửi hằng tháng (vd `PHỤ LỤC QR HDRR THANG 09.2026.xlsx`,
+gồm Phụ lục 1 — NNT không hoạt động tại địa chỉ đăng ký, PL 3 — DN đã chuyển hồ sơ sang công an). App tự dò cột "MST" ở mọi sheet;
+file tháng sau được **gộp thêm** vào danh sách cũ. Nạp xong app dò ngay toàn bộ hóa đơn trong kho.
+- Người bán có MST trong danh sách (kể cả chi nhánh `MST-xxx` của DN đó) → khung đỏ trên hóa đơn, cảnh báo ở danh sách / Tổng hợp,
+  phải xác nhận khi xuất Word. Hóa đơn lập **sau** ngày DN chuyển "không hoạt động" được ghi chú riêng.
+- Danh sách cất theo tài khoản (Firestore `meta/ruiRo` + Storage `users/{uid}/ruiRo/ds.json.gz`, nén gzip: 16.000 dòng ≈ 350 KB), **không** đưa file Excel lên git.
+- Bot Telegram: gửi PDF/XML mà người bán nằm trong danh sách → tin trả lời mở đầu bằng khối 🚨 CẢNH BÁO (phụ lục, công văn,
+  trạng thái DN); người bán sạch thì báo "✓ không nằm trong danh sách"; chưa nạp danh sách thì nhắc nạp.
+- AI (MCP): công cụ `tra_dn_rui_ro` (tra 1 MST hoặc dò cả kho); cảnh báo cũng có trong `xem_ho_so`, `tong_quan`…
+
 ## Hóa đơn cũ
 **📥 Nhập hóa đơn cũ**: thả nhiều file một lúc, mỗi hóa đơn thành 1 hồ sơ "HĐ cũ" (chỉ cần tiền + đã/chưa thanh toán).
 **Trùng** = cùng số + ngày xuất + MST đơn vị xuất → bỏ qua.
@@ -38,7 +49,7 @@ Cùng cách làm với app khai thuế. Địa chỉ máy chủ: `https://hoadon
 
 Bước Authenticate mở trang **"Cho phép AI truy cập hồ sơ hóa đơn"** → đăng nhập Google (đúng tài khoản dùng app) → xong.
 - AI làm việc **bằng quyền của chính tài khoản Google đó** — luật phân quyền Firebase vẫn canh cửa. Máy chủ không có chìa khoá tổng.
-- Đọc: `tong_quan`, `danh_sach_ho_so`, `xem_ho_so`, `tra_hoa_don`, `tong_hop` — dùng đúng hàm tính của app (trạng thái, cảnh báo, dự trù, hóa đơn bị thay thế, rượu/bia).
+- Đọc: `tong_quan`, `danh_sach_ho_so`, `xem_ho_so`, `tra_hoa_don`, `tra_dn_rui_ro`, `tong_hop` — dùng đúng hàm tính của app (trạng thái, cảnh báo, dự trù, hóa đơn bị thay thế, rượu/bia).
 - Ghi: `sua_ho_so` (mốc ngày, số tờ trình/ĐNTT…), `sua_nhieu_ho_so` (đặt ngày cho nhiều hồ sơ một lần, có xem trước), `sua_hoa_don` (tài khoản người bán…), `tao_ho_so` (từ XML hoặc số liệu nhập tay; hóa đơn trùng bị chặn). `xoa_ho_so` phải gửi đúng tên hồ sơ làm xác nhận.
 - Mỗi máy là một **phiên** — xem và **Thu hồi** ở cuối trang Cài đặt (dòng gập "Quyền của AI"); ở đó cũng có nhật ký mọi lần AI sửa / xoá.
 - Máy chủ chạy trên **Vercel** (`api/mcp.ts` → `mcp/web.ts`), vì Firebase Hosting không chạy được máy chủ. Cần biến môi trường bí mật `HOADON_MCP_KHOA` (≥ 32 ký tự) trên Vercel. Đổi khoá = mọi máy phải kết nối lại.

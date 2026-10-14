@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { bangRuiRo, type BangRuiRo, type DsRuiRo } from './ruiRo'
 import { store } from './store'
 import { DEFAULT_SETTINGS, type Dossier, type Settings, type TemplateKind } from './types'
 
@@ -20,6 +21,18 @@ export function useSettings(): Settings {
     return store.subscribe(load)
   }, [])
   return s
+}
+
+/** Danh sách DN rủi ro về hóa đơn đã nạp (Cài đặt) + bảng tra theo MST. Chưa nạp -> bảng rỗng, không cảnh báo. */
+export function useRuiRo(): { ds: DsRuiRo | null; bang: BangRuiRo } {
+  const [ds, setDs] = useState<DsRuiRo | null>(null)
+  useEffect(() => {
+    const load = () => store.getDsRuiRo().then(setDs, () => setDs(null))
+    load()
+    return store.subscribe(load)
+  }, [])
+  const bang = useMemo(() => bangRuiRo(ds), [ds])
+  return { ds, bang }
 }
 
 /** Thêm 1 lựa chọn mới vào danh sách đã lưu trong Cài đặt (người đề nghị, nhiệm vụ). */

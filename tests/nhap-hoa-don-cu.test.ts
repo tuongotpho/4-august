@@ -1,11 +1,15 @@
 import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { khoaHoaDon, nhapHoaDonCu } from '../src/lib/dossierOps'
 import { statusOf, warningsOf } from '../src/lib/status'
 import { setStore, type DataStore } from '../src/lib/store'
 import { DEFAULT_SETTINGS, type Dossier, type Settings, type StoredFile, type StoredTemplate, type TemplateKind } from '../src/lib/types'
 
 class MemStore implements DataStore {
+  async getDsRuiRo() {
+    return null
+  }
+  async saveDsRuiRo() {}
   d = new Map<string, Dossier>()
   f = new Map<string, StoredFile>()
   async listDossiers() { return [...this.d.values()] }
@@ -36,6 +40,8 @@ describe('nhập nhiều hóa đơn cũ', () => {
     setStore(mem)
   })
 
+  afterEach(() => vi.useRealTimers())
+
   it('mỗi hóa đơn 1 hồ sơ cũ; gộp ảnh cùng tên; bỏ qua hóa đơn trùng', async () => {
     const tienDo: string[] = []
     const kq = await nhapHoaDonCu(
@@ -58,6 +64,9 @@ describe('nhập nhiều hóa đơn cũ', () => {
   })
 
   it('hóa đơn cũ: chỉ có chưa / đã thanh toán, không bắt tờ trình / tài khoản', async () => {
+    // HĐ mẫu ngày 28/09/2026: ghim 'hôm nay' = 04/10/2026 (chưa quá 15 ngày) để bài test không tự hỏng theo thời gian
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-04T09:00:00+07:00'))
     await nhapHoaDonCu([xml('HD-9.xml', '9', 7000000)])
     const d = [...mem.d.values()][0]
     expect(statusOf(d)).toBe('choKt')

@@ -3,7 +3,8 @@ import { dossiersToCsv } from '../lib/csv'
 import { fmtDate, today } from '../lib/dates'
 import { sapXep, XEP_MAC_DINH, type CachXep, type KieuXep } from '../lib/status'
 import { docLaiHoSoTrong, emptyDossier, filesToInvoices, laHoSoTrong } from '../lib/dossierOps'
-import { downloadBlob, useDossiers, useSettings } from '../lib/hooks'
+import { downloadBlob, useDossiers, useRuiRo, useSettings } from '../lib/hooks'
+import { traHoaDon } from '../lib/ruiRo'
 import { formatMoney } from '../lib/numberToWords'
 import {
   firstInvoiceDate, STATUS_COLOR, STATUS_LABEL, statusOf, suggestToTrinhDate, totalOf, waitingDays, warningsOf,
@@ -24,6 +25,7 @@ const ORDER: StatusKey[] = ['choLamHs', 'choNop', 'choKt', 'daTt']
 export default function DossierList({ onOpen }: { onOpen: (id: string) => void }) {
   const list = useDossiers()
   const settings = useSettings()
+  const ruiRo = useRuiRo().bang
   const [filter, setFilter] = useState<StatusKey | 'all' | 'chuaXong' | 'cu'>('chuaXong')
   const [nhapCu, setNhapCu] = useState(false)
   const [chon, setChon] = useState<Set<string>>(new Set()) // hồ sơ đang được chọn (để xóa hàng loạt)
@@ -295,7 +297,7 @@ Không lấy lại được (trừ khi có bản sao lưu .zip).`,
             )}
             {shown.map((d) => {
               const st = statusOf(d)
-              const w = warningsOf(d, settings, thayThe)
+              const w = warningsOf(d, settings, thayThe, ruiRo)
               const wait = waitingDays(d)
               return (
                 <tr key={d.id} className={`cursor-pointer border-t border-slate-100 hover:bg-blue-50/50 ${chon.has(d.id) ? 'bg-blue-50' : ''}`} onClick={() => onOpen(d.id)}>
@@ -321,6 +323,11 @@ Không lấy lại được (trừ khi có bản sao lưu .zip).`,
                   <td className="px-3 py-2 text-xs text-slate-600">
                     {d.invoices.length === 0 ? '—' : d.invoices.map((i) => i.soHd || '?').join(', ')}
                     <div className="max-w-[12rem] truncate text-slate-400">{d.invoices[0]?.tenNguoiBan}</div>
+                    {d.invoices.some((i) => traHoaDon(i, ruiRo)) && (
+                      <span className="rounded bg-red-700 px-1.5 py-0.5 text-[10px] font-semibold text-white" title="Người bán nằm trong danh sách DN rủi ro về hóa đơn">
+                        ⛔ DN rủi ro
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-right font-medium">{formatMoney(totalOf(d))}</td>
                   <td className="px-3 py-2">{fmtDate(firstInvoiceDate(d))}</td>

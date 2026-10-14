@@ -1,3 +1,4 @@
+import type { DsRuiRo } from '../ruiRo.js'
 import type { Dossier, Settings, StoredFile, StoredTemplate, TemplateKind } from '../types.js'
 
 export type FileInfo = Omit<StoredFile, 'data'>
@@ -50,6 +51,10 @@ export interface DataStore {
 
   getSettings(): Promise<Settings>
   saveSettings(s: Settings): Promise<void>
+
+  /** Danh sách DN rủi ro về hóa đơn (nạp từ Excel của cơ quan thuế) — null = chưa nạp; lưu null = xóa */
+  getDsRuiRo(): Promise<DsRuiRo | null>
+  saveDsRuiRo(ds: DsRuiRo | null): Promise<void>
 
   /** AI (Claude Code…) kết nối qua MCP: các máy đang có quyền — xoá = thu hồi ngay */
   listPhienAI(): Promise<PhienAI[]>

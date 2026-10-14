@@ -55,6 +55,40 @@ const json = (x: unknown, status = 200, them: Record<string, string> = {}) =>
 
 const ngayVN = (s: string) => (/^\d{4}-\d{2}-\d{2}$/.test(s) ? s.split('-').reverse().join('/') : s || '?')
 
+/**
+ * Tin trả lời sau khi bot tạo hồ sơ. Người bán nằm trong danh sách DN rủi ro về hóa đơn -> đưa lên ĐẦU tin,
+ * không để lẫn giữa các nhắc nhở thường (chưa chọn người đề nghị…).
+ */
+export function tinDaTaoHoSo(
+  kq: Awaited<ReturnType<typeof cc.taoHoSo>>,
+  o: { ten: string; chuaDoc: boolean; noiDung?: string; appUrl: string },
+): string {
+  const h = kq.hoaDonMoi[0]
+  const ruiRo = kq.hoaDonMoi.flatMap((x) => (x.dnRuiRo ? [{ ...x.dnRuiRo, soHd: x.soHd }] : []))
+  const khoiRuiRo = ruiRo.map((r) => [
+    `🚨 CẢNH BÁO: NGƯỜI BÁN NẰM TRONG DANH SÁCH DN RỦI RO VỀ HÓA ĐƠN${r.daChuyenCongAn ? ' — ĐÃ CHUYỂN HỒ SƠ SANG CÔNG AN' : ''}`,
+    `${kq.hoaDonMoi.length > 1 ? `HĐ ${r.soHd || '?'}: ` : ''}${r.ten} (MST ${r.mst})${r.laChiNhanh ? ' — người bán là chi nhánh của DN này' : ''}`,
+    ...r.chiTiet.map((c) => `• ${c}`),
+    ...(r.lapSauKhiNgung ? ['• Hóa đơn lập SAU ngày DN chuyển trạng thái không hoạt động'] : []),
+    '👉 Kiểm tra kỹ trước khi thanh toán.',
+  ].join('\n'))
+  return [
+    ruiRo.length ? '⚠️ Đã tạo hồ sơ mới — CÓ RỦI RO' : '✅ Đã tạo hồ sơ mới',
+    ...khoiRuiRo,
+    o.chuaDoc
+      ? `⚠️ Không đọc được chữ trong "${o.ten}" (có thể là bản scan) — đã cất file, anh mở app nhập số liệu tay.`
+      : `HĐ ${h?.soHd || '?'} · ngày ${ngayVN(h?.ngayHd ?? '')}\n${h?.nguoiBan || '(chưa rõ người bán)'}\nTổng tiền: ${formatMoney(kq.tongTien)} đ`,
+    ...(h?.lienQuan ? [`ℹ️ ${h.lienQuan}`] : []),
+    ...(o.noiDung ? [`Nội dung: ${o.noiDung}`] : []),
+    ...kq.canhBao.filter((c) => !(ruiRo.length && /DN RỦI RO/.test(c))).map((c) => (/^(⚠️|⛔)/u.test(c) ? c : `⚠️ ${c}`)),
+    // không báo rủi ro thì nói rõ: chưa nạp danh sách, hay đã dò mà người bán sạch (PDF không đọc được thì chưa có MST để dò)
+    ...(!ruiRo.length && !kq.daKiemTraRuiRo ? ['ℹ️ Chưa nạp danh sách DN rủi ro (app → Cài đặt) — chưa kiểm tra được người bán.'] : []),
+    ...(!ruiRo.length && kq.daKiemTraRuiRo && !o.chuaDoc && h?.mst ? ['✓ Người bán không nằm trong danh sách DN rủi ro.'] : []),
+    o.chuaDoc ? '' : 'Số liệu đọc tự động từ PDF — anh soát lại số tiền, MST.',
+    `Mở để bổ sung, làm tờ trình:\n${o.appUrl}/?hs=${kq.id}`,
+  ].filter(Boolean).join('\n')
+}
+
 export async function xuLyTelegram(req: Request, duong: string, bc: BoiCanhTele): Promise<Response> {
   const { env, khoa, cfg, goc } = bc
   const token = env.HOADON_TELE_TOKEN?.trim()
@@ -186,19 +220,7 @@ export async function xuLyTelegram(req: Request, duong: string, bc: BoiCanhTele)
       throw e
     }
 
-    const h = kq.hoaDonMoi[0]
-    const dong = [
-      '✅ Đã tạo hồ sơ mới',
-      chuaDoc
-        ? `⚠️ Không đọc được chữ trong "${ten}" (có thể là bản scan) — đã cất file, anh mở app nhập số liệu tay.`
-        : `HĐ ${h?.soHd || '?'} · ngày ${ngayVN(h?.ngayHd ?? '')}\n${h?.nguoiBan || '(chưa rõ người bán)'}\nTổng tiền: ${formatMoney(kq.tongTien)} đ`,
-      ...(h?.lienQuan ? [`ℹ️ ${h.lienQuan}`] : []),
-      ...(noiDung ? [`Nội dung: ${noiDung}`] : []),
-      ...kq.canhBao.map((c) => (/^(⚠️|⛔)/u.test(c) ? c : `⚠️ ${c}`)),
-      chuaDoc ? '' : 'Số liệu đọc tự động từ PDF — anh soát lại số tiền, MST.',
-      `Mở để bổ sung, làm tờ trình:\n${appUrl}/?hs=${kq.id}`,
-    ].filter(Boolean)
-    await gui(chat, dong.join('\n'))
+    await gui(chat, tinDaTaoHoSo(kq, { ten, chuaDoc, noiDung, appUrl }))
   }
 
   function timVe(chat: string): VeTele | null {

@@ -16,6 +16,7 @@ import { connectStorageEmulator, getStorage } from 'firebase/storage'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { taoXuLy } from '../mcp/web'
 import { emptyDossier, emptyInvoice } from '../src/lib/model'
+import type { DsRuiRo } from '../src/lib/ruiRo'
 import { FirebaseStore } from '../src/lib/store/FirebaseStore'
 import { DEFAULT_SETTINGS } from '../src/lib/types'
 
@@ -95,7 +96,7 @@ describe.skipIf(!ON)('Máy chủ MCP ↔ dữ liệu web app (Firebase giả l�
     ve = await ketNoi('Máy cơ quan')
     c = await moClient(ve.access_token)
     const ten = (await c.listTools()).tools.map((t) => t.name).sort()
-    expect(ten).toEqual(['danh_sach_ho_so', 'gan_tag', 'sua_ho_so', 'sua_hoa_don', 'sua_nhieu_ho_so', 'tao_ho_so', 'tong_hop', 'tong_quan', 'tra_hoa_don', 'xem_ho_so', 'xoa_ho_so'])
+    expect(ten).toEqual(['danh_sach_ho_so', 'gan_tag', 'sua_ho_so', 'sua_hoa_don', 'sua_nhieu_ho_so', 'tao_ho_so', 'tong_hop', 'tong_quan', 'tra_dn_rui_ro', 'tra_hoa_don', 'xem_ho_so', 'xoa_ho_so'])
     expect((await c.listTools()).tools.find((t) => t.name === 'xoa_ho_so')!.annotations?.destructiveHint).toBe(true)
     expect((await store.listPhienAI()).map((p) => p.tenMay)).toEqual(['Máy cơ quan']) // ô Kết nối AI ở trang Cài đặt
   })
@@ -128,6 +129,22 @@ describe.skipIf(!ON)('Máy chủ MCP ↔ dữ liệu web app (Firebase giả l�
     // nạp lại -> trùng, không ghi thêm
     expect((await goiCC(c, 'tao_ho_so', { xml: [{ ten_file: 'HD123.xml', noi_dung: XML }] })).loi).toBe(true)
     expect(await store.listDossiers()).toHaveLength(2)
+  })
+
+  it('danh sách DN rủi ro: web app nạp (nén gzip lên Storage) -> AI đọc được, tra được, có cảnh báo; xoá thì AI thấy chưa nạp', async () => {
+    const ds: DsRuiRo = {
+      cacFile: [{ ten: 'PL thu.xlsx', napLuc: 1, soDong: 1 }],
+      nhom: [{ sheet: 'Phụ lục 1', moTa: 'DANH SÁCH NGƯỜI NỘP THUẾ KHÔNG HOẠT ĐỘNG TẠI ĐỊA CHỈ ĐÃ ĐĂNG KÝ' }],
+      dong: [{ mst: '0100000005', ten: 'NHÀ HÀNG THỬ RỦI RO', nhom: 0, soCv: '1/TCS', ngayCv: '2026-08-01', bienPhap: '', trangThai: 'NNT không hoạt động tại địa chỉ đã đăng ký', ngayChuyen: '2026-08-01' }],
+    }
+    await store.saveDsRuiRo(ds)
+    expect(await store.getDsRuiRo()).toEqual(ds)
+    expect((await goiCC(c, 'tra_dn_rui_ro', { mst: '0100000005-001' })).kq).toMatchObject({ daNap: true, coTrongDanhSach: true, laChiNhanh: true, mstKhop: '0100000005' })
+    expect((await goiCC(c, 'tra_dn_rui_ro')).kq).toMatchObject({ soMst: 1, soHoaDonKhop: 1, hoaDon: [{ hoSoId: 'hs-web', soHd: '45' }] })
+    expect((await goiCC(c, 'xem_ho_so', { id: 'hs-web' })).kq.canhBao[0]).toMatch(/^⛔ HĐ 45: người bán NHÀ HÀNG THỬ RỦI RO \(MST 0100000005\) nằm trong DANH SÁCH DN RỦI RO/)
+    await store.saveDsRuiRo(null)
+    expect(await store.getDsRuiRo()).toBeNull()
+    expect((await goiCC(c, 'tra_dn_rui_ro')).kq).toMatchObject({ daNap: false })
   })
 
   it('xoá: sai xác nhận thì không xoá; đúng thì xoá cả file gốc', async () => {

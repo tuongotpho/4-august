@@ -16,7 +16,10 @@ import { docHoaDonPdf } from '../mcp/docPdf'
 import { matKhauWebhook } from '../mcp/telegram'
 import { khoaTuChuoi } from '../mcp/oauth'
 import { taoXuLy } from '../mcp/web'
+import { bangRuiRo } from '../src/lib/ruiRo'
+import { warningsOf } from '../src/lib/status'
 import { FirebaseStore } from '../src/lib/store/FirebaseStore'
+import { DEFAULT_SETTINGS } from '../src/lib/types'
 
 const ON = !!process.env.FIRESTORE_EMULATOR_HOST
 const XML = readFileSync(new URL('./fixtures/hoa-don-tt78.xml', import.meta.url), 'utf8')
@@ -146,6 +149,7 @@ describe.skipIf(!ON)('Bot Telegram -> tạo hồ sơ (Firebase giả lập)', ()
     const r = await guiFile('HD123.xml', new TextEncoder().encode(XML), 'text/xml', 'Mua vật tư thử qua Telegram')
     expect(r.tra).toContain('✅ Đã tạo hồ sơ mới')
     expect(r.tra).toContain('1.188.000 đ')
+    expect(r.tra).toContain('ℹ️ Chưa nạp danh sách DN rủi ro') // chưa nạp thì nói rõ là chưa kiểm tra
     const ds = await store.listDossiers()
     expect(ds).toHaveLength(1)
     expect(r.tra).toContain(`/?hs=${ds[0].id}`)
@@ -190,6 +194,57 @@ describe.skipIf(!ON)('Bot Telegram -> tạo hồ sơ (Firebase giả lập)', ()
     const d = (await store.listDossiers()).find((x) => x.invoices[0]?.soHd === hd.soHd)!
     expect(d.invoices[0]).toMatchObject({ soHd: hd.soHd, ngayHd: hd.ngayHd, mstNguoiBan: hd.mstNguoiBan, tongTien: hd.tongTien })
     expect(hd.tongTien).toBeGreaterThan(0)
+  })
+
+  it('web app nạp danh sách DN rủi ro -> gửi hóa đơn của DN đó: khối 🚨 CẢNH BÁO đứng đầu tin, hồ sơ vẫn được tạo', async () => {
+    await store.saveDsRuiRo({
+      cacFile: [{ ten: 'PL thu.xlsx', napLuc: 1, soDong: 1 }],
+      nhom: [{ sheet: 'PL 3 CA', moTa: 'DANH SÁCH DOANH NGHIỆP ĐÃ BỊ CƠ QUAN THUẾ CHUYỂN HỒ SƠ SANG CƠ QUAN CẢNH SÁT ĐIỀU TRA' }],
+      dong: [{ mst: '0100000001', ten: 'CÔNG TY TNHH THỬ NGHIỆM', nhom: 0, soCv: '2662/TCS7', ngayCv: '2026-08-14', bienPhap: 'Đã chuyển hồ sơ CA',
+        trangThai: 'NNT không hoạt động tại địa chỉ đã đăng ký', ngayChuyen: '2026-08-17' }],
+    })
+    const truoc = (await store.listDossiers()).length
+    const r = await guiFile('HD124.xml', new TextEncoder().encode(XML.replace('<SHDon>123</SHDon>', '<SHDon>124</SHDon>')), 'text/xml')
+    const dong = r.tra.split('\n')
+    expect(dong[0]).toBe('⚠️ Đã tạo hồ sơ mới — CÓ RỦI RO')
+    expect(dong[1]).toBe('🚨 CẢNH BÁO: NGƯỜI BÁN NẰM TRONG DANH SÁCH DN RỦI RO VỀ HÓA ĐƠN — ĐÃ CHUYỂN HỒ SƠ SANG CÔNG AN')
+    expect(dong[2]).toBe('CÔNG TY TNHH THỬ NGHIỆM (MST 0100000001)')
+    expect(dong[3]).toBe('• PL 3 CA; Đã chuyển hồ sơ CA; CV 2662/TCS7 ngày 14/08/2026; NNT không hoạt động tại địa chỉ đã đăng ký từ 17/08/2026')
+    expect(dong).toContain('• Hóa đơn lập SAU ngày DN chuyển trạng thái không hoạt động') // HĐ ngày 28/09/2026
+    expect(dong).toContain('👉 Kiểm tra kỹ trước khi thanh toán.')
+    expect(r.tra.match(/DN RỦI RO/g)).toHaveLength(1) // không lặp lại ở phần nhắc nhở
+    expect(await store.listDossiers()).toHaveLength(truoc + 1)
+
+    // người bán khác (không có trong danh sách) -> báo sạch
+    const sach = await guiFile('HD125.xml', new TextEncoder().encode(XML.replace('<SHDon>123</SHDon>', '<SHDon>125</SHDon>').replace('<MST>0100000001</MST>', '<MST>0100000003</MST>')), 'text/xml')
+    expect(sach.tra).toMatch(/^✅ Đã tạo hồ sơ mới/)
+    expect(sach.tra).toContain('✓ Người bán không nằm trong danh sách DN rủi ro.')
+  })
+
+  it('gửi PDF hóa đơn (cách anh dùng thật) của DN rủi ro -> đọc PDF, tạo hồ sơ + cất PDF, cảnh báo 🚨 đứng đầu', async () => {
+    const pdf = new Uint8Array(readFileSync(new URL('./fixtures/hoa-don-pdf-thu.pdf', import.meta.url))) // HĐ giả, người bán MST 0100000007
+    await store.saveDsRuiRo({
+      cacFile: [{ ten: 'PHU LUC QR HDRR THANG 09.2026.xlsx', napLuc: 1, soDong: 1 }],
+      nhom: [{ sheet: 'Phụ lục 1', moTa: 'DANH SÁCH NGƯỜI NỘP THUẾ KHÔNG HOẠT ĐỘNG TẠI ĐỊA CHỈ ĐÃ ĐĂNG KÝ' }],
+      dong: [{ mst: '0100000007', ten: 'CÔNG TY TNHH THỬ NGHIỆM PDF', nhom: 0, soCv: '3197/TCS10-QLDN', ngayCv: '2026-08-07',
+        bienPhap: 'CQT ban hành thông báo NNT có dấu hiệu rủi ro về thuế, hóa đơn', trangThai: 'NNT không hoạt động tại địa chỉ đã đăng ký', ngayChuyen: '2026-08-06' }],
+    })
+    const r = await guiFile('HD77.pdf', pdf, 'application/pdf', 'Tiếp khách thử')
+    const dong = r.tra.split('\n')
+    expect(dong[0]).toBe('⚠️ Đã tạo hồ sơ mới — CÓ RỦI RO')
+    expect(dong[1]).toBe('🚨 CẢNH BÁO: NGƯỜI BÁN NẰM TRONG DANH SÁCH DN RỦI RO VỀ HÓA ĐƠN') // không phải DN chuyển công an
+    expect(dong[2]).toBe('CÔNG TY TNHH THỬ NGHIỆM PDF (MST 0100000007)')
+    expect(dong).toContain('• Hóa đơn lập SAU ngày DN chuyển trạng thái không hoạt động') // HĐ 25/09, DN ngừng từ 06/08
+    expect(r.tra).toContain('HĐ 77 · ngày 25/09/2026')
+    expect(r.tra).toContain('Tổng tiền: 1.080.000 đ')
+
+    // web app: hồ sơ mới có đủ số liệu đọc từ PDF + file PDF gốc; mở ra thấy cảnh báo như trên bot
+    const d = (await store.listDossiers()).find((x) => x.invoices[0]?.soHd === '77')!
+    expect(d).toMatchObject({ noiDung: 'Tiếp khách thử' })
+    expect(d.invoices[0]).toMatchObject({ mstNguoiBan: '0100000007', tenNguoiBan: 'CÔNG TY TNHH THỬ NGHIỆM PDF', ngayHd: '2026-09-25', tongTien: 1_080_000 })
+    expect(new Uint8Array(await (await store.getFile(d.invoices[0].fileIds[0]))!.data.arrayBuffer())).toEqual(pdf)
+    const w = warningsOf(d, DEFAULT_SETTINGS, undefined, bangRuiRo(await store.getDsRuiRo()))
+    expect(w[0]).toMatch(/^⛔ HĐ 77: người bán CÔNG TY TNHH THỬ NGHIỆM PDF \(MST 0100000007\) nằm trong DANH SÁCH DN RỦI RO/)
   })
 
   it('thu hồi "Bot Telegram" ở Cài đặt -> bot hết quyền, không ghi gì nữa', async () => {

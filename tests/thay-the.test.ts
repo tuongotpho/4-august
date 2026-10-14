@@ -64,6 +64,10 @@ describe('cảnh báo hóa đơn đã bị thay thế', () => {
 })
 
 class MemStore implements DataStore {
+  async getDsRuiRo() {
+    return null
+  }
+  async saveDsRuiRo() {}
   d = new Map<string, Dossier>()
   f = new Map<string, StoredFile>()
   async listDossiers() { return [...this.d.values()] }

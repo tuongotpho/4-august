@@ -3,6 +3,7 @@ import { fillTemplate } from '../lib/docx'
 import { loadTemplate, TEMPLATE_INFO } from '../lib/hooks'
 import { warningsOf } from '../lib/status'
 import type { BanDoThayThe } from '../lib/thayThe'
+import type { BangRuiRo } from '../lib/ruiRo'
 import { buildTemplateData } from '../lib/tags'
 import type { Dossier, Settings, TemplateKind } from '../lib/types'
 
@@ -13,6 +14,7 @@ interface Props {
   onClose: () => void
   onExport: (kinds: TemplateKind[]) => void
   thayThe?: BanDoThayThe
+  ruiRo?: BangRuiRo
 }
 
 // Tô vàng các chỗ "……" (ô chưa có dữ liệu) để dễ thấy trước khi in
@@ -36,7 +38,7 @@ function highlightMissing(root: HTMLElement): number {
 }
 
 /** Xem trước tờ trình / ĐNTT đúng như file Word sẽ xuất ra (chia trang A4). */
-export default function PreviewModal({ dossier, settings, initial, onClose, onExport, thayThe }: Props) {
+export default function PreviewModal({ dossier, settings, initial, onClose, onExport, thayThe, ruiRo }: Props) {
   const [kind, setKind] = useState<TemplateKind>(initial)
   const [state, setState] = useState<{ loading: boolean; error?: string; missing: number }>({ loading: true, missing: 0 })
   const box = useRef<HTMLDivElement>(null)
@@ -103,9 +105,9 @@ export default function PreviewModal({ dossier, settings, initial, onClose, onEx
             Đóng
           </button>
         </div>
-        {warningsOf(dossier, settings, thayThe).length > 0 && (
+        {warningsOf(dossier, settings, thayThe, ruiRo).length > 0 && (
           <div className="border-b border-amber-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-900">
-            {warningsOf(dossier, settings, thayThe).map((w) => (
+            {warningsOf(dossier, settings, thayThe, ruiRo).map((w) => (
               <div key={w}>⚠ {w}</div>
             ))}
           </div>

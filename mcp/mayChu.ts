@@ -124,6 +124,13 @@ export function taoMayChu(nguon: NguonMcp) {
     annotations: chiDoc,
   }, boc(cc.traHoaDon))
 
+  server.registerTool('tra_dn_rui_ro', {
+    title: 'Tra DN rủi ro về hóa đơn',
+    description: 'Danh sách doanh nghiệp rủi ro về hóa đơn của cơ quan thuế (người dùng nạp file Excel ở Cài đặt). Có mst: MST đó (hoặc DN chủ quản của chi nhánh MST-xxx) có trong danh sách không, công văn nào, trạng thái gì. Không có mst: các hóa đơn trong kho có người bán nằm trong danh sách — nên kiểm tra kỹ trước khi thanh toán.',
+    inputSchema: { mst: z.string().optional().describe('Mã số thuế cần tra; bỏ trống = dò cả kho') },
+    annotations: chiDoc,
+  }, boc(cc.traDnRuiRo))
+
   server.registerTool('tong_hop', {
     title: 'Tổng hợp theo năm',
     description: 'Như trang Tổng hợp của app: từng tháng (số HĐ, tổng tiền, đã thanh toán / chờ kế toán / chưa nộp), xếp hạng người bán, số ngày trung bình từ hóa đơn đến nộp kế toán và từ nộp đến được thanh toán.',

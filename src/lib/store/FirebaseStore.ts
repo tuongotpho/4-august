@@ -4,6 +4,7 @@ import {
 } from 'firebase/firestore'
 import { deleteObject, getBytes, ref as sref, uploadBytes, type FirebaseStorage } from 'firebase/storage'
 import { normalizeDossier } from '../model'
+import { giaiNenDs, nenDs, type DsRuiRo } from '../ruiRo'
 import { DEFAULT_SETTINGS, type Dossier, type Settings, type StoredFile, type StoredTemplate, type TemplateKind } from '../types'
 import type { DataStore } from './DataStore'
 
@@ -16,6 +17,8 @@ import type { DataStore } from './DataStore'
  *                                          gs://hoadon-npsc/users/{uid}/files/{id}
  *   users/{uid}/templates/{kind}         mẫu Word (nhỏ, cắt mảnh ngay trong Firestore: chunks/{i} ≤ 700 KB)
  *   users/{uid}/meta/settings            cài đặt
+ *   users/{uid}/meta/ruiRo               danh sách DN rủi ro về hóa đơn: thông tin ở đây, NỘI DUNG (JSON nén gzip) ở Storage
+ *                                          gs://hoadon-npsc/users/{uid}/ruiRo/ds.json.gz
  * File cũ nào cất kiểu cắt mảnh trong Firestore (có trường chunks) vẫn đọc/xóa được.
  */
 const CHUNK = 700 * 1024
@@ -29,6 +32,9 @@ export class FirebaseStore implements DataStore {
   private db: Firestore
   private storage: FirebaseStorage
   private uid: string
+  private ruiRo: { capNhat: number; ds: DsRuiRo } | null = null // tránh tải lại khi chưa đổi
+  private ruiRoMoiNhat: number | undefined // capNhat mới nhất, do onSnapshot báo — có thì khỏi đọc Firestore mỗi lần hỏi
+  private ruiRoDangTai: Promise<DsRuiRo | null> | null = null // nhiều màn hình hỏi cùng lúc -> chỉ tải 1 lần
 
   constructor(db: Firestore, storage: FirebaseStorage, uid: string) {
     this.db = db
@@ -91,6 +97,10 @@ export class FirebaseStore implements DataStore {
         onSnapshot(this.col('dossiers'), this.emit, () => {}),
         onSnapshot(this.ref('meta', 'settings'), this.emit, () => {}),
         onSnapshot(this.col('templates'), this.emit, () => {}),
+        onSnapshot(this.ref('meta', 'ruiRo'), (s) => {
+          this.ruiRoMoiNhat = s.exists() ? (s.get('capNhat') as number) : 0
+          this.emit()
+        }, () => {}),
       ]
     }
     this.listeners.add(cb)
@@ -199,5 +209,38 @@ export class FirebaseStore implements DataStore {
   }
   async saveSettings(s: Settings) {
     await setDoc(this.ref('meta', 'settings'), s)
+  }
+
+  // ── Danh sách DN rủi ro về hóa đơn ──
+  async getDsRuiRo() {
+    // đang nghe thay đổi và chưa có gì mới -> trả bản đã tải, không tốn lượt đọc nào
+    if (this.ruiRoMoiNhat === 0) return null
+    if (this.ruiRo && this.ruiRo.capNhat === this.ruiRoMoiNhat) return this.ruiRo.ds
+    this.ruiRoDangTai ??= this.taiDsRuiRo().finally(() => (this.ruiRoDangTai = null))
+    return this.ruiRoDangTai
+  }
+  private async taiDsRuiRo() {
+    const s = await getDoc(this.ref('meta', 'ruiRo'))
+    if (!s.exists()) return null
+    const m = s.data() as { path: string; capNhat: number }
+    if (this.ruiRo?.capNhat === m.capNhat) return this.ruiRo.ds
+    const ds = await giaiNenDs(new Uint8Array(await getBytes(sref(this.storage, m.path))))
+    this.ruiRo = { capNhat: m.capNhat, ds }
+    return ds
+  }
+  async saveDsRuiRo(ds: DsRuiRo | null) {
+    const r = sref(this.storage, `users/${this.uid}/ruiRo/ds.json.gz`)
+    const cu = sref(this.storage, `users/${this.uid}/ruiRo/ds.json`) // bản cất cũ chưa nén
+    if (!ds) {
+      await deleteDoc(this.ref('meta', 'ruiRo'))
+      await Promise.all([deleteObject(r).catch(() => undefined), deleteObject(cu).catch(() => undefined)])
+      this.ruiRo = null
+      return
+    }
+    await uploadBytes(r, new Blob([await nenDs(ds) as Uint8Array<ArrayBuffer>], { type: 'application/gzip' }), { contentType: 'application/gzip' })
+    const capNhat = Date.now()
+    await setDoc(this.ref('meta', 'ruiRo'), { path: r.fullPath, capNhat, soDong: ds.dong.length, cacFile: ds.cacFile })
+    this.ruiRo = { capNhat, ds } // máy này khỏi tải lại thứ vừa ghi
+    await deleteObject(cu).catch(() => undefined)
   }
 }

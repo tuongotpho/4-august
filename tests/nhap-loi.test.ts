@@ -13,6 +13,10 @@ const { emptyDossier, emptyInvoice } = await import('../src/lib/model')
 const { setStore } = await import('../src/lib/store')
 
 class MemStore implements DataStore {
+  async getDsRuiRo() {
+    return null
+  }
+  async saveDsRuiRo() {}
   d = new Map<string, Dossier>()
   f = new Map<string, StoredFile>()
   async listDossiers() { return [...this.d.values()] }

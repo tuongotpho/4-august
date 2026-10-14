@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { fmtDate, today } from '../lib/dates'
 import { fillTemplate } from '../lib/docx'
 import { emptyInvoice, filesToInvoices } from '../lib/dossierOps'
-import { downloadBlob, loadTemplate, rememberOption, safeFileName, TEMPLATE_INFO, useSettings } from '../lib/hooks'
+import { downloadBlob, loadTemplate, rememberOption, safeFileName, TEMPLATE_INFO, useRuiRo, useSettings } from '../lib/hooks'
+import { moTaRuiRo, traHoaDon } from '../lib/ruiRo'
 import { moTaHangCam, timHangCam } from '../lib/hangCam'
 import { banDoThayThe, biLienQuan, moTaBiLienQuan, type BanDoThayThe } from '../lib/thayThe'
 import { canThongTinTk, duTruOf, duTruTuDong, tongTienChuOf, tongTienOf } from '../lib/rules'
@@ -25,6 +26,7 @@ import { bao, hoi } from '../lib/dialog'
 
 export default function DossierEditor({ id, onClose }: { id: string; onClose: () => void }) {
   const settings = useSettings()
+  const ruiRo = useRuiRo()
   const [d, setD] = useState<Dossier | null>(null)
   const [saved, setSaved] = useState(true)
   const [exporting, setExporting] = useState(false)
@@ -123,6 +125,18 @@ export default function DossierEditor({ id, onClose }: { id: string; onClose: ()
       })
       if (!ok) return
     }
+    // Người bán nằm trong danh sách DN rủi ro về hóa đơn của cơ quan thuế — bắt xác nhận
+    const rr = d!.invoices.flatMap((i) => {
+      const k = traHoaDon(i, ruiRo.bang)
+      return k ? [moTaRuiRo(i, k)] : []
+    })
+    if (rr.length) {
+      const ok = await hoi(`⛔ ${rr.join('\n⛔ ')}\n\nAnh có chắc vẫn xuất tờ trình / đề nghị thanh toán?`, {
+        okLabel: 'Vẫn xuất',
+        nguyHiem: true,
+      })
+      if (!ok) return
+    }
     // Quy định: không thanh toán rượu/bia — bắt xác nhận trước khi xuất
     const cam = timHangCam(d!.invoices, settings.tuKhoaCam)
     if (cam.length) {
@@ -163,7 +177,7 @@ Anh có chắc vẫn xuất tờ trình / đề nghị thanh toán?`,
   }
 
   const st = statusOf(d)
-  const warnings = warningsOf(d, settings, thayThe)
+  const warnings = warningsOf(d, settings, thayThe, ruiRo.bang)
   const total = totalOf(d)
   const hd = firstInvoiceDate(d)
 
@@ -331,6 +345,8 @@ Anh có chắc vẫn xuất tờ trình / đề nghị thanh toán?`,
                 canTk={canThongTinTk(d, settings)}
                 tuKhoaCam={settings.tuKhoaCam}
                 biLQ={biLienQuan(inv, thayThe)}
+                ruiRo={traHoaDon(inv, ruiRo.bang)}
+                nhomRuiRo={ruiRo.ds?.nhom}
               />
             ))}
             <FileDrop onFiles={addInvoiceFiles} accept=".xml,.pdf,image/*">
@@ -400,6 +416,7 @@ Anh có chắc vẫn xuất tờ trình / đề nghị thanh toán?`,
           dossier={withDates(d, ['toTrinh', 'dntt'])}
           settings={settings}
           thayThe={thayThe}
+          ruiRo={ruiRo.bang}
           initial={preview}
           onClose={() => setPreview(null)}
           onExport={(k) => exportDocs(k)}

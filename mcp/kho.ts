@@ -4,6 +4,7 @@
 //   users/{uid}/dossiers/{id}     hồ sơ
 //   users/{uid}/files/{id}        thông tin file; nội dung ở Storage hoadon-npsc: users/{uid}/files/{id}
 //   users/{uid}/meta/settings     cài đặt
+//   users/{uid}/meta/ruiRo        danh sách DN rủi ro về hóa đơn; nội dung (JSON nén gzip) ở Storage: users/{uid}/ruiRo/ds.json.gz
 // Thêm 2 nhánh riêng cho AI (vẫn nằm trong users/{uid}, luật phân quyền cũ đã bao):
 //   users/{uid}/phienAI/{maPhien}   mỗi máy / ứng dụng AI đã được cho phép — xoá = thu hồi
 //   users/{uid}/nhatKyAI/{ma}       mỗi lần AI ghi / xoá: lúc nào, máy nào, làm gì
@@ -11,21 +12,35 @@
 import { randomUUID } from 'node:crypto'
 import { normalizeDossier } from '../src/lib/model.js'
 import { DEFAULT_SETTINGS, type Dossier, type Settings } from '../src/lib/types.js'
+import { giaiNenDs, type DsRuiRo } from '../src/lib/ruiRo.js'
 import type { DuLieu } from './congCu.js'
 import type { FirebaseNguoiDung } from './firebaseRest.js'
 
 const goc = (fb: FirebaseNguoiDung) => `users/${fb.uid}`
 
 export async function taiDuLieu(fb: FirebaseNguoiDung): Promise<DuLieu> {
-  const [hoSo, caiDat, tep] = await Promise.all([
+  const [hoSo, caiDat, tep, dsRuiRo] = await Promise.all([
     fb.docBoSuuTap<Dossier>(`${goc(fb)}/dossiers`),
     fb.docTaiLieu<Partial<Settings>>(`${goc(fb)}/meta/settings`),
     fb.docBoSuuTap<{ name: string }>(`${goc(fb)}/files`),
+    taiDsRuiRo(fb),
   ])
   return {
     hoSo: hoSo.map(({ _id, ...d }) => normalizeDossier({ ...(d as Dossier), id: d.id || _id })),
     caiDat: { ...DEFAULT_SETTINGS, ...(caiDat ?? {}) },
     tenFile: new Map(tep.map((f) => [f._id, f.name])),
+    dsRuiRo,
+  }
+}
+
+/** Danh sách DN rủi ro (web app nạp ở Cài đặt). Lỗi đọc thì coi như chưa nạp — không làm hỏng các công cụ khác. */
+async function taiDsRuiRo(fb: FirebaseNguoiDung): Promise<DsRuiRo | null> {
+  try {
+    const m = await fb.docTaiLieu<{ path?: string }>(`${goc(fb)}/meta/ruiRo`)
+    if (!m?.path) return null
+    return await giaiNenDs(await fb.taiVeTep(m.path))
+  } catch {
+    return null
   }
 }
 

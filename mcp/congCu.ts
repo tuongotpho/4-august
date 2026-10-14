@@ -14,6 +14,7 @@ import { apDungNgay, TRUONG_NGAY, type CachDat, type ThayDoiNgay } from '../src/
 import { chuanTag, KHONG_TAG, TAG_MAC_DINH } from '../src/lib/hashtag.js'
 import { avgDurations, byMonth, bySeller, byTag, coTag, flattenInvoices, yearsOf } from '../src/lib/summary.js'
 import { banDoThayThe, biLienQuan, moTaBiLienQuan, moTaLienQuan } from '../src/lib/thayThe.js'
+import { bangRuiRo, daChuyenCongAn, lapSauKhiNgung, moTaDong, moTaRuiRo, traHoaDon as traRuiRo, traMst, type BangRuiRo, type DsRuiRo } from '../src/lib/ruiRo.js'
 import type { Dossier, Invoice, Settings, ThanhPhan } from '../src/lib/types.js'
 
 // Bộ đọc XML hóa đơn của web app dùng DOMParser của trình duyệt — trên máy chủ thay bằng xmldom
@@ -24,6 +25,18 @@ export interface DuLieu {
   caiDat: Settings
   /** id file -> tên file gốc */
   tenFile: Map<string, string>
+  /** Danh sách DN rủi ro về hóa đơn đã nạp ở Cài đặt (chưa nạp = không có) */
+  dsRuiRo?: DsRuiRo | null
+}
+
+/** Bảng tra MST rủi ro — lập 1 lần cho mỗi lần tải dữ liệu */
+const bangCache = new WeakMap<DsRuiRo, BangRuiRo>()
+function ruiRoCua(du: DuLieu): BangRuiRo | undefined {
+  const ds = du.dsRuiRo
+  if (!ds) return undefined
+  let b = bangCache.get(ds)
+  if (!b) bangCache.set(ds, (b = bangRuiRo(ds)))
+  return b
 }
 
 /** Chỗ ghi: máy chủ cắm Firebase của người dùng; mỗi lần ghi / xoá đều để lại nhật ký */
@@ -43,7 +56,7 @@ const chuan = (s: string) => s.normalize('NFC').toLowerCase()
 
 // ───────────── Tóm tắt / tìm ─────────────
 
-function tomTat(d: Dossier, s: Settings, map: ReturnType<typeof banDoThayThe>) {
+function tomTat(d: Dossier, s: Settings, map: ReturnType<typeof banDoThayThe>, ruiRo?: BangRuiRo) {
   const st = statusOf(d)
   return {
     id: d.id,
@@ -57,7 +70,7 @@ function tomTat(d: Dossier, s: Settings, map: ReturnType<typeof banDoThayThe>) {
     soNgayCho: waitingDays(d),
     hoSoCu: d.hoSoCu,
     tags: d.tags ?? [],
-    soCanhBao: warningsOf(d, s, map).length,
+    soCanhBao: warningsOf(d, s, map, ruiRo).length,
   }
 }
 
@@ -95,7 +108,7 @@ export function tongQuan(du: DuLieu) {
   })
   const dangXuLy = du.hoSo.filter((d) => statusOf(d) !== 'daTt')
   const canChuY = sapXep(dangXuLy, XEP_MAC_DINH)
-    .map((d) => ({ ...tomTat(d, s, map), canhBao: warningsOf(d, s, map) }))
+    .map((d) => ({ ...tomTat(d, s, map, ruiRoCua(du)), canhBao: warningsOf(d, s, map, ruiRoCua(du)) }))
     .filter((d) => d.canhBao.length)
   return {
     homNay: today(),
@@ -104,7 +117,7 @@ export function tongQuan(du: DuLieu) {
     theoTrangThai,
     choKeToanLau: dangXuLy
       .filter((d) => statusOf(d) === 'choKt' && (waitingDays(d) ?? 0) > s.canhBaoChoKtSauNgay)
-      .map((d) => tomTat(d, s, map)),
+      .map((d) => tomTat(d, s, map, ruiRoCua(du))),
     canChuY: canChuY.slice(0, 30),
     soHoSoCanChuY: canChuY.length,
     quyTac: {
@@ -129,7 +142,7 @@ export function danhSachHoSo(du: DuLieu, a: ThamSoDanhSach) {
     soHoSo: loc.length,
     tongTien: loc.reduce((x, d) => x + totalOf(d), 0),
     hienThi: Math.min(gh, loc.length),
-    hoSo: xep.slice(0, gh).map((d) => tomTat(d, du.caiDat, map)),
+    hoSo: xep.slice(0, gh).map((d) => tomTat(d, du.caiDat, map, ruiRoCua(du))),
   }
 }
 
@@ -161,7 +174,7 @@ export function xemHoSo(du: DuLieu, a: { id: string }) {
     duTruTheoQuyTac: duTruTuDong(d, s),
     canInThongTinTaiKhoan: canThongTinTk(d, s),
     hangCam: timHangCam(d.invoices, s.tuKhoaCam),
-    canhBao: warningsOf(d, s, map),
+    canhBao: warningsOf(d, s, map, ruiRoCua(du)),
     goiY: { ngayToTrinh: suggestToTrinhDate(d, s), ngayDntt: suggestDnttDate(d) },
     createdAt: new Date(d.createdAt).toISOString(),
     updatedAt: new Date(d.updatedAt).toISOString(),
@@ -191,8 +204,47 @@ export function traHoaDon(du: DuLieu, a: ThamSoTraHoaDon) {
       tienTruocThue: inv.tienTruocThue, tienThue: inv.tienThue, tongTien: inv.tongTien,
       hoSoId: d.id, noiDung: d.noiDung, trangThai: STATUS_LABEL[status],
       biThayThe: biLienQuan(inv, map) ? moTaBiLienQuan(inv, biLienQuan(inv, map)!) : undefined,
+      dnRuiRo: traRuiRo(inv, ruiRoCua(du)) ? moTaRuiRo(inv, traRuiRo(inv, ruiRoCua(du))!) : undefined,
     })),
   }
+}
+
+/** Người bán của hóa đơn có trong danh sách DN rủi ro không — chi tiết để báo (Telegram, AI) */
+function chiTietRuiRo(du: DuLieu, inv: Invoice) {
+  const kq = traRuiRo(inv, ruiRoCua(du))
+  if (!kq) return undefined
+  return {
+    mst: kq.mst,
+    ten: kq.dong[0].ten || inv.tenNguoiBan,
+    laChiNhanh: kq.quaDonViChuQuan,
+    daChuyenCongAn: kq.dong.some((x) => daChuyenCongAn(x, du.dsRuiRo?.nhom)),
+    lapSauKhiNgung: kq.dong.some((x) => lapSauKhiNgung(inv, x)),
+    chiTiet: kq.dong.map((x) => moTaDong(x, du.dsRuiRo?.nhom)),
+  }
+}
+
+/**
+ * Tra danh sách DN rủi ro về hóa đơn (nạp ở Cài đặt): có mst -> MST đó có trong danh sách không;
+ * không có mst -> các hóa đơn trong kho có người bán nằm trong danh sách.
+ */
+export function traDnRuiRo(du: DuLieu, a: { mst?: string }) {
+  const ds = du.dsRuiRo
+  if (!ds) return { daNap: false, ghiChu: 'Chưa nạp danh sách DN rủi ro — người dùng nạp file Excel của cơ quan thuế ở trang Cài đặt của web app.' }
+  const bang = ruiRoCua(du)!
+  const nguon = { soMst: bang.size, cacFile: ds.cacFile.map((f) => ({ ten: f.ten, soDong: f.soDong, napLuc: new Date(f.napLuc).toISOString() })) }
+  if (a.mst?.trim()) {
+    const kq = traMst(a.mst, bang)
+    return {
+      daNap: true, ...nguon, mst: a.mst.trim(), coTrongDanhSach: !!kq,
+      ...(kq && { mstKhop: kq.mst, laChiNhanh: kq.quaDonViChuQuan, chiTiet: kq.dong.map((d) => ({ ten: d.ten, moTa: moTaDong(d, ds.nhom) })) }),
+    }
+  }
+  const hoaDon = flattenInvoices(du.hoSo).flatMap(({ inv, d, status }) => {
+    const kq = traRuiRo(inv, bang)
+    return kq ? [{ soHd: inv.soHd, ngayHd: inv.ngayHd, nguoiBan: inv.tenNguoiBan, mst: inv.mstNguoiBan, tongTien: inv.tongTien,
+      hoSoId: d.id, noiDung: d.noiDung, trangThai: STATUS_LABEL[status], canhBao: moTaRuiRo(inv, kq) }] : []
+  })
+  return { daNap: true, ...nguon, soHoaDonKhop: hoaDon.length, hoaDon }
 }
 
 export function tongHop(du: DuLieu, a: { nam?: number; top?: number }) {
@@ -259,7 +311,7 @@ export async function suaHoSo(du: DuLieu, ghi: NoiGhi, a0: ThamSoSuaHoSo) {
   await ghi.luuHoSo(moi)
   du.hoSo = du.hoSo.map((x) => (x.id === d.id ? moi : x))
   await ghi.nhatKy('sua_ho_so', `${nhanHoSo(d)}: ${doi.join('; ')}`)
-  return { daLuu: true, thayDoi: doi, trangThai: STATUS_LABEL[statusOf(moi)], canhBao: warningsOf(moi, du.caiDat, banDoThayThe(du.hoSo)) }
+  return { daLuu: true, thayDoi: doi, trangThai: STATUS_LABEL[statusOf(moi)], canhBao: warningsOf(moi, du.caiDat, banDoThayThe(du.hoSo), ruiRoCua(du)) }
 }
 
 const O_HOA_DON = ['kyHieu', 'soHd', 'ngayHd', 'tenNguoiBan', 'mstNguoiBan', 'diaChiNguoiBan', 'stkNguoiBan', 'nganHangNguoiBan', 'tenTaiKhoan', 'tienBangChu', 'tienTruocThue', 'tienThue', 'tongTien'] as const
@@ -280,7 +332,7 @@ export async function suaHoaDon(du: DuLieu, ghi: NoiGhi, a: { ho_so: string; hoa
   await ghi.luuHoSo(moi)
   du.hoSo = du.hoSo.map((x) => (x.id === d.id ? moi : x))
   await ghi.nhatKy('sua_hoa_don', `${nhanHoSo(d)} / HĐ ${ds[0].soHd || '?'}: ${doi.join('; ')}`)
-  return { daLuu: true, thayDoi: doi, canhBao: warningsOf(moi, du.caiDat, banDoThayThe(du.hoSo)) }
+  return { daLuu: true, thayDoi: doi, canhBao: warningsOf(moi, du.caiDat, banDoThayThe(du.hoSo), ruiRoCua(du)) }
 }
 
 /** File gốc đính kèm hóa đơn (vd PDF anh gửi qua Telegram) */
@@ -358,10 +410,12 @@ export async function taoHoSo(du: DuLieu, ghi: NoiGhi, a0: ThamSoTaoHoSo) {
   return {
     daLuu: true,
     id: d.id,
-    hoaDonMoi: moi.map(({ inv }) => ({ soHd: inv.soHd, ngayHd: inv.ngayHd, nguoiBan: inv.tenNguoiBan, tongTien: inv.tongTien, lienQuan: inv.hdLienQuan ? moTaLienQuan(inv.hdLienQuan) : undefined })),
+    hoaDonMoi: moi.map(({ inv }) => ({ soHd: inv.soHd, ngayHd: inv.ngayHd, nguoiBan: inv.tenNguoiBan, mst: inv.mstNguoiBan, tongTien: inv.tongTien,
+      lienQuan: inv.hdLienQuan ? moTaLienQuan(inv.hdLienQuan) : undefined, dnRuiRo: chiTietRuiRo(du, inv) })),
+    daKiemTraRuiRo: !!du.dsRuiRo,
     tongTien: totalOf(d),
     trangThai: STATUS_LABEL[statusOf(d)],
-    canhBao: warningsOf(d, du.caiDat, map),
+    canhBao: warningsOf(d, du.caiDat, map, ruiRoCua(du)),
     ghiChu: 'File PDF / ảnh hóa đơn gốc: mở hồ sơ trên web app để đính kèm.',
   }
 }

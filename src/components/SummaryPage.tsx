@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { invoicesToCsv } from '../lib/csv'
 import { fmtDate, today } from '../lib/dates'
-import { downloadBlob, useDossiers, useSettings } from '../lib/hooks'
+import { downloadBlob, useDossiers, useRuiRo, useSettings } from '../lib/hooks'
 import { formatMoney } from '../lib/numberToWords'
 import { STATUS_COLOR, STATUS_LABEL, waitingDays, warningsOf } from '../lib/status'
 import { banDoThayThe } from '../lib/thayThe'
@@ -25,6 +25,7 @@ function Tile({ label, value, sub, tone = 'text-slate-800' }: { label: string; v
 export default function SummaryPage({ onOpen }: { onOpen: (id: string) => void }) {
   const list = useDossiers()
   const settings = useSettings()
+  const ruiRo = useRuiRo().bang
   const allRows = useMemo(() => flattenInvoices(list ?? []), [list])
   const years = useMemo(() => {
     const ys = yearsOf(allRows)
@@ -102,10 +103,10 @@ export default function SummaryPage({ onOpen }: { onOpen: (id: string) => void }
   const todo = useMemo(() => {
     const thayThe = banDoThayThe(list ?? []) // lập 1 lần cho cả kho
     return (list ?? [])
-      .map((d) => ({ d, w: warningsOf(d, settings, thayThe), wait: waitingDays(d) ?? 0 }))
+      .map((d) => ({ d, w: warningsOf(d, settings, thayThe, ruiRo), wait: waitingDays(d) ?? 0 }))
       .filter((x) => x.w.length > 0 || x.wait > 7)
       .sort((a, b) => b.wait - a.wait)
-  }, [list, settings])
+  }, [list, settings, ruiRo])
 
   if (!list) return <p className="text-slate-500">Đang tải…</p>
 

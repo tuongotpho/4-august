@@ -37,6 +37,10 @@ async function user(name: string): Promise<U> {
 
 // Kho tạm trong bộ nhớ, đóng vai "dữ liệu trên máy" để thử chuyển lên tài khoản
 class MemStore implements DataStore {
+  async getDsRuiRo() {
+    return null
+  }
+  async saveDsRuiRo() {}
   d = new Map<string, Dossier>()
   f = new Map<string, StoredFile>()
   t = new Map<TemplateKind, StoredTemplate>()

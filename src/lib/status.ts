@@ -2,6 +2,7 @@ import { addWorkingDays, daysBetween, today } from './dates.js'
 import { timHangCam } from './hangCam.js'
 import { biLienQuan, moTaBiLienQuan, type BanDoThayThe } from './thayThe.js'
 import { canThongTinTk, chuKhopSo, duTruOf, sumInvoices } from './rules.js'
+import { moTaRuiRo, traHoaDon, type BangRuiRo } from './ruiRo.js'
 import type { Dossier, Settings } from './types.js'
 
 export type StatusKey = 'chuaHd' | 'choLamHs' | 'choNop' | 'choKt' | 'daTt'
@@ -57,13 +58,18 @@ export function suggestDnttDate(d: Dossier): string {
 /**
  * Các điểm bất thường cần anh để ý.
  * map (tùy chọn): bản đồ thay thế của cả kho — để báo hóa đơn ĐÃ BỊ THAY THẾ.
+ * ruiRo (tùy chọn): bảng DN rủi ro về hóa đơn (lib/ruiRo.ts) — để báo người bán nằm trong danh sách của cơ quan thuế.
  */
-export function warningsOf(d: Dossier, s: Settings, map?: BanDoThayThe): string[] {
+export function warningsOf(d: Dossier, s: Settings, map?: BanDoThayThe, ruiRo?: BangRuiRo): string[] {
   const lq = d.invoices.flatMap((i) => {
     const b = biLienQuan(i, map)
     return b ? [`⛔ ${moTaBiLienQuan(i, b)}`] : []
   })
-  return [...lq, ...canhBaoRieng(d, s)]
+  const rr = d.invoices.flatMap((i) => {
+    const k = traHoaDon(i, ruiRo)
+    return k ? [`⛔ ${moTaRuiRo(i, k)}`] : []
+  })
+  return [...lq, ...rr, ...canhBaoRieng(d, s)]
 }
 
 /** Ngày ngược thứ tự (chỉ xét các ngày đã điền) — áp dụng cho cả hóa đơn cũ. */

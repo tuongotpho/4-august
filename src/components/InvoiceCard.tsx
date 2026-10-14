@@ -6,6 +6,7 @@ import { formatMoney, moneyInWords } from '../lib/numberToWords'
 import { timHangCam } from '../lib/hangCam'
 import { moTaBiLienQuan, moTaLienQuan, type BiLienQuan } from '../lib/thayThe'
 import { chuKhopSo } from '../lib/rules'
+import { lapSauKhiNgung, moTaDong, type KetQuaRuiRo, type NhomRuiRo } from '../lib/ruiRo'
 import { store } from '../lib/store'
 import type { FileInfo } from '../lib/store'
 import type { Invoice } from '../lib/types'
@@ -22,10 +23,12 @@ interface Props {
   canTk: boolean // hồ sơ từ 5 triệu -> cần thông tin tài khoản
   tuKhoaCam: string[]
   biLQ?: BiLienQuan // hóa đơn này đã bị hóa đơn khác thay thế / điều chỉnh
+  ruiRo?: KetQuaRuiRo // người bán nằm trong danh sách DN rủi ro về hóa đơn
+  nhomRuiRo?: NhomRuiRo[]
 }
 
 
-export default function InvoiceCard({ index, inv, onChange, onRemove, canTk, tuKhoaCam, biLQ }: Props) {
+export default function InvoiceCard({ index, inv, onChange, onRemove, canTk, tuKhoaCam, biLQ, ruiRo, nhomRuiRo }: Props) {
   const cam = timHangCam([inv], tuKhoaCam)
   const tenCam = new Set(cam.map((c) => c.ten))
   const [files, setFiles] = useState<FileInfo[]>([])
@@ -68,9 +71,21 @@ export default function InvoiceCard({ index, inv, onChange, onRemove, canTk, tuK
   const sumCheck = inv.tongTien && (inv.tienTruocThue || inv.tienThue) && Math.abs(inv.tienTruocThue + inv.tienThue - inv.tongTien) > 1
 
   return (
-    <div className={`rounded-lg border p-3 ${cam.length || biLQ ? 'border-2 border-red-500 bg-red-50/40' : 'border-slate-200 bg-slate-50/60'}`}>
+    <div className={`rounded-lg border p-3 ${cam.length || biLQ || ruiRo ? 'border-2 border-red-500 bg-red-50/40' : 'border-slate-200 bg-slate-50/60'}`}>
       {biLQ && (
         <div className="mb-2 rounded-md bg-red-700 px-3 py-2 text-sm font-semibold text-white">⛔ {moTaBiLienQuan(inv, biLQ)}</div>
+      )}
+      {ruiRo && (
+        <div className="mb-2 rounded-md bg-red-700 px-3 py-2 text-sm font-semibold text-white">
+          ⛔ Người bán {ruiRo.quaDonViChuQuan ? `là chi nhánh của DN MST ${ruiRo.mst} — DN này` : `(MST ${ruiRo.mst})`} nằm trong DANH SÁCH DN RỦI RO về hóa đơn
+          của cơ quan thuế — kiểm tra kỹ trước khi thanh toán
+          {ruiRo.dong.map((x, k) => (
+            <div key={k} className="text-xs font-normal opacity-90">
+              • {x.ten}: {moTaDong(x, nhomRuiRo)}
+              {lapSauKhiNgung(inv, x) && <b> — hóa đơn lập SAU ngày DN chuyển trạng thái không hoạt động</b>}
+            </div>
+          ))}
+        </div>
       )}
       {inv.hdLienQuan && (
         <div className="mb-2 rounded-md border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm text-blue-900">
@@ -110,7 +125,7 @@ export default function InvoiceCard({ index, inv, onChange, onRemove, canTk, tuK
         </div>
         <div>
           <label className="lbl">MST người bán</label>
-          <input className="inp" value={inv.mstNguoiBan} onChange={(e) => set('mstNguoiBan', e.target.value)} />
+          <input className={`inp ${ruiRo ? 'border-red-500 bg-red-50 text-red-800' : ''}`} value={inv.mstNguoiBan} onChange={(e) => set('mstNguoiBan', e.target.value)} />
         </div>
         <div className="col-span-2">
           <label className="lbl">Tên người bán</label>
