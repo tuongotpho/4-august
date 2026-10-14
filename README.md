@@ -16,6 +16,18 @@ Web app quản lý lịch giảng an toàn lao động, thay cho AppSheet. Đăn
 - **Nhập Excel cũ**: Cài đặt → chọn file xuất từ AppSheet. Đọc mọi sheet `AT_<năm>`, tự dò cột, chuẩn hóa tên đối tác / liên hệ,
   bỏ việc NPSC / gia đình và dòng trùng, liệt kê dòng nên xem lại. Nhập lại nhiều lần không ghi đè.
 
+## Kết nối AI (MCP) — hỏi Claude về lịch giảng
+Địa chỉ: `https://quanly-at.vercel.app/mcp`. Hướng dẫn + danh sách máy được phép + nhật ký: app → Cài đặt → Kết nối AI.
+- claude.ai / app Claude: Connectors → Add custom connector → dán địa chỉ → đăng nhập Google, Cho phép.
+- Claude Code: `claude mcp add --transport http lich-giang https://quanly-at.vercel.app/mcp`
+- Công cụ: `tong_quan`, `danh_sach_lop`, `xem_lop`, `cong_no`, `tong_hop` (đọc); `tao_lop`, `sua_lop`, `danh_dau_thanh_toan`, `xoa_lop` (ghi, tự cập nhật Google Calendar, có nhật ký).
+- AI làm bằng quyền của chính tài khoản Google đã cho phép; thu hồi ở Cài đặt. Cần biến `ATLD_KHOA` trên Vercel.
+
+## File Excel sạch
+`ATLD_sach.xlsx` (để ngoài git): sheet `LichGiang` theo mẫu `src/lib/mauSach.ts` — nhập vào app không phải đoán, sửa trong Excel rồi nhập lại được.
+Dựng lại từ file AppSheet gốc (chỉ trên máy có file thật): `LAM_SACH=1 npx vitest run scripts/lam-sach.test.ts` →
+`python -I -X utf8 scripts/xuat-xlsx.py %TEMP%/atld_sach.json ../ATLD_sach.xlsx` → `KIEM_SACH=1 npx vitest run scripts/lam-sach.test.ts` (nạp lại, so từng ô).
+
 ## Cấu trúc
 ```
 src/lib/        logic dùng chung web + máy chủ (model, tinh, nhapExcel, trichTin, lichGoogle) — import có đuôi .js
@@ -34,6 +46,7 @@ apps-script/    cầu nối Google Calendar
 | `ATLD_TELE_TOKEN` | mã bot từ @BotFather |
 | `ATLD_TELE_VE` | vé kết nối (app tạo ở Cài đặt → Bot Telegram) |
 | `CRON_SECRET` | chuỗi bất kỳ — Vercel gửi kèm khi gọi cron nhắc lịch |
+| `ATLD_APP_URL`, `ATLD_GOC_URL` | `https://quanly-at.vercel.app` |
 
 ## Cho người sửa code
 ```

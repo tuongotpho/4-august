@@ -4,8 +4,18 @@ import type { CaiDat, LopGiang } from '../model.js'
 export interface PhienMay {
   id: string
   tenMay: string
+  ungDung: string
   noiNhan: string
   taoLuc: number
+}
+
+/** Một lần AI / bot ghi hoặc xoá */
+export interface DongNhatKy {
+  id: string
+  luc: number
+  tenMay: string
+  congCu: string
+  moTa: string
 }
 
 /**
@@ -14,7 +24,8 @@ export interface PhienMay {
  *
  *   users/{uid}/lop/{id}        lớp giảng
  *   users/{uid}/meta/caiDat     cài đặt (bí danh đối tác, Google Calendar)
- *   users/{uid}/phien/{id}      máy được phép ghi (bot Telegram)
+ *   users/{uid}/phien/{id}      máy được phép ghi (bot Telegram, AI qua MCP)
+ *   users/{uid}/nhatKy/{id}     nhật ký mỗi lần máy đó ghi / xoá
  */
 export interface DataStore {
   listLop(): Promise<LopGiang[]>
@@ -28,6 +39,8 @@ export interface DataStore {
 
   listPhien(): Promise<PhienMay[]>
   thuHoiPhien(id: string): Promise<void>
+  /** Các lần AI / bot ghi gần nhất, mới nhất trước */
+  listNhatKy(soDong: number): Promise<DongNhatKy[]>
 
   /** Báo khi dữ liệu thay đổi (máy khác, bot). Trả về hàm hủy đăng ký. */
   subscribe(cb: () => void): () => void

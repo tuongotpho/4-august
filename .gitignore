@@ -11,3 +11,5 @@ dist
 sao-luu-*.json
 tests/file-that.test.ts
 .env.gialap
+scripts/lam-sach.test.ts
+scripts/xuat-xlsx.py

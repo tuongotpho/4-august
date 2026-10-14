@@ -4,7 +4,7 @@ import { dongBoNen, goiMayChu, luuNhieuLop, taiFile, useCaiDat } from '../lib/ho
 import { khoaNgauNhien, thuKetNoi } from '../lib/lichGoogle'
 import { boDau, chuanLop, homNay, ngayVN, type CaiDat, type LopGiang } from '../lib/model'
 import type { KetQuaNhap } from '../lib/nhapExcel'
-import { store, type PhienMay } from '../lib/store'
+import { store, type DongNhatKy, type PhienMay } from '../lib/store'
 
 export default function CaiDatPage({ ds }: { ds: LopGiang[] }) {
   const cd = useCaiDat()
@@ -13,6 +13,7 @@ export default function CaiDatPage({ ds }: { ds: LopGiang[] }) {
       <NhapExcel ds={ds} cd={cd} />
       <LichGoogle ds={ds} cd={cd} />
       <Telegram />
+      <KetNoiAI />
       <GopTen ds={ds} cd={cd} />
       <SaoLuu ds={ds} />
       <TaiKhoan />
@@ -56,10 +57,10 @@ function NhapExcel({ ds, cd }: { ds: LopGiang[]; cd: CaiDat }) {
   }
 
   return (
-    <Khung tieuDe="📥 Nhập file Excel cũ (AppSheet)">
+    <Khung tieuDe="📥 Nhập file Excel">
       <p className="text-xs text-slate-500">
-        Chọn file Excel tải từ AppSheet / Google Sheets (vd <code>ATLD_Thanh.xlsx</code>). App đọc mọi sheet có năm trong tên (AT_2023…AT_2026), tự chuẩn hóa tên,
-        bỏ việc NPSC / gia đình và dòng trùng. Nhập lại nhiều lần được — lớp đã có sẽ không bị ghi đè.
+        Nên dùng file đã làm sạch <code>ATLD_sach.xlsx</code> (một sheet LichGiang, app đọc thẳng từng cột). Vẫn nhận file AppSheet cũ (AT_2023…AT_2026):
+        app tự dò cột, chuẩn hóa tên, bỏ việc NPSC / gia đình và dòng trùng. Nhập lại nhiều lần được — lớp đã có không bị ghi đè.
       </p>
       <input type="file" accept=".xlsx" onChange={(e) => e.target.files?.[0] && void doc(e.target.files[0])} />
       {loi && <p className="text-red-700">⚠️ {loi}</p>}
@@ -191,9 +192,6 @@ function Telegram() {
   const [loi, setLoi] = useState('')
   const [dangChay, setDangChay] = useState(false)
   const [daChep, setDaChep] = useState(false)
-  const [phien, setPhien] = useState<PhienMay[]>([])
-  const taiPhien = () => store.listPhien().then(setPhien, () => setPhien([]))
-  useEffect(() => void taiPhien(), [])
 
   async function lam(fn: () => Promise<void>) {
     setLoi('')
@@ -228,7 +226,7 @@ function Telegram() {
         <p className="font-medium">Bước 2 — Tạo vé kết nối</p>
         <div className="mt-1 flex flex-wrap gap-2">
           <input className="inp !w-48" inputMode="numeric" placeholder="Mã Telegram (dãy số)" value={chat} onChange={(e) => setChat(e.target.value.replace(/\D/g, ''))} />
-          <button className="btn !py-1 !text-xs" disabled={dangChay || !chat} onClick={() => void lam(async () => { setVe((await goiMayChu<{ ve: string }>('/telegram/ghep', { chat })).ve); void taiPhien() })}>Tạo vé</button>
+          <button className="btn !py-1 !text-xs" disabled={dangChay || !chat} onClick={() => void lam(async () => { setVe((await goiMayChu<{ ve: string }>('/telegram/ghep', { chat })).ve) })}>Tạo vé</button>
         </div>
         {ve && (
           <div className="mt-2 space-y-1 text-xs">
@@ -238,16 +236,69 @@ function Telegram() {
           </div>
         )}
       </div>
-      {phien.length > 0 && (
-        <div>
-          <p className="font-medium">Máy đang được phép ghi</p>
-          {phien.map((p) => (
-            <div key={p.id} className="flex items-center gap-2 text-xs">
-              <span className="flex-1">{p.tenMay} · {p.noiNhan} · {new Date(p.taoLuc).toLocaleDateString('vi-VN')}</span>
-              <button className="btn-danger !py-0 !text-xs" onClick={() => void store.thuHoiPhien(p.id).then(taiPhien)}>Thu hồi</button>
-            </div>
-          ))}
+    </Khung>
+  )
+}
+
+// ---------------- Kết nối AI (MCP) ----------------
+
+function KetNoiAI() {
+  const diaChi = `${location.origin}/mcp`
+  const [phien, setPhien] = useState<PhienMay[]>([])
+  const [nhatKy, setNhatKy] = useState<DongNhatKy[]>([])
+  const [daChep, setDaChep] = useState('')
+  const tai = () => {
+    store.listPhien().then(setPhien, () => setPhien([]))
+    store.listNhatKy(20).then(setNhatKy, () => setNhatKy([]))
+  }
+  useEffect(tai, [])
+  const chep = (s: string) => void navigator.clipboard.writeText(s).then(() => setDaChep(s))
+  const lenhCli = `claude mcp add --transport http lich-giang ${diaChi}`
+  const json = JSON.stringify({ mcpServers: { 'lich-giang': { type: 'http', url: diaChi } } }, null, 1)
+
+  return (
+    <Khung tieuDe="🧠 Kết nối AI (MCP) — hỏi Claude về lịch giảng">
+      <p className="text-xs text-slate-500">
+        Cho Claude đọc và sửa lịch giảng bằng lời: <i>"tuần sau dạy những đâu?"</i>, <i>"quý 3 TIEC trả bao nhiêu?"</i>,
+        <i>"thêm lớp Cty ABC thứ 5 chiều, 1tr5, chị Ngọc Anh"</i>, <i>"ESC trả tiền 2 lớp tháng 9 rồi"</i>. Claude làm bằng quyền của chính tài khoản Google anh.
+      </p>
+      <div className="flex items-center gap-2">
+        <code className="flex-1 truncate rounded bg-slate-100 px-2 py-1 text-xs">{diaChi}</code>
+        <button className="btn !py-1 !text-xs" onClick={() => chep(diaChi)}>{daChep === diaChi ? '✓ Đã chép' : 'Chép'}</button>
+      </div>
+      <ul className="ml-4 list-disc space-y-1 text-xs">
+        <li><b>claude.ai / app Claude (máy tính, điện thoại):</b> Cài đặt → Connectors → Add custom connector → dán địa chỉ trên → Connect → đăng nhập Google, bấm Cho phép.</li>
+        <li>
+          <b>Claude Code dòng lệnh:</b> <code className="break-all">{lenhCli}</code>{' '}
+          <button className="text-teal-700 underline" onClick={() => chep(lenhCli)}>{daChep === lenhCli ? '✓' : 'chép'}</button>
+        </li>
+        <li>
+          <b>Claude Code trong app Claude:</b> thêm vào <code>.mcp.json</code> của thư mục dự án rồi gõ <code>/mcp</code> → lich-giang → Authenticate.{' '}
+          <button className="text-teal-700 underline" onClick={() => chep(json)}>{daChep === json ? '✓ đã chép' : 'chép nội dung'}</button>
+        </li>
+      </ul>
+      <div>
+        <div className="flex items-center justify-between">
+          <p className="font-medium">Máy đang được phép (AI, bot Telegram)</p>
+          <button className="text-xs text-teal-700" onClick={tai}>↻ tải lại</button>
         </div>
+        {phien.length === 0 && <p className="text-xs text-slate-400">Chưa có máy nào.</p>}
+        {phien.map((p) => (
+          <div key={p.id} className="flex items-center gap-2 py-0.5 text-xs">
+            <span className="flex-1">{p.tenMay}{p.ungDung && p.ungDung !== p.tenMay ? ` (${p.ungDung})` : ''} · {p.noiNhan} · {new Date(p.taoLuc).toLocaleDateString('vi-VN')}</span>
+            <button className="btn-danger !py-0 !text-xs" onClick={() => void store.thuHoiPhien(p.id).then(tai)}>Thu hồi</button>
+          </div>
+        ))}
+      </div>
+      {nhatKy.length > 0 && (
+        <details className="text-xs">
+          <summary className="cursor-pointer text-slate-600">Nhật ký AI / bot ghi ({nhatKy.length} lần gần nhất)</summary>
+          <ul className="mt-1 space-y-0.5">
+            {nhatKy.map((d) => (
+              <li key={d.id}><span className="text-slate-400">{new Date(d.luc).toLocaleString('vi-VN')}</span> · {d.tenMay} · <b>{d.congCu}</b> {d.moTa}</li>
+            ))}
+          </ul>
+        </details>
       )}
     </Khung>
   )

@@ -5,6 +5,7 @@ import { docXlsx, gioExcel, ngayExcel, type O, type Sheet } from './excel.js'
 import {
   boDau, chuanDiaDiem, doanBuoi, lopMoi, type Buoi, type CaiDat, type LopGiang,
 } from './model.js'
+import { docSheetSach, laSheetSach } from './mauSach.js'
 import { timTrung } from './tinh.js'
 
 /** Bí danh đối tác mặc định, rút từ file của anh: tên khác (bỏ dấu) -> tên chuẩn */
@@ -286,6 +287,19 @@ export function nhapTuSheets(sheets: Sheet[], cd: CaiDat, daCo: LopGiang[] = [],
     for (const l of tatCa) if (l[o]) l[o] = chon.get(l[o].toLowerCase())!
   }
 
+  // Tên liên hệ có đuôi là tên đối tác ("A Hiếu ESC", "Linh VNB", "A Thắng-ESC") -> bỏ đuôi
+  for (const l of tatCa) {
+    if (!l.lienHe || !l.doiTac) continue
+    const k = boDau(l.lienHe)
+    const dt = boDau(l.doiTac)
+    for (const noi of [' ', '-', ' - ']) {
+      if (k.endsWith(noi + dt) && k.length > dt.length + noi.length) {
+        l.lienHe = l.lienHe.slice(0, l.lienHe.length - dt.length - noi.length).trim()
+        break
+      }
+    }
+  }
+
   // Dòng thiếu đối tác mà người liên hệ chỉ làm cho MỘT đối tác ở các dòng khác -> điền đối tác đó
   const dtCuaLH = new Map<string, Set<string>>()
   for (const l of tatCa) if (l.lienHe && l.doiTac) dtCuaLH.set(l.lienHe, (dtCuaLH.get(l.lienHe) ?? new Set()).add(l.doiTac))
@@ -309,5 +323,23 @@ export function nhapTuSheets(sheets: Sheet[], cd: CaiDat, daCo: LopGiang[] = [],
 }
 
 export function nhapExcel(buf: ArrayBuffer | Uint8Array, cd: CaiDat, daCo: LopGiang[] = [], bayGio = new Date()): KetQuaNhap {
-  return nhapTuSheets(docXlsx(buf), cd, daCo, bayGio)
+  const sheets = docXlsx(buf)
+  // File theo mẫu sạch (ATLD_sach.xlsx / file anh tự sửa): đọc thẳng từng cột, không đoán
+  const sach = sheets.filter(laSheetSach)
+  if (sach.length) {
+    const hn = new Date(bayGio.getTime() + 7 * 3600_000).toISOString().slice(0, 10)
+    const idCo = new Set(daCo.map((l) => l.id))
+    const kq: KetQuaNhap = { lop: [], boQua: [], canXem: [], biDanh: { ...BI_DANH_MAC_DINH, ...cd.biDanhDoiTac } }
+    for (const s of sach) {
+      const { lop, loi } = docSheetSach(s, hn)
+      kq.boQua.push(...loi.map((x) => ({ sheet: s.ten, ...x })))
+      for (const l of lop) {
+        if (idCo.has(l.id)) kq.boQua.push({ sheet: '(app)', dong: 0, lyDo: 'Đã có trong app (nhập lần trước)', moTa: `${l.khachHang} · ${l.ngay}` })
+        else kq.lop.push(l)
+      }
+    }
+    for (const l of kq.lop) if (l.chiPhi === null && l.ngay < hn && !l.huy) kq.canXem.push({ lop: l, lyDo: 'Đã giảng nhưng chưa ghi thù lao' })
+    return kq
+  }
+  return nhapTuSheets(sheets, cd, daCo, bayGio)
 }

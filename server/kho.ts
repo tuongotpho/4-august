@@ -31,7 +31,7 @@ export async function taiCaiDat(fb: FirebaseNguoiDung): Promise<CaiDat> {
 
 // ---------------- Phiên máy (bot Telegram) ----------------
 
-export async function taoPhien(fb: FirebaseNguoiDung, p: { tenMay: string; noiNhan: string }): Promise<string> {
+export async function taoPhien(fb: FirebaseNguoiDung, p: { tenMay: string; noiNhan: string; ungDung?: string }): Promise<string> {
   const ma = randomUUID()
   await fb.ghi(`${goc(fb)}/phien/${ma}`, { ...p, taoLuc: new Date() })
   return ma
@@ -39,4 +39,11 @@ export async function taoPhien(fb: FirebaseNguoiDung, p: { tenMay: string; noiNh
 
 export async function conPhien(fb: FirebaseNguoiDung, ma: string) {
   return fb.docTaiLieu(`${goc(fb)}/phien/${ma}`)
+}
+
+/** Mỗi lần AI / bot ghi hoặc xoá: lúc nào, máy nào, làm gì (web app xem ở Cài đặt) */
+export async function ghiNhatKy(fb: FirebaseNguoiDung, maPhien: string, tenMay: string, congCu: string, moTa: string) {
+  // mã theo thời gian để xếp được; thêm đuôi ngẫu nhiên để không trùng
+  const ma = `${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}`
+  await fb.ghi(`${goc(fb)}/nhatKy/${ma}`, { luc: new Date(), maPhien, tenMay, congCu, moTa })
 }

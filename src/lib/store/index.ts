@@ -17,4 +17,4 @@ export function setStore(s: DataStore) {
   store = s
 }
 
-export type { DataStore, PhienMay } from './DataStore'
+export type { DataStore, DongNhatKy, PhienMay } from './DataStore'

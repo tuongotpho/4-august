@@ -10,16 +10,16 @@
 //   ATLD_ANTHROPIC_KEY (bí mật) khoá Claude API để đọc tin nhắn
 
 import { createHash } from 'node:crypto'
-import { dongBoLop, xoaSuKien } from '../src/lib/lichGoogle.js'
 import {
   congNgay, dinhDangTien, homNay, ngayCuoi, ngayVN, TEN_BUOI, thu, type CaiDat, type LopGiang,
 } from '../src/lib/model.js'
 import { lopTuAI, type KetQuaAI } from '../src/lib/trichTin.js'
 import { congNo, goiY, sapXepTheoNgay, timLopChoTien, timTrung, trungGio } from '../src/lib/tinh.js'
 import { suaTheoLoi, trichTin } from './ai.js'
+import { luuVaDongBo as ghiLop, xoaVaLich } from './ghi.js'
 import { doiMa, FirebaseNguoiDung, LoiFirebase, type CauHinhFirebase } from './firebaseRest.js'
 import * as kho from './kho.js'
-import { moVe, niemPhong, type Ve } from './ve.js'
+import { moVe, niemPhong, type Ve } from './oauth.js'
 
 type Env = Record<string, string | undefined>
 
@@ -92,6 +92,7 @@ export async function xuLyTelegram(req: Request, duong: string, bc: BoiCanh): Pr
       .catch((e) => console.error('[tele] gui', e))
   const sua = (chat: number, msg: number, chu: string, nut: Nut[][] = []) =>
     tg('editMessageText', { chat_id: chat, message_id: msg, text: chu.slice(0, 4000), reply_markup: { inline_keyboard: nut } }).catch((e) => console.error('[tele] sua', e))
+  const luuVaDongBo = (fb: FirebaseNguoiDung, cd: CaiDat, l: LopGiang) => ghiLop(fb, cd, l, appUrl)
   /** Nút mở app: Telegram chỉ nhận https */
   const nutWeb = (id: string): Nut[] => (appUrl.startsWith('https://') ? [{ text: '✏️ Sửa trên app', url: `${appUrl}/?lop=${id}` }] : [])
 
@@ -169,19 +170,6 @@ export async function xuLyTelegram(req: Request, duong: string, bc: BoiCanh): Pr
       return null
     }
     return { fb, cd: await kho.taiCaiDat(fb) }
-  }
-
-  /** Lưu lớp + đẩy lên Google Calendar (lỗi lịch không làm hỏng việc lưu) -> dòng báo trạng thái lịch */
-  async function luuVaDongBo(fb: FirebaseNguoiDung, cd: CaiDat, l: LopGiang): Promise<string> {
-    await kho.luuLop(fb, l)
-    if (!cd.lich.bat || !cd.lich.url) return ''
-    try {
-      const moi = await dongBoLop(cd, l, appUrl)
-      await kho.luuLop(fb, moi)
-      return '📆 Đã lên Google Calendar.'
-    } catch (e) {
-      return `⚠️ Chưa lên được Google Calendar: ${(e as Error).message} (app sẽ thử lại khi mở).`
-    }
   }
 
   // ---------------- Tin nhắn ----------------
@@ -322,12 +310,7 @@ export async function xuLyTelegram(req: Request, duong: string, bc: BoiCanh): Pr
     if (loai === 'xoa') {
       const l = await kho.docLop(fb, thamSo)
       if (!l) return void (await sua(chat, msg, `${chuCu}\n\n(lớp đã không còn)`))
-      try {
-        await xoaSuKien(cd, l.eventId)
-      } catch (e) {
-        console.error('[tele] xoa lich', e)
-      }
-      await kho.xoaLop(fb, l.id)
+      await xoaVaLich(fb, cd, l)
       return void (await sua(chat, msg, `🗑 Đã xoá lớp:\n${dongNgan(l)}`))
     }
     if (loai === 'tao' || loai === 'bo') {

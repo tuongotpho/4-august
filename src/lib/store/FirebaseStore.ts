@@ -1,8 +1,8 @@
 import {
-  collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, setDoc, Timestamp, writeBatch, type Firestore, type Unsubscribe,
+  collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, setDoc, Timestamp, writeBatch, type Firestore, type Unsubscribe,
 } from 'firebase/firestore'
 import { CAI_DAT_MAC_DINH, chuanLop, type CaiDat, type LopGiang } from '../model'
-import type { DataStore, PhienMay } from './DataStore'
+import type { DataStore, DongNhatKy, PhienMay } from './DataStore'
 
 /** Firestore, database "antoan" (dự án app-from-ai dùng chung với app khác). Mọi thứ dưới users/{uid}/… */
 export class FirebaseStore implements DataStore {
@@ -76,13 +76,21 @@ export class FirebaseStore implements DataStore {
       .map((d) => {
         const x = d.data()
         const t = x.taoLuc
-        return { id: d.id, tenMay: String(x.tenMay ?? ''), noiNhan: String(x.noiNhan ?? ''), taoLuc: t instanceof Timestamp ? t.toMillis() : Date.parse(String(t)) || 0 }
+        return { id: d.id, tenMay: String(x.tenMay ?? ''), ungDung: String(x.ungDung ?? ''), noiNhan: String(x.noiNhan ?? ''), taoLuc: millis(t) }
       })
       .sort((a, b) => b.taoLuc - a.taoLuc)
   }
 
   async thuHoiPhien(id: string) {
     await deleteDoc(doc(this.col('phien'), id))
+  }
+
+  async listNhatKy(soDong: number): Promise<DongNhatKy[]> {
+    const s = await getDocs(query(this.col('nhatKy'), orderBy('luc', 'desc'), limit(soDong)))
+    return s.docs.map((d) => {
+      const x = d.data()
+      return { id: d.id, luc: millis(x.luc), tenMay: String(x.tenMay ?? ''), congCu: String(x.congCu ?? ''), moTa: String(x.moTa ?? '') }
+    })
   }
 
   subscribe(cb: () => void) {
@@ -98,6 +106,9 @@ function docCaiDat(x: unknown): CaiDat {
   const c = (x ?? {}) as Partial<CaiDat>
   return { ...CAI_DAT_MAC_DINH, ...c, biDanhDoiTac: { ...(c.biDanhDoiTac ?? {}) }, lich: { ...CAI_DAT_MAC_DINH.lich, ...(c.lich ?? {}) } }
 }
+
+/** Mốc thời gian Firestore (Timestamp) / chuỗi ISO -> mili giây */
+const millis = (v: unknown) => (v instanceof Timestamp ? v.toMillis() : typeof v === 'number' ? v : Date.parse(String(v)) || 0)
 
 /** Firestore không nhận undefined */
 const sach = (l: LopGiang) => JSON.parse(JSON.stringify(l)) as LopGiang

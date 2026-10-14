@@ -3,6 +3,7 @@
 //   /telegram/*        bot Telegram (server/telegram.ts)
 //   POST /ai/trich     web app gửi tin nhắn dán vào -> AI đọc ra lớp (chưa lưu, web cho anh xem lại)
 //   GET  /cron/nhac    Vercel Cron 20h hằng ngày: nhắc lịch ngày mai qua Telegram + đẩy lớp còn chờ lên Google Calendar
+//   /mcp, /oauth/*, /.well-known/*   kết nối AI (Claude) qua MCP (server/mcpWeb.ts)
 //
 // Biến môi trường: ATLD_KHOA (bắt buộc, bí mật, ≥ 32 ký tự) · ATLD_ANTHROPIC_KEY · ATLD_TELE_TOKEN · ATLD_TELE_VE
 //                  CRON_SECRET (Vercel tự gửi kèm khi gọi cron) · ATLD_GOC_URL (tuỳ chọn)
@@ -16,7 +17,8 @@ import { suaTheoLoi, trichTin } from './ai.js'
 import { cauHinhFirebase, doiMa, FirebaseNguoiDung, LoiFirebase, type CauHinhFirebase } from './firebaseRest.js'
 import * as kho from './kho.js'
 import { dongNgan, moiVe, moTaLop, xuLyTelegram } from './telegram.js'
-import { khoaTuChuoi } from './ve.js'
+import { xuLyMcp } from './mcpWeb.js'
+import { khoaTuChuoi } from './oauth.js'
 
 process.env.TZ = 'Asia/Ho_Chi_Minh'
 
@@ -53,6 +55,8 @@ export function taoXuLy(env: Env = process.env, tuyChon: { ai?: { trich: typeof 
     const cfg = cauHinhFirebase(env, `${goc}/`)
 
     try {
+      const mcp = await xuLyMcp(req, duong, { env, khoa, cfg, goc, maFirebase })
+      if (mcp) return mcp
       if (duong.startsWith('/telegram/')) return await xuLyTelegram(req, duong, { env, khoa, cfg, goc, maFirebase, ai })
       if (duong === '/ai/trich' && req.method === 'POST') return await trich(await req.json().catch(() => ({})))
       if (duong === '/cron/nhac') return await nhac(req)

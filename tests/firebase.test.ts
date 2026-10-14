@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { lopMoi, type LopGiang } from '../src/lib/model'
 import type { KetQuaAI, LopAI } from '../src/lib/trichTin'
 import { matKhauWebhook } from '../server/telegram'
-import { khoaTuChuoi } from '../server/ve'
+import { khoaTuChuoi } from '../server/oauth'
 import { taoXuLy } from '../server/web'
 
 const AUTH = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? '127.0.0.1:9198'
