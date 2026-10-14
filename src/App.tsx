@@ -151,8 +151,8 @@ function ManHinh({ user }: { user: User }) {
       {tab === 'tongHop' && (
         <TongHop
           ds={ds}
-          onLocDoiTac={(doiTac, nam) => {
-            setLoc({ doiTac, nam, lan: Date.now() })
+          onLoc={(l) => {
+            setLoc({ ...l, lan: Date.now() })
             setTab('danhSach')
             scrollTo(0, 0)
           }}

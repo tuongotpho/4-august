@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { suKienTu } from '../src/lib/lichGoogle'
 import { CAI_DAT_MAC_DINH, daGiang, docTien, lopMoi, trangThai } from '../src/lib/model'
-import { congNo, goiY, theoThang, timLopChoTien, timTrung, trungGio } from '../src/lib/tinh'
+import { congNo, goiY, theoLienHe, theoThang, timLopChoTien, timTrung, trungGio } from '../src/lib/tinh'
 import { lopTuAI, type LopAI } from '../src/lib/trichTin'
 
 // 14/10/2026 10:00 giờ Việt Nam
@@ -85,5 +85,22 @@ describe('sự kiện Google Calendar', () => {
     expect(s.moTa).toContain('[atld:abc]')
     const n = suKienTu(lopMoi({ ngay: '2026-02-22', soNgay: 2, gioBD: '08:00', gioKT: '16:30' }))
     expect(n).toMatchObject({ caNgay: true, batDau: '2026-02-22', ketThuc: '2026-02-24' })
+  })
+})
+
+describe('tổng hợp theo người liên hệ', () => {
+  it('gom theo tên, kèm đối tác hay đi nhất, bỏ lớp huỷ', () => {
+    const ds = [
+      lopMoi({ ngay: '2026-03-01', lienHe: 'A Hiếu', doiTac: 'ESC', chiPhi: 1_000_000, thanhToan: 'da' }),
+      lopMoi({ ngay: '2026-04-01', lienHe: ' A Hiếu ', doiTac: 'ESC', chiPhi: 2_000_000 }),
+      lopMoi({ ngay: '2026-05-01', lienHe: 'A Hiếu', doiTac: 'Green', chiPhi: 500_000 }),
+      lopMoi({ ngay: '2026-05-02', lienHe: '', doiTac: 'VNB', chiPhi: 700_000 }),
+      lopMoi({ ngay: '2026-05-03', lienHe: 'C Lan', doiTac: 'VNB', chiPhi: 9_000_000, huy: true }),
+      lopMoi({ ngay: '2025-05-03', lienHe: 'A Hiếu', doiTac: 'ESC', chiPhi: 9_000_000 }),
+    ]
+    expect(theoLienHe(ds, '2026')).toEqual([
+      { khoa: 'A Hiếu', soLop: 3, tien: 3_500_000, daTT: 1_000_000, doiTac: 'ESC, Green' },
+      { khoa: '(chưa rõ)', soLop: 1, tien: 700_000, daTT: 0, doiTac: 'VNB' },
+    ])
   })
 })

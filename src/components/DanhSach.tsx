@@ -10,13 +10,15 @@ export const CHUA_RO = '(chưa rõ)'
 
 export interface LocBanDau {
   nam: string
-  doiTac: string
+  doiTac?: string
+  lienHe?: string
 }
 
 export default function DanhSach({ ds, onMo, locBanDau }: { ds: LopGiang[]; onMo: (l: LopGiang) => void; locBanDau?: LocBanDau }) {
   const cacNam = useMemo(() => [...new Set(ds.map((l) => l.ngay.slice(0, 4)))].sort().reverse(), [ds])
   const [nam, setNam] = useState(locBanDau?.nam ?? homNay().slice(0, 4))
   const [doiTac, setDoiTac] = useState(locBanDau?.doiTac ?? '')
+  const [lienHe, setLienHe] = useState(locBanDau?.lienHe ?? '')
   const [tt, setTt] = useState<TrangThai | ''>('')
   const [tim, setTim] = useState('')
   const [chon, setChon] = useState<Set<string>>(new Set())
@@ -26,16 +28,21 @@ export default function DanhSach({ ds, onMo, locBanDau }: { ds: LopGiang[]; onMo
     const d = [...new Set(ds.map((l) => l.doiTac).filter(Boolean))].sort()
     return ds.some((l) => !l.doiTac) ? [...d, CHUA_RO] : d
   }, [ds])
+  const cacLienHe = useMemo(() => {
+    const d = [...new Set(ds.map((l) => l.lienHe.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'))
+    return ds.some((l) => !l.lienHe.trim()) ? [...d, CHUA_RO] : d
+  }, [ds])
   const loc = useMemo(() => {
     const k = boDau(tim)
     return ds
       .filter((l) => !nam || l.ngay.startsWith(nam))
       .filter((l) => !doiTac || (doiTac === CHUA_RO ? !l.doiTac : l.doiTac === doiTac))
+      .filter((l) => !lienHe || (lienHe === CHUA_RO ? !l.lienHe.trim() : l.lienHe.trim() === lienHe))
       .filter((l) => !tt || trangThai(l) === tt)
       .filter((l) => !k || boDau([l.khachHang, l.lienHe, l.doiTac, l.diaDiem, l.noiDung, l.ghiChu].join(' ')).includes(k))
       .slice()
       .reverse()
-  }, [ds, nam, doiTac, tt, tim])
+  }, [ds, nam, doiTac, lienHe, tt, tim])
 
   const tong = loc.filter((l) => !l.huy).reduce((s, l) => s + (l.chiPhi ?? 0), 0)
   const daChon = loc.filter((l) => chon.has(l.id))
@@ -77,6 +84,13 @@ export default function DanhSach({ ds, onMo, locBanDau }: { ds: LopGiang[]; onMo
           <select className="inp" value={doiTac} onChange={(e) => setDoiTac(e.target.value)}>
             <option value="">Tất cả</option>
             {cacDoiTac.map((n) => <option key={n}>{n}</option>)}
+          </select>
+        </label>
+        <label>
+          <span className="lbl">Người liên hệ</span>
+          <select className="inp" value={lienHe} onChange={(e) => setLienHe(e.target.value)}>
+            <option value="">Tất cả</option>
+            {cacLienHe.map((n) => <option key={n}>{n}</option>)}
           </select>
         </label>
         <label>

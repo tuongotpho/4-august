@@ -65,6 +65,26 @@ export function theoThang(ds: LopGiang[], nam: string): DongTongHop[] {
 export const theoDoiTac = (ds: LopGiang[], nam?: string) =>
   gom(nam ? ds.filter((l) => l.ngay.startsWith(nam)) : ds, (l) => l.doiTac || '(chưa rõ)').sort((a, b) => b.tien - a.tien)
 
+export interface DongLienHe extends DongTongHop {
+  doiTac: string // các đối tác người này đi cùng, hay đi nhất xếp trước
+}
+
+/** Theo người liên hệ (bỏ trống -> '(chưa rõ)'), kèm đối tác của họ */
+export function theoLienHe(ds: LopGiang[], nam?: string): DongLienHe[] {
+  const loc = nam ? ds.filter((l) => l.ngay.startsWith(nam)) : ds
+  const ten = (l: LopGiang) => l.lienHe.trim() || '(chưa rõ)'
+  const dt = new Map<string, Map<string, number>>()
+  for (const l of loc) {
+    if (l.huy || !l.doiTac) continue
+    const m = dt.get(ten(l)) ?? new Map<string, number>()
+    m.set(l.doiTac, (m.get(l.doiTac) ?? 0) + 1)
+    dt.set(ten(l), m)
+  }
+  return gom(loc, ten)
+    .map((d) => ({ ...d, doiTac: [...(dt.get(d.khoa) ?? [])].sort((a, b) => b[1] - a[1]).map(([k]) => k).join(', ') }))
+    .sort((a, b) => b.tien - a.tien)
+}
+
 export interface GoiY {
   doiTac: string[]
   lienHe: { ten: string; doiTac: string }[]
