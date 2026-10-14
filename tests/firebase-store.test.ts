@@ -157,6 +157,28 @@ describe.skipIf(!ON)('FirebaseStore (Firebase giả lập)', () => {
     expect(n).toBeGreaterThan(before)
   })
 
+  it('đang nghe: hồ sơ / cài đặt đọc từ bản onSnapshot, vẫn thấy ngay thay đổi từ nơi khác', async () => {
+    const cho = async (dk: () => Promise<boolean>) => {
+      for (let i = 0; i < 50 && !(await dk()); i++) await new Promise((r) => setTimeout(r, 100))
+      expect(await dk()).toBe(true)
+    }
+    const unsub = store.subscribe(() => {})
+    const khac = new FirebaseStore(a.db, a.st, a.uid) // màn hình / máy khác ghi
+    const d = { ...emptyDossier(), noiDung: 'Từ máy khác', updatedAt: Date.now() + 1e6 }
+    await khac.saveDossier(d)
+    await cho(async () => (await store.listDossiers())[0]?.noiDung === 'Từ máy khác')
+    expect((await store.getDossier(d.id))?.noiDung).toBe('Từ máy khác')
+    await khac.saveSettings({ ...DEFAULT_SETTINGS, nguongTien: 7000000 })
+    await cho(async () => (await store.getSettings()).nguongTien === 7000000)
+    await khac.deleteDossier(d.id)
+    await cho(async () => !(await store.listDossiers()).some((x) => x.id === d.id))
+    unsub()
+    // hết nghe -> đọc thẳng Firestore, vẫn đúng
+    expect((await store.getSettings()).nguongTien).toBe(7000000)
+    expect(await store.getDossier(d.id)).toBeUndefined()
+    await store.saveSettings(DEFAULT_SETTINGS)
+  })
+
   it('đưa dữ liệu từ máy lên tài khoản: đủ hồ sơ, file, mẫu, cài đặt', async () => {
     const may = new MemStore()
     const inv = { ...emptyInvoice(), soHd: '322', tongTien: 19034010, fileIds: ['pdf322'] }

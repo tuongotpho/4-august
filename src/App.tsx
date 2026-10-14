@@ -28,6 +28,8 @@ export default function App() {
   useEffect(() => {
     // tải sẵn bộ đọc PDF: web có cập nhật giữa chừng thì trang đang mở vẫn đọc được PDF
     taiBoDocPdf().catch(() => {})
+    // thư viện Word / zip tách khỏi gói chính để trang hiện nhanh — tải nền ngay sau đó, cùng lý do trên
+    for (const tai of [() => import('./lib/docx'), () => import('./lib/backup'), () => import('./lib/ruiRoExcel')]) tai().catch(() => {})
     let unsub = () => {}
     fb().then(({ onUser, storeFor }) => {
       unsub = onUser((u) => {

@@ -3,6 +3,7 @@ import {
   type Firestore, type Unsubscribe,
 } from 'firebase/firestore'
 import { deleteObject, getBytes, ref as sref, uploadBytes, type FirebaseStorage } from 'firebase/storage'
+import { docBoNho, ghiBoNho } from '../boNhoMay'
 import { normalizeDossier } from '../model'
 import { giaiNenDs, nenDs, type DsRuiRo } from '../ruiRo'
 import { DEFAULT_SETTINGS, type Dossier, type Settings, type StoredFile, type StoredTemplate, type TemplateKind } from '../types'
@@ -23,6 +24,15 @@ import type { DataStore } from './DataStore'
  */
 const CHUNK = 700 * 1024
 
+/** Dữ liệu nhận qua onSnapshot; `san` xong khi có bản đầu tiên (true) hoặc nghe lỗi (false -> đọc thẳng Firestore) */
+function banMoi<T>() {
+  let xong!: (ok: boolean) => void
+  const san = new Promise<boolean>((r) => (xong = r))
+  return { gt: undefined as T | undefined, san, xong }
+}
+
+const caiDatTu = (data: unknown): Settings => ({ ...DEFAULT_SETTINGS, ...((data as Partial<Settings>) ?? {}) })
+
 /** Mốc thời gian Firestore (Timestamp) -> mili giây */
 const millis = (v: unknown) => (v instanceof Timestamp ? v.toMillis() : typeof v === 'number' ? v : 0)
 
@@ -35,6 +45,9 @@ export class FirebaseStore implements DataStore {
   private ruiRo: { capNhat: number; ds: DsRuiRo } | null = null // tránh tải lại khi chưa đổi
   private ruiRoMoiNhat: number | undefined // capNhat mới nhất, do onSnapshot báo — có thì khỏi đọc Firestore mỗi lần hỏi
   private ruiRoDangTai: Promise<DsRuiRo | null> | null = null // nhiều màn hình hỏi cùng lúc -> chỉ tải 1 lần
+  // Bản hồ sơ / cài đặt do onSnapshot gửi về: đang nghe thì đọc từ đây, không đọc lại Firestore mỗi lần có thay đổi
+  private hoSo = banMoi<Dossier[]>()
+  private caiDat = banMoi<Settings>()
 
   constructor(db: Firestore, storage: FirebaseStorage, uid: string) {
     this.db = db
@@ -93,9 +106,19 @@ export class FirebaseStore implements DataStore {
 
   subscribe(cb: () => void) {
     if (this.listeners.size === 0) {
+      const hoSo = (this.hoSo = banMoi())
+      const caiDat = (this.caiDat = banMoi())
       this.unsubs = [
-        onSnapshot(this.col('dossiers'), this.emit, () => {}),
-        onSnapshot(this.ref('meta', 'settings'), this.emit, () => {}),
+        onSnapshot(this.col('dossiers'), (s) => {
+          hoSo.gt = s.docs.map((d) => normalizeDossier(d.data() as Dossier)).sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+          hoSo.xong(true)
+          this.emit()
+        }, () => hoSo.xong(false)),
+        onSnapshot(this.ref('meta', 'settings'), (s) => {
+          caiDat.gt = caiDatTu(s.data())
+          caiDat.xong(true)
+          this.emit()
+        }, () => caiDat.xong(false)),
         onSnapshot(this.col('templates'), this.emit, () => {}),
         onSnapshot(this.ref('meta', 'ruiRo'), (s) => {
           this.ruiRoMoiNhat = s.exists() ? (s.get('capNhat') as number) : 0
@@ -109,16 +132,31 @@ export class FirebaseStore implements DataStore {
       if (this.listeners.size === 0) {
         this.unsubs.forEach((u) => u())
         this.unsubs = []
+        this.hoSo.xong(false) // ai đang chờ bản đầu tiên thì đọc thẳng Firestore
+        this.caiDat.xong(false)
+        this.hoSo = banMoi()
+        this.caiDat = banMoi()
+        this.ruiRoMoiNhat = undefined // hết nghe -> không biết danh sách rủi ro còn mới không
       }
     }
   }
 
   // ── Hồ sơ ──
+  /** Đang nghe thay đổi -> bản onSnapshot gửi về (chờ bản đầu tiên nếu chưa có); không thì undefined */
+  private async banNghe<T>(b: { gt: T | undefined; san: Promise<boolean> }): Promise<T | undefined> {
+    return this.listeners.size && (await b.san) ? b.gt : undefined
+  }
+
   async listDossiers() {
+    const ban = await this.banNghe(this.hoSo)
+    if (ban) return ban
     const snap = await getDocs(query(this.col('dossiers'), orderBy('updatedAt', 'desc')))
     return snap.docs.map((d) => normalizeDossier(d.data() as Dossier))
   }
   async getDossier(id: string) {
+    const ban = await this.banNghe(this.hoSo)
+    const coSan = ban?.find((d) => d.id === id)
+    if (coSan) return coSan // không có thì đọc thẳng: có thể là hồ sơ vừa tạo, onSnapshot chưa kịp báo
     const s = await getDoc(this.ref('dossiers', id))
     return s.exists() ? normalizeDossier(s.data() as Dossier) : undefined
   }
@@ -204,8 +242,9 @@ export class FirebaseStore implements DataStore {
 
   // ── Cài đặt ──
   async getSettings(): Promise<Settings> {
-    const s = await getDoc(this.ref('meta', 'settings'))
-    return { ...DEFAULT_SETTINGS, ...((s.data() as Partial<Settings>) ?? {}) }
+    const ban = await this.banNghe(this.caiDat)
+    if (ban) return ban
+    return caiDatTu((await getDoc(this.ref('meta', 'settings'))).data())
   }
   async saveSettings(s: Settings) {
     await setDoc(this.ref('meta', 'settings'), s)
@@ -219,13 +258,35 @@ export class FirebaseStore implements DataStore {
     this.ruiRoDangTai ??= this.taiDsRuiRo().finally(() => (this.ruiRoDangTai = null))
     return this.ruiRoDangTai
   }
+  private get khoaBoNhoRuiRo() {
+    return `ruiRo:${this.uid}`
+  }
   private async taiDsRuiRo() {
-    const s = await getDoc(this.ref('meta', 'ruiRo'))
-    if (!s.exists()) return null
-    const m = s.data() as { path: string; capNhat: number }
-    if (this.ruiRo?.capNhat === m.capNhat) return this.ruiRo.ds
-    const ds = await giaiNenDs(new Uint8Array(await getBytes(sref(this.storage, m.path))))
-    this.ruiRo = { capNhat: m.capNhat, ds }
+    // biết mốc cập nhật (onSnapshot đã báo) thì khỏi đọc meta
+    let capNhat = this.ruiRoMoiNhat
+    let path: string | undefined
+    const docMeta = async () => {
+      const s = await getDoc(this.ref('meta', 'ruiRo'))
+      return s.exists() ? (s.data() as { path: string; capNhat: number }) : undefined
+    }
+    if (capNhat === undefined) {
+      const m = await docMeta()
+      if (!m) return null
+      ;({ capNhat, path } = m)
+    }
+    if (this.ruiRo?.capNhat === capNhat) return this.ruiRo.ds
+    // bản đã cất trên máy từ lần mở trước, cùng mốc cập nhật -> khỏi tải ~300 KB
+    const luu = await docBoNho<{ capNhat: number; bytes: Uint8Array }>(this.khoaBoNhoRuiRo)
+    let bytes: Uint8Array
+    if (luu?.capNhat === capNhat) bytes = luu.bytes
+    else {
+      path ??= (await docMeta())?.path
+      if (!path) return null
+      bytes = new Uint8Array(await getBytes(sref(this.storage, path)))
+      void ghiBoNho(this.khoaBoNhoRuiRo, { capNhat, bytes })
+    }
+    const ds = await giaiNenDs(bytes)
+    this.ruiRo = { capNhat, ds }
     return ds
   }
   async saveDsRuiRo(ds: DsRuiRo | null) {
@@ -235,12 +296,15 @@ export class FirebaseStore implements DataStore {
       await deleteDoc(this.ref('meta', 'ruiRo'))
       await Promise.all([deleteObject(r).catch(() => undefined), deleteObject(cu).catch(() => undefined)])
       this.ruiRo = null
+      await ghiBoNho(this.khoaBoNhoRuiRo, undefined)
       return
     }
-    await uploadBytes(r, new Blob([await nenDs(ds) as Uint8Array<ArrayBuffer>], { type: 'application/gzip' }), { contentType: 'application/gzip' })
+    const bytes = await nenDs(ds)
+    await uploadBytes(r, new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'application/gzip' }), { contentType: 'application/gzip' })
     const capNhat = Date.now()
     await setDoc(this.ref('meta', 'ruiRo'), { path: r.fullPath, capNhat, soDong: ds.dong.length, cacFile: ds.cacFile })
     this.ruiRo = { capNhat, ds } // máy này khỏi tải lại thứ vừa ghi
+    await ghiBoNho(this.khoaBoNhoRuiRo, { capNhat, bytes })
     await deleteObject(cu).catch(() => undefined)
   }
 }

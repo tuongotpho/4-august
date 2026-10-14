@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { fillTemplate } from '../lib/docx'
 import { loadTemplate, TEMPLATE_INFO } from '../lib/hooks'
 import { warningsOf } from '../lib/status'
 import type { BanDoThayThe } from '../lib/thayThe'
 import type { BangRuiRo } from '../lib/ruiRo'
 import { buildTemplateData } from '../lib/tags'
 import type { Dossier, Settings, TemplateKind } from '../lib/types'
+
+const docx = () => import('../lib/docx') // docxtemplater + pizzip: chỉ tải khi xuất / xem trước
 
 interface Props {
   dossier: Dossier // đã gắn ngày gợi ý nếu còn trống (giống lúc xuất)
@@ -51,7 +52,7 @@ export default function PreviewModal({ dossier, settings, initial, onClose, onEx
     ;(async () => {
       try {
         const [{ renderAsync }, tpl] = await Promise.all([import('docx-preview'), loadTemplate(kind)])
-        const blob = fillTemplate(tpl.buf, buildTemplateData(dossier, settings))
+        const blob = (await docx()).fillTemplate(tpl.buf, buildTemplateData(dossier, settings))
         if (cancelled || !box.current) return
         box.current.innerHTML = ''
         await renderAsync(blob, box.current, undefined, {

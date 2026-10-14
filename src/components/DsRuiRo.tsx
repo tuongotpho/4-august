@@ -3,9 +3,10 @@ import { fmtDate } from '../lib/dates'
 import { bao, hoi } from '../lib/dialog'
 import { useRuiRo } from '../lib/hooks'
 import { bangRuiRo, gopDsRuiRo, moTaDong, traHoaDon, traMst } from '../lib/ruiRo'
-import { docDsRuiRo } from '../lib/ruiRoExcel'
 import { store } from '../lib/store'
 import FileDrop from './FileDrop'
+
+const ruiRoExcel = () => import('../lib/ruiRoExcel') // pizzip: chỉ tải khi nạp file Excel
 
 const TOI_DA = 200 // danh sách có thể tới hàng chục nghìn dòng: vẽ hết thì trang Cài đặt gõ phím trễ cả giây
 
@@ -28,7 +29,7 @@ export default function DsRuiRo() {
       let gop = ds
       let them = 0
       for (const f of files) {
-        const moi = docDsRuiRo(await f.arrayBuffer(), f.name)
+        const moi = (await ruiRoExcel()).docDsRuiRo(await f.arrayBuffer(), f.name)
         them += moi.dong.length
         gop = gopDsRuiRo(gop, moi)
       }

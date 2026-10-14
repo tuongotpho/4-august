@@ -7,8 +7,9 @@ export function useDossiers(): Dossier[] | null {
   const [list, setList] = useState<Dossier[] | null>(null)
   useEffect(() => {
     const load = () => store.listDossiers().then(setList)
+    const huy = store.subscribe(load) // nghe trước rồi mới tải: lần tải đầu dùng luôn bản onSnapshot gửi về
     load()
-    return store.subscribe(load)
+    return huy
   }, [])
   return list
 }
@@ -17,8 +18,9 @@ export function useSettings(): Settings {
   const [s, setS] = useState<Settings>(DEFAULT_SETTINGS)
   useEffect(() => {
     const load = () => store.getSettings().then(setS)
+    const huy = store.subscribe(load) // nghe trước rồi mới tải: lần tải đầu dùng luôn bản onSnapshot gửi về
     load()
-    return store.subscribe(load)
+    return huy
   }, [])
   return s
 }
@@ -28,11 +30,22 @@ export function useRuiRo(): { ds: DsRuiRo | null; bang: BangRuiRo } {
   const [ds, setDs] = useState<DsRuiRo | null>(null)
   useEffect(() => {
     const load = () => store.getDsRuiRo().then(setDs, () => setDs(null))
+    const huy = store.subscribe(load) // nghe trước rồi mới tải: lần tải đầu dùng luôn bản onSnapshot gửi về
     load()
-    return store.subscribe(load)
+    return huy
   }, [])
-  const bang = useMemo(() => bangRuiRo(ds), [ds])
+  const bang = useMemo(() => bangTheoDs(ds), [ds])
   return { ds, bang }
+}
+
+// nhiều màn hình cùng dùng 1 danh sách -> lập bảng tra 1 lần
+const bangDaLap = new WeakMap<DsRuiRo, BangRuiRo>()
+const BANG_RONG: BangRuiRo = new Map()
+function bangTheoDs(ds: DsRuiRo | null): BangRuiRo {
+  if (!ds) return BANG_RONG
+  let b = bangDaLap.get(ds)
+  if (!b) bangDaLap.set(ds, (b = bangRuiRo(ds)))
+  return b
 }
 
 /** Thêm 1 lựa chọn mới vào danh sách đã lưu trong Cài đặt (người đề nghị, nhiệm vụ). */

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { fmtDate, today } from '../lib/dates'
-import { fillTemplate } from '../lib/docx'
 import { emptyInvoice, filesToInvoices } from '../lib/dossierOps'
 import { downloadBlob, loadTemplate, rememberOption, safeFileName, TEMPLATE_INFO, useRuiRo, useSettings } from '../lib/hooks'
 import { moTaRuiRo, traHoaDon } from '../lib/ruiRo'
@@ -23,6 +22,8 @@ import MoneyInput from './MoneyInput'
 import ThanhPhanEditor from './ThanhPhanEditor'
 import { TagEditor } from './TagChips'
 import { bao, hoi } from '../lib/dialog'
+
+const docx = () => import('../lib/docx') // docxtemplater + pizzip: chỉ tải khi xuất / xem trước
 
 export default function DossierEditor({ id, onClose }: { id: string; onClose: () => void }) {
   const settings = useSettings()
@@ -158,7 +159,7 @@ Anh có chắc vẫn xuất tờ trình / đề nghị thanh toán?`,
       const tail = safeFileName([cur.noiDung, cur.invoices.map((i) => i.soHd).filter(Boolean).join('-')].filter(Boolean).join(' - '))
       for (const k of kinds) {
         const tpl = await loadTemplate(k)
-        const blob = fillTemplate(tpl.buf, data)
+        const blob = (await docx()).fillTemplate(tpl.buf, data)
         downloadBlob(blob, `${TEMPLATE_INFO[k].tenFile}${tail ? ' - ' + tail : ''}.docx`)
       }
     } catch (e) {

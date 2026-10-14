@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { inspectTemplate, type TemplateCheck } from '../lib/docx'
+import type { TemplateCheck } from '../lib/docx'
 import { downloadBlob, loadTemplate, TEMPLATE_INFO } from '../lib/hooks'
 import { store } from '../lib/store'
 import { TAG_GROUPS } from '../lib/tags'
 import type { TemplateKind } from '../lib/types'
 import FileDrop from './FileDrop'
 import { hoi } from '../lib/dialog'
+
+const docx = () => import('../lib/docx') // thư viện Word nặng: chỉ tải khi mở trang Mẫu in
 
 function TemplateSlot({ kind }: { kind: TemplateKind }) {
   const info = TEMPLATE_INFO[kind]
@@ -14,7 +16,7 @@ function TemplateSlot({ kind }: { kind: TemplateKind }) {
 
   async function refresh() {
     const t = await loadTemplate(kind)
-    setCur({ name: t.name, isDefault: t.isDefault, check: inspectTemplate(t.buf) })
+    setCur({ name: t.name, isDefault: t.isDefault, check: (await docx()).inspectTemplate(t.buf) })
   }
   useEffect(() => {
     refresh()
@@ -22,7 +24,7 @@ function TemplateSlot({ kind }: { kind: TemplateKind }) {
 
   async function upload(files: File[]) {
     const f = files[0]
-    const check = inspectTemplate(await f.arrayBuffer())
+    const check = (await docx()).inspectTemplate(await f.arrayBuffer())
     if (!check.ok) {
       setMsg({ ok: false, text: `Không dùng được mẫu này:\n${check.error}` })
       return

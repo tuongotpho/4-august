@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { exportBackup, importBackup } from '../lib/backup'
 import { today } from '../lib/dates'
 import { downloadBlob, useSettings } from '../lib/hooks'
 import { store, type DongNhatKyAI, type PhienAI } from '../lib/store'
@@ -11,6 +10,7 @@ import DsRuiRo from './DsRuiRo'
 import { TU_KHOA_CAM_MAC_DINH } from '../lib/hangCam'
 import { bao, hoi } from '../lib/dialog'
 
+const thuVienSaoLuu = () => import('../lib/backup') // pizzip: chỉ tải khi sao lưu / khôi phục
 
 /** Sửa danh sách lựa chọn: xóa từng mục, thêm mục mới, đổi thứ tự (mục đầu là mặc định). */
 function ListEditor({ label, items, onChange, gon = false }: { label: string; items: string[]; onChange: (v: string[]) => void; gon?: boolean }) {
@@ -94,7 +94,7 @@ export default function SettingsPage() {
   async function backup() {
     setBusy(true)
     try {
-      downloadBlob(await exportBackup(store), `Sao luu hoa don ${today()}.zip`)
+      downloadBlob(await (await thuVienSaoLuu()).exportBackup(store), `Sao luu hoa don ${today()}.zip`)
     } finally {
       setBusy(false)
     }
@@ -104,7 +104,7 @@ export default function SettingsPage() {
     if (!(await hoi('Nạp bản sao lưu? Hồ sơ trùng sẽ được thay bằng bản trong file sao lưu.'))) return
     setBusy(true)
     try {
-      const r = await importBackup(store, files[0])
+      const r = await (await thuVienSaoLuu()).importBackup(store, files[0])
       void bao(`Đã nạp ${r.dossiers} hồ sơ, ${r.files} file hóa đơn, ${r.templates} mẫu.`)
     } catch (e) {
       void bao('Không nạp được: ' + (e as Error).message)
