@@ -65,7 +65,7 @@ describe.skipIf(!coGiaLap)('Firebase giả lập', () => {
 
   it('trọn vòng bot Telegram', async () => {
     const env: Record<string, string | undefined> = {
-      ATLD_GIA_LAP: '1', ATLD_KHOA: 'k'.repeat(40), ATLD_TELE_TOKEN: 'T', ATLD_TELE_API: 'http://tele.gia', ATLD_ANTHROPIC_KEY: 'gia',
+      ATLD_GIA_LAP: '1', ATLD_KHOA: 'k'.repeat(40), ATLD_TELE_TOKEN: 'T', ATLD_TELE_API: 'http://tele.gia', ATLD_GEMINI_KEY: 'gia',
       ATLD_GOC_URL: 'https://lich.example', CRON_SECRET: 'cron', FIREBASE_AUTH_EMULATOR_HOST: AUTH, FIRESTORE_EMULATOR_HOST: FS,
     }
     const lopAI = (p: Partial<LopAI>): LopAI => ({
@@ -162,7 +162,7 @@ describe.skipIf(!coGiaLap)('Firebase giả lập', () => {
   })
 
   it('/ai/trich cho web: trả bản nháp, không lưu', async () => {
-    const env = { ATLD_GIA_LAP: '1', ATLD_KHOA: 'k'.repeat(40), ATLD_ANTHROPIC_KEY: 'gia', FIREBASE_AUTH_EMULATOR_HOST: AUTH, FIRESTORE_EMULATOR_HOST: FS }
+    const env = { ATLD_GIA_LAP: '1', ATLD_KHOA: 'k'.repeat(40), ATLD_GEMINI_KEY: 'gia', FIREBASE_AUTH_EMULATOR_HOST: AUTH, FIRESTORE_EMULATOR_HOST: FS }
     const xuLy = taoXuLy(env, {
       ai: {
         trich: async () => ({ hanhDong: 'tao_lop', lop: [{ ngay: '2026-12-01', soNgay: 1, gioBD: '', gioKT: '', buoi: 'chieu', hinhThuc: 'online', doiTac: '', lienHe: '', khachHang: 'ABC', diaDiem: '', noiDung: '', chiPhi: 1000000, ghiChu: '', luuY: 'không ghi năm' }], thanhToan: null, traLoi: '' }),

@@ -7,7 +7,7 @@
 //
 // Biến môi trường trên Vercel:
 //   ATLD_TELE_TOKEN (bí mật) mã bot từ @BotFather · ATLD_TELE_VE vé kết nối (nhiều vé cách nhau dấu phẩy)
-//   ATLD_ANTHROPIC_KEY (bí mật) khoá Claude API để đọc tin nhắn
+//   ATLD_GEMINI_KEY (bí mật) khoá Gemini (Google AI Studio) để đọc tin nhắn
 
 import { createHash } from 'node:crypto'
 import {
@@ -219,8 +219,8 @@ export async function xuLyTelegram(req: Request, duong: string, bc: BoiCanh): Pr
     if (lenh) return void (await gui(chat, 'Không có lệnh này. Gõ /help để xem cách dùng.'))
     if (chu.length < 4) return void (await gui(chat, 'Dán tin nhắn mời giảng vào đây, bot tự tạo lớp. Gõ /help để xem cách dùng.'))
 
-    const apiKey = env.ATLD_ANTHROPIC_KEY
-    if (!apiKey) return void (await gui(chat, '⚠️ Máy chủ chưa có khoá AI — thêm biến ATLD_ANTHROPIC_KEY trên Vercel rồi triển khai lại.'))
+    const apiKey = env.ATLD_GEMINI_KEY
+    if (!apiKey) return void (await gui(chat, '⚠️ Máy chủ chưa có khoá AI — thêm biến ATLD_GEMINI_KEY trên Vercel rồi triển khai lại.'))
     void tg('sendChatAction', { chat_id: chat, action: 'typing' }).catch(() => undefined)
     const gy = goiY(ds)
 

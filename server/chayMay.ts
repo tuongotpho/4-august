@@ -1,6 +1,6 @@
 // Chạy thử máy chủ ngay trên máy: npm run server (cổng 8790). `npm run dev` (vite) chuyển /ai, /telegram sang đây.
 // Mặc định dùng DỮ LIỆU THẬT (Firebase app-from-ai). Máy giả lập: đặt ATLD_GIA_LAP=1 và bật emulator trước.
-// Khoá AI: đặt ATLD_ANTHROPIC_KEY trong môi trường trước khi chạy.
+// Khoá AI: đặt ATLD_GEMINI_KEY trong môi trường trước khi chạy.
 import { randomBytes } from 'node:crypto'
 import { createServer } from 'node:http'
 import { taoXuLy } from './web.js'

@@ -5,7 +5,7 @@
 //   GET  /cron/nhac    Vercel Cron 20h hằng ngày: nhắc lịch ngày mai qua Telegram + đẩy lớp còn chờ lên Google Calendar
 //   /mcp, /oauth/*, /.well-known/*   kết nối AI (Claude) qua MCP (server/mcpWeb.ts)
 //
-// Biến môi trường: ATLD_KHOA (bắt buộc, bí mật, ≥ 32 ký tự) · ATLD_ANTHROPIC_KEY · ATLD_TELE_TOKEN · ATLD_TELE_VE
+// Biến môi trường: ATLD_KHOA (bắt buộc, bí mật, ≥ 32 ký tự) · ATLD_GEMINI_KEY · ATLD_TELE_TOKEN · ATLD_TELE_VE
 //                  CRON_SECRET (Vercel tự gửi kèm khi gọi cron) · ATLD_GOC_URL (tuỳ chọn)
 
 import { createHash } from 'node:crypto'
@@ -71,12 +71,12 @@ export function taoXuLy(env: Env = process.env, tuyChon: { ai?: { trich: typeof 
       if (!y.maLamMoi) return json({ loi: 'Chưa đăng nhập' }, 401)
       const tin = String(y.tin ?? '').trim()
       if (tin.length < 4) return json({ loi: 'Tin nhắn trống' }, 400)
-      if (!env.ATLD_ANTHROPIC_KEY) return json({ loi: 'Máy chủ chưa có khoá AI (biến ATLD_ANTHROPIC_KEY trên Vercel)' }, 500)
+      if (!env.ATLD_GEMINI_KEY) return json({ loi: 'Máy chủ chưa có khoá AI (biến ATLD_GEMINI_KEY trên Vercel)' }, 500)
       const { idToken, uid } = await maFirebase(cfg, y.maLamMoi)
       const fb = new FirebaseNguoiDung(cfg, uid, idToken)
       const [ds, cd] = await Promise.all([kho.taiLop(fb), kho.taiCaiDat(fb)])
       const gy = goiY(ds)
-      const kq = await ai.trich(tin, gy, env.ATLD_ANTHROPIC_KEY)
+      const kq = await ai.trich(tin, gy, env.ATLD_GEMINI_KEY)
       const lop = kq.hanhDong === 'tao_lop' ? kq.lop : []
       return json({ lop: lop.map((a) => lopTuAI(a, cd, gy, tin, 'web')), luuY: lop.map((a) => a.luuY), traLoi: kq.traLoi })
     }

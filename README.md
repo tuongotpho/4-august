@@ -42,7 +42,7 @@ apps-script/    cầu nối Google Calendar
 | Biến | |
 |---|---|
 | `ATLD_KHOA` | bí mật ≥ 32 ký tự, mã hoá vé kết nối bot (đổi = mọi vé mất hiệu lực) |
-| `ATLD_ANTHROPIC_KEY` | khoá Claude API để AI đọc tin nhắn |
+| `ATLD_GEMINI_KEY` | khoá Gemini lấy ở Google AI Studio (aistudio.google.com → Get API key) để AI đọc tin nhắn. Tuỳ chọn `ATLD_GEMINI_MODEL` đổi model (mặc định gemini-3.1-flash-lite — rẻ nhất) |
 | `ATLD_TELE_TOKEN` | mã bot từ @BotFather |
 | `ATLD_TELE_VE` | vé kết nối (app tạo ở Cài đặt → Bot Telegram) |
 | `CRON_SECRET` | chuỗi bất kỳ — Vercel gửi kèm khi gọi cron nhắc lịch |
