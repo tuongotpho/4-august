@@ -3,7 +3,8 @@
 
 import { apMau, ngayTruoc, type MauNhap } from '../src/lib/mau_nhap.js';
 import { taoId } from '../src/lib/store.js';
-import { docTien, loc, soQuy, theoNhom, theoThang, tong, vanDe, type DongSo } from '../src/lib/tinh_toan.js';
+import { congNo, tongCongNo, traHopLe, type KhoanUng } from '../src/lib/cong_no.js';
+import { canhBao, docTien, loc, soQuy, theoNhom, theoThang, tong, type DongSo } from '../src/lib/tinh_toan.js';
 import { NHOM_CHI, NHOM_THU, type GiaoDich, type HinhThuc, type Loai } from '../src/lib/types.js';
 
 export interface DuLieu {
@@ -35,9 +36,21 @@ function dong(g: GiaoDich & { ton?: number }) {
     hinh_thuc: g.hinhThuc || undefined,
     da_hoan: g.daHoan || undefined,
     ghi_chu: g.ghiChu || undefined,
+    hoan_cho: g.hoanCho || undefined,
     ton_quy_sau: g.ton,
-    can_kiem_tra: vanDe(g).length ? vanDe(g) : undefined,
+    can_kiem_tra: canhBao(g).length ? canhBao(g) : undefined,
   };
+}
+
+/** hoan_cho phải trỏ tới khoản ứng còn trong sổ, ngược thu/chi với dòng trả */
+function kiemHoanCho(d: DuLieu, g: GiaoDich) {
+  if (!g.hoanCho) return;
+  const goc = d.giaoDich.find((x) => x.id === g.hoanCho);
+  if (!goc) throw new Error(`hoan_cho "${g.hoanCho}" không có trong sổ — dùng cong_no để lấy id khoản ứng`);
+  if (!traHopLe(g, goc))
+    throw new Error(
+      `"${goc.noiDung}" không phải khoản ứng trả được bằng một khoản ${g.loai}. Trả cho người ứng cho phòng = chi; thu hồi tiền phòng đã ứng ra = thu.`,
+    );
 }
 
 function timGiaoDich(d: DuLieu, id: string): GiaoDich {
@@ -83,7 +96,11 @@ export function tongQuan(d: DuLieu) {
     tong_chi: t.chi,
     nam_nay: { nam, thu: tNam.thu, chi: tNam.chi, chenh_lech: tNam.ton },
     thang_nay: { thang: `${thang}/${nam}`, thu: tThang.thu, chi: tThang.chi, chenh_lech: tThang.ton },
-    can_kiem_tra: so.filter((g) => vanDe(g).length).length,
+    can_kiem_tra: so.filter((g) => g.canhBao.length).length,
+    cong_no: (() => {
+      const n = tongCongNo(congNo(d.giaoDich, homNay));
+      return { phong_dang_no: n.phongNo, dang_o_ngoai: n.noPhong, ton_quy_khi_thanh_toan_het: t.ton - n.phongNo + n.noPhong };
+    })(),
     gan_day: [...so].reverse().slice(0, 8).map(dong),
     nhom_thu: NHOM_THU,
     nhom_chi: NHOM_CHI,
@@ -147,6 +164,38 @@ export function tongHop(d: DuLieu, a: { nam?: number }) {
   };
 }
 
+function khoan(k: KhoanUng) {
+  return {
+    id: k.g.id,
+    ngay: k.g.ngay,
+    noi_dung: k.g.noiDung,
+    doi_tuong: k.g.doiTuong || undefined,
+    so_tien: k.g.soTien,
+    da_tra: k.daTra,
+    con_lai: k.conLai,
+    so_ngay: k.soNgay,
+    danh_dau_da_hoan: k.g.daHoan || undefined,
+    cac_lan_tra: k.cacLanTra.length ? k.cacLanTra.map((x) => ({ id: x.id, ngay: x.ngay, so_tien: x.soTien, noi_dung: x.noiDung })) : undefined,
+  };
+}
+
+export function congNoUng(d: DuLieu, a: { ca_da_xong?: boolean }) {
+  const ds = congNo(d.giaoDich, ngayTruoc(0));
+  const n = tongCongNo(ds);
+  const ton = tong(d.giaoDich).ton;
+  const chon = (chieu: KhoanUng['chieu']) => ds.filter((k) => k.chieu === chieu && (a.ca_da_xong || k.conLai > 0)).map(khoan);
+  return {
+    phong_dang_no: n.phongNo,
+    dang_o_ngoai: n.noPhong,
+    ton_quy: ton,
+    ton_quy_khi_thanh_toan_het: ton - n.phongNo + n.noPhong,
+    phong_phai_tra: chon('phong_no'),
+    phai_thu_hoi: chon('no_phong'),
+    huong_dan:
+      'Trả cho khoản trong phong_phai_tra: them_giao_dich loai=chi, nhom="Ứng, vay, trả", hoan_cho=<id>. Thu hồi khoản trong phai_thu_hoi: loai=thu, nhom="Hoàn ứng, hoàn tiền", hoan_cho=<id>. Trả một phần được. Chỉ ghi khi người dùng yêu cầu.',
+  };
+}
+
 export function danhSachMau(d: DuLieu) {
   return d.mau.map((m) => ({
     id: m.id,
@@ -173,6 +222,7 @@ export interface ThamSoThem {
   doi_tuong?: string;
   ghi_chu?: string;
   da_hoan?: boolean;
+  hoan_cho?: string;
   bo_qua_trung?: boolean;
 }
 
@@ -201,10 +251,12 @@ export async function themGiaoDich(d: DuLieu, ghi: NoiGhi, a: ThamSoThem) {
     doiTuong: a.doi_tuong ?? goc.doiTuong,
     ghiChu: a.ghi_chu ?? '',
     daHoan: a.da_hoan ?? false,
+    hoanCho: a.hoan_cho || undefined,
   };
   if (!g.noiDung) throw new Error('Thiếu nội dung giao dịch');
   if (g.soTien == null) throw new Error('Thiếu số tiền');
   kiemNhom(g.loai, g.nhom);
+  kiemHoanCho(d, g);
 
   // Chặn nhập trùng: cùng ngày, cùng loại, cùng số tiền, nội dung gần giống
   const nd = boDau(g.noiDung);
@@ -236,6 +288,8 @@ export interface ThamSoSua {
   doi_tuong?: string;
   ghi_chu?: string;
   da_hoan?: boolean;
+  /** "" = bỏ liên kết */
+  hoan_cho?: string;
 }
 
 export async function suaGiaoDich(d: DuLieu, ghi: NoiGhi, a: ThamSoSua) {
@@ -256,8 +310,10 @@ export async function suaGiaoDich(d: DuLieu, ghi: NoiGhi, a: ThamSoSua) {
   if (a.doi_tuong !== undefined) moi.doiTuong = a.doi_tuong;
   if (a.ghi_chu !== undefined) moi.ghiChu = a.ghi_chu;
   if (a.da_hoan !== undefined) moi.daHoan = a.da_hoan;
+  if (a.hoan_cho !== undefined) moi.hoanCho = a.hoan_cho || undefined;
   // Đổi thu <-> chi mà nhóm cũ không hợp thì báo, không tự đoán
   kiemNhom(moi.loai, moi.nhom);
+  kiemHoanCho(d, moi);
 
   const doi = (Object.keys(moi) as (keyof GiaoDich)[])
     .filter((k) => k !== 'capNhat' && moi[k] !== cu[k])

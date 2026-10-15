@@ -18,10 +18,10 @@ const gd = (p: Partial<GiaoDich>): GiaoDich => ({
 });
 
 const mau = [
-  gd({ id: 'a', loai: 'thu', ngay: '2025-01-05', soTien: 10_000_000, noiDung: 'Thưởng phòng' }),
+  gd({ id: 'a', loai: 'thu', ngay: '2025-01-05', soTien: 10_000_000, noiDung: 'Thưởng phòng', nhom: 'Thưởng' }),
   gd({ id: 'b', ngay: '2025-01-10', soTien: 3_000_000, noiDung: 'Sinh nhật sếp Nam', nhom: 'Sinh nhật' }),
   gd({ id: 'c', ngay: '2025-02-01', soTien: null, noiDung: 'Làm việc Hòa Bình', hinhThuc: '' }),
-  gd({ id: 'd', ngay: '2025-02-03', soTien: 9_000_000, noiDung: 'Liên hoan' }),
+  gd({ id: 'd', ngay: '2025-02-03', soTien: 9_000_000, noiDung: 'Liên hoan', nhom: 'Liên hoan, giao lưu' }),
 ];
 
 describe('tính toán sổ quỹ', () => {

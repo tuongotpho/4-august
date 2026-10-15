@@ -12,13 +12,15 @@ import {
   loc,
   soQuy,
   tong,
-  vanDe,
   xuatCsv,
   type BoLoc,
 } from '../lib/tinh_toan.js';
 import { NHOM_CHI, NHOM_THU, type GiaoDich } from '../lib/types.js';
 import { apMau, MAU_MAC_DINH, mauTuGiaoDich, ngayTruoc, type MauNhap } from '../lib/mau_nhap.js';
+import { congNo, giaoDichTra } from '../lib/cong_no.js';
+import { taoId } from '../lib/store.js';
 import { ChonMau } from './ChonMau.js';
+import { CongNo } from './CongNo.js';
 import { FormGiaoDich } from './FormGiaoDich.js';
 import { KetNoiAI } from './KetNoiAI.js';
 import { ThongKe } from './ThongKe.js';
@@ -48,7 +50,7 @@ export function App() {
   return <SoQuy store={store!} user={user ?? null} onDangXuat={fb ? () => signOut(fb.auth) : undefined} />;
 }
 
-type Tab = 'so' | 'thong-ke';
+type Tab = 'so' | 'thong-ke' | 'cong-no';
 
 function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | null; onDangXuat?: () => void }) {
   const [ds, setDs] = useState<GiaoDich[] | null>(null);
@@ -56,7 +58,7 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
   const [tab, setTab] = useState<Tab>('so');
   const [boLoc, setBoLoc] = useState<BoLoc>({});
   /** Form đang mở: sửa một giao dịch, hoặc thêm mới (theo mẫu hoặc trống). */
-  const [form, setForm] = useState<{ ban?: GiaoDich; mau?: MauNhap | null } | null>(null);
+  const [form, setForm] = useState<{ ban?: GiaoDich; mau?: MauNhap | null; macDinh?: GiaoDich; tieuDe?: string } | null>(null);
   const [moChonMau, setMoChonMau] = useState(false);
   const [moAI, setMoAI] = useState(false);
   const [mauRieng, setMauRieng] = useState<MauNhap[] | null>(null);
@@ -77,7 +79,8 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
   const tongHet = tong(so);
   const tongLoc = tong(daLoc);
   const coLoc = Object.values(boLoc).some(Boolean);
-  const soCanKT = so.filter((g) => vanDe(g).length).length;
+  const soCanKT = so.filter((g) => g.canhBao.length).length;
+  const khoanUng = useMemo(() => congNo(ds ?? [], ngayTruoc(0)), [ds]);
   const nam = cacNam(so);
   const dsNhom = boLoc.loai === 'thu' ? NHOM_THU : boLoc.loai === 'chi' ? NHOM_CHI : [...new Set([...NHOM_THU, ...NHOM_CHI])];
 
@@ -147,6 +150,9 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
         <button className={tab === 'thong-ke' ? 'chon' : ''} onClick={() => setTab('thong-ke')}>
           Thống kê
         </button>
+        <button className={tab === 'cong-no' ? 'chon' : ''} onClick={() => setTab('cong-no')}>
+          Công nợ ứng
+        </button>
         <span style={{ flex: 1 }} />
         <button onClick={() => fileRef.current?.click()}>Nhập JSON</button>
         <button onClick={xuat} disabled={!daLoc.length}>
@@ -182,7 +188,7 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
         </div>
       ) : (
         <>
-          <div className="bo-loc">
+          <div className="bo-loc" hidden={tab === 'cong-no'}>
             <input
               type="search"
               placeholder="Tìm nội dung, người, ghi chú…"
@@ -221,7 +227,19 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
             {coLoc && <button onClick={() => setBoLoc({})}>Bỏ lọc</button>}
           </div>
 
-          {tab === 'so' ? (
+          {tab === 'cong-no' ? (
+            <CongNo
+              ds={khoanUng}
+              ton={tongHet.ton}
+              onChon={(g) => setForm({ ban: g })}
+              onTra={(k) =>
+                setForm({
+                  macDinh: giaoDichTra(k, taoId(), ngayTruoc(0)),
+                  tieuDe: k.chieu === 'phong_no' ? 'Trả tiền ứng' : 'Thu hồi tiền ứng',
+                })
+              }
+            />
+          ) : tab === 'so' ? (
             <BangSo ds={daLoc} onChon={(g) => setForm({ ban: g })} />
           ) : (
             <ThongKe ds={daLoc} />
@@ -250,8 +268,9 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
       {form && (
         <FormGiaoDich
           ban={form.ban ?? null}
-          macDinh={form.mau ? apMau(form.mau, ngayTruoc(0)) : undefined}
-          tenMau={form.mau ? `${form.mau.bieuTuong} ${form.mau.ten}` : undefined}
+          macDinh={form.mau ? apMau(form.mau, ngayTruoc(0)) : form.macDinh}
+          tenMau={form.mau ? `${form.mau.bieuTuong} ${form.mau.ten}` : form.tieuDe}
+          khoanUng={khoanUng}
           onLuu={(g) => store.luu(g)}
           onXoa={(id) => store.xoa(id)}
           onLuuMau={themMau}
@@ -282,7 +301,7 @@ function BangSo({ ds, onChon }: { ds: ReturnType<typeof soQuy>; onChon: (g: Giao
         </thead>
         <tbody>
           {moiNhat.map((g) => {
-            const v = vanDe(g);
+            const v = g.canhBao;
             return (
               <tr key={g.id} onClick={() => onChon(g)}>
                 <td className="ngay">{dinhDangNgay(g.ngay)}</td>

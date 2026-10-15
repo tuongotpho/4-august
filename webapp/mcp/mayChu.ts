@@ -8,7 +8,8 @@ import type { DuLieu, NoiGhi } from './congCu.js';
 
 const HUONG_DAN = `Sổ quỹ phòng Kỹ thuật An toàn (KTAT): mỗi GIAO DỊCH là một khoản THU (tiền vào quỹ: thưởng, hoàn ứng, được chúc tết, thanh toán hóa đơn…) hoặc CHI (sinh nhật, liên hoan, chúc tết, công tác, đề tài/sáng kiến…).
 - Tiền: đồng (VND), số nguyên. Ngày: yyyy-mm-dd, giờ Việt Nam. Tồn quỹ = tổng thu − tổng chi, có thể âm.
-- Mỗi giao dịch thuộc một NHÓM cố định (xem nhom_thu / nhom_chi trong tong_quan). hinh_thuc: CK = chuyển khoản, TM = tiền mặt. da_hoan = khoản ứng đã được hoàn.
+- Mỗi giao dịch thuộc một NHÓM cố định (xem nhom_thu / nhom_chi trong tong_quan). hinh_thuc: CK = chuyển khoản, TM = tiền mặt.
+- CÔNG NỢ ỨNG (cong_no): thu nhóm "Ứng, vay" = người ứng tiền cho phòng (phòng phải trả); chi nhóm "Ứng, vay, trả" = phòng ứng tiền cho người (phải thu hồi). Dòng trả / hoàn ghi hoan_cho = id khoản ứng; da_hoan = khoản ứng cũ coi như đã xong.
 - MẪU NHẬP (danh_sach_mau): khoản hay gặp đã điền sẵn loại, nhóm, hình thức — người dùng nói "sinh nhật sếp Nam 3 triệu" thì dùng mẫu "Sinh nhật".
 - Bắt đầu bằng tong_quan. Số liệu chỉ lấy từ dữ liệu — thiếu thì nói thiếu, KHÔNG đoán.
 - Công cụ ghi (them_giao_dich, sua_giao_dich, xoa_giao_dich) thay đổi dữ liệu THẬT — chỉ gọi khi người dùng yêu cầu rõ. them_giao_dich báo lại nếu nghi trùng: hỏi người dùng trước khi gửi lại với bo_qua_trung=true.
@@ -69,7 +70,7 @@ export function taoMayChu(nguon: NguonMcp) {
         tu_ngay: ngay.optional(),
         den_ngay: ngay.optional(),
         tim: z.string().optional().describe('Từ khoá, vd "sinh nhat", "Thái tộc"'),
-        can_kiem_tra: z.boolean().optional().describe('true = chỉ dòng thiếu số tiền / ngày / TM-CK'),
+        can_kiem_tra: z.boolean().optional().describe('true = chỉ dòng có cảnh báo: thiếu số tiền / ngày / TM-CK, nhóm "Khác" lớn, ứng quá hạn chưa hoàn…'),
         da_hoan: z.boolean().optional(),
         gioi_han: z.number().int().min(1).max(500).optional().describe('Mặc định 50'),
         cu_truoc: z.boolean().optional().describe('true = cũ nhất trước'),
@@ -88,6 +89,18 @@ export function taoMayChu(nguon: NguonMcp) {
       annotations: chiDoc,
     },
     boc(cc.tongHop),
+  );
+
+  server.registerTool(
+    'cong_no',
+    {
+      title: 'Công nợ tiền ứng',
+      description:
+        'Phòng đang nợ ai (người ứng tiền cho phòng, chưa trả) và ai đang giữ tiền phòng (phòng ứng ra, chưa hoàn): từng khoản với id, số tiền, đã trả, còn lại, số ngày; tổng hai chiều và tồn quỹ nếu thanh toán hết.',
+      inputSchema: { ca_da_xong: z.boolean().optional().describe('true = kèm cả khoản đã trả / hoàn xong') },
+      annotations: chiDoc,
+    },
+    boc(cc.congNoUng),
   );
 
   server.registerTool(
@@ -117,6 +130,7 @@ export function taoMayChu(nguon: NguonMcp) {
         doi_tuong: z.string().optional().describe('Thu: đơn vị / người nộp. Chi: người nhận'),
         ghi_chu: z.string().optional(),
         da_hoan: z.boolean().optional(),
+        hoan_cho: z.string().optional().describe('id khoản ứng (từ cong_no) mà khoản này trả / thu hồi'),
         bo_qua_trung: z.boolean().optional().describe('true = vẫn ghi dù nghi trùng (chỉ khi người dùng đã đồng ý)'),
       },
       annotations: { ...ghiDuoc, idempotentHint: false },
@@ -140,6 +154,7 @@ export function taoMayChu(nguon: NguonMcp) {
         doi_tuong: z.string().optional(),
         ghi_chu: z.string().optional(),
         da_hoan: z.boolean().optional(),
+        hoan_cho: z.string().optional().describe('id khoản ứng mà dòng này trả / thu hồi; "" = bỏ liên kết'),
       },
       annotations: { ...ghiDuoc, idempotentHint: true },
     },

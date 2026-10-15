@@ -97,7 +97,7 @@ describe.skipIf(!coEmu)('MCP quyphong trên emulator', () => {
     expect((await rpc('tools/list', {}, 've-gia')).status).toBe(401);
     const ds = await rpc('tools/list', {});
     expect(ds.j.result.tools.map((t: { name: string }) => t.name).sort()).toEqual(
-      ['danh_sach_giao_dich', 'danh_sach_mau', 'sua_giao_dich', 'them_giao_dich', 'tong_hop', 'tong_quan', 'xoa_giao_dich'].sort(),
+      ['cong_no', 'danh_sach_giao_dich', 'danh_sach_mau', 'sua_giao_dich', 'them_giao_dich', 'tong_hop', 'tong_quan', 'xoa_giao_dich'].sort(),
     );
 
     const tq = (await congCu('tong_quan')).kq;
@@ -129,6 +129,19 @@ describe.skipIf(!coEmu)('MCP quyphong trên emulator', () => {
     expect(nk.map((x) => x.congCu).sort()).toEqual(['sua_giao_dich', 'them_giao_dich', 'xoa_giao_dich']);
     const phien = await cho<PhienAI[]>((cb) => a.store.ai.theoDoiPhien(cb), (x) => x.length === 1);
     expect(phien[0]).toMatchObject({ tenMay: 'Máy thử', ungDung: 'Claude Code', noiNhan: 'localhost:33418' });
+
+    // Công nợ ứng: A Tuấn ứng 9,8tr cho phòng, phòng trả 5tr
+    const ung = (await congCu('them_giao_dich', { loai: 'thu', nhom: 'Ứng, vay', noi_dung: 'A Tuấn ứng tiền cho phòng', so_tien: '9,8tr', ngay: '2026-10-03' })).kq;
+    // Trả bằng khoản thu = sai chiều
+    expect((await congCu('them_giao_dich', { loai: 'thu', noi_dung: 'x', so_tien: 1, nhom: 'Khác', hoan_cho: ung.giao_dich.id })).loi).toBe(true);
+    const traUng = (
+      await congCu('them_giao_dich', { loai: 'chi', nhom: 'Ứng, vay, trả', noi_dung: 'Trả a Tuấn', so_tien: '5tr', hoan_cho: ung.giao_dich.id, ngay: '2026-10-05' })
+    ).kq;
+    expect(traUng.giao_dich.hoan_cho).toBe(ung.giao_dich.id);
+    const no = (await congCu('cong_no')).kq;
+    expect(no).toMatchObject({ phong_dang_no: 4_800_000, dang_o_ngoai: 0, ton_quy: 12_800_000, ton_quy_khi_thanh_toan_het: 8_000_000 });
+    expect(no.phong_phai_tra[0]).toMatchObject({ id: ung.giao_dich.id, da_tra: 5_000_000, con_lai: 4_800_000 });
+    expect((await congCu('tong_quan')).kq.cong_no).toMatchObject({ phong_dang_no: 4_800_000 });
 
     // Làm mới vé được; thu hồi trên web app -> /mcp và làm mới đều bị chặn
     const lamMoi = () =>

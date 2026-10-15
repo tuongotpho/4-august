@@ -195,3 +195,9 @@ button.lien-ket { border: none; background: none; text-align: left; color: var(-
 .ds-phien, .ds-nhat-ky { list-style: none; padding: 0; margin: 0; }
 .ds-phien li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--vien); }
 .ds-nhat-ky li { padding: 6px 0; border-bottom: 1px solid var(--vien); font-size: 13px; }
+
+[hidden] { display: none !important; }
+.cong-no h3 { margin: 20px 0 2px; font-size: 15px; }
+.cong-no .tong-hop { margin-top: 0; }
+.lan-tra { cursor: pointer; }
+.lan-tra:hover { text-decoration: underline; }

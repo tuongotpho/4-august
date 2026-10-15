@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { nhanTien, ngayTruoc, TIEN_NHANH } from '../lib/mau_nhap.js';
 import { taoId } from '../lib/store.js';
-import { dinhDangTien, docTien } from '../lib/tinh_toan.js';
-import { NHOM_CHI, NHOM_THU, type GiaoDich, type Loai } from '../lib/types.js';
+import { chieuUng, type KhoanUng } from '../lib/cong_no.js';
+import { dinhDangNgay, dinhDangTien, docTien } from '../lib/tinh_toan.js';
+import { NHOM_CHI, NHOM_CHI_UNG, NHOM_HOAN, NHOM_THU, type GiaoDich, type Loai } from '../lib/types.js';
 
 interface Props {
   /** Giao dịch đang sửa (null = thêm mới). */
@@ -13,6 +14,8 @@ interface Props {
   onLuu: (g: GiaoDich) => Promise<void>;
   onXoa?: (id: string) => Promise<void>;
   onLuuMau?: (g: GiaoDich) => void;
+  /** Công nợ ứng của cả sổ — để chọn khoản mà dòng này trả / hoàn */
+  khoanUng?: KhoanUng[];
   onDong: () => void;
 }
 
@@ -29,7 +32,7 @@ const trong = (): GiaoDich => ({
   nhom: 'Khác',
 });
 
-export function FormGiaoDich({ ban, macDinh, tenMau, onLuu, onXoa, onLuuMau, onDong }: Props) {
+export function FormGiaoDich({ ban, macDinh, tenMau, onLuu, onXoa, onLuuMau, khoanUng = [], onDong }: Props) {
   const goc = () => (macDinh ? { ...macDinh, id: taoId() } : trong());
   const [g, setG] = useState<GiaoDich>(ban ?? goc());
   const [tienChu, setTienChu] = useState(() => {
@@ -39,7 +42,7 @@ export function FormGiaoDich({ ban, macDinh, tenMau, onLuu, onXoa, onLuuMau, onD
   const [loi, setLoi] = useState('');
   const [thongBao, setThongBao] = useState('');
   const [dangLuu, setDangLuu] = useState(false);
-  const [moRong, setMoRong] = useState(!!ban);
+  const [moRong, setMoRong] = useState(!!ban || !!macDinh?.hoanCho);
   const oTien = useRef<HTMLInputElement>(null);
   const oNoiDung = useRef<HTMLInputElement>(null);
 
@@ -52,7 +55,18 @@ export function FormGiaoDich({ ban, macDinh, tenMau, onLuu, onXoa, onLuuMau, onD
   const dsNhom = g.loai === 'thu' ? NHOM_THU : NHOM_CHI;
   const doi = <K extends keyof GiaoDich>(k: K, v: GiaoDich[K]) => setG((x) => ({ ...x, [k]: v }));
   const doiLoai = (l: Loai) =>
-    setG((x) => ({ ...x, loai: l, nhom: (l === 'thu' ? NHOM_THU : NHOM_CHI).includes(x.nhom) ? x.nhom : 'Khác' }));
+    setG((x) => ({ ...x, loai: l, hoanCho: undefined, nhom: (l === 'thu' ? NHOM_THU : NHOM_CHI).includes(x.nhom) ? x.nhom : 'Khác' }));
+
+  // Trả / hoàn ứng: chi trả cho khoản người khác ứng cho phòng, thu hoàn cho khoản phòng đã ứng ra
+  const coTheTra = !!g.hoanCho || (g.loai === 'chi' ? g.nhom === NHOM_CHI_UNG : g.nhom === NHOM_HOAN);
+  const dsTra = khoanUng.filter(
+    (k) => k.g.id === g.hoanCho || (k.conLai > 0 && k.g.id !== g.id && k.chieu === (g.loai === 'chi' ? 'phong_no' : 'no_phong')),
+  );
+  const chonTra = (id: string) => {
+    const k = khoanUng.find((x) => x.g.id === id);
+    setG((x) => ({ ...x, hoanCho: id || undefined, doiTuong: x.doiTuong || k?.g.doiTuong || '' }));
+    if (k && !docTien(tienChu)) setTienChu(dinhDangTien(k.conLai));
+  };
 
   function kiemTra(): GiaoDich | null {
     const soTien = docTien(tienChu);
@@ -205,9 +219,24 @@ export function FormGiaoDich({ ban, macDinh, tenMau, onLuu, onXoa, onLuuMau, onD
               Ghi chú
               <input value={g.ghiChu} onChange={(e) => doi('ghiChu', e.target.value)} />
             </label>
+            {coTheTra && (
+              <label className="rong">
+                {g.loai === 'chi' ? 'Trả cho khoản ứng' : 'Hoàn cho khoản ứng'}
+                <select value={g.hoanCho ?? ''} onChange={(e) => chonTra(e.target.value)}>
+                  <option value="">
+                    {g.loai === 'chi' ? '— Không: đây là khoản phòng ứng ra —' : '— Không gắn khoản ứng nào —'}
+                  </option>
+                  {dsTra.map((k) => (
+                    <option key={k.g.id} value={k.g.id}>
+                      {dinhDangNgay(k.g.ngay)} · {k.g.noiDung} · còn {dinhDangTien(k.conLai)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="o-chon rong">
               <input type="checkbox" checked={g.daHoan} onChange={(e) => doi('daHoan', e.target.checked)} />
-              Đã hoàn
+              {chieuUng(g) ? 'Đã trả / hoàn xong (không cần ghi dòng trả)' : 'Đã hoàn'}
             </label>
           </>
         )}
@@ -236,7 +265,7 @@ export function FormGiaoDich({ ban, macDinh, tenMau, onLuu, onXoa, onLuuMau, onD
             </button>
           )}
           <span style={{ flex: 1 }} />
-          {!ban && (
+          {!ban && !macDinh?.hoanCho && (
             <button type="button" disabled={dangLuu} onClick={() => luu(true)}>
               Lưu + tiếp
             </button>

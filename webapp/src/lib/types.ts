@@ -16,6 +16,8 @@ export interface GiaoDich {
   nhom: string;
   /** Dòng trong file Excel gốc, ví dụ "Chi!17". Bản ghi tạo mới để trống. */
   nguon?: string;
+  /** Dòng này trả / hoàn lại khoản ứng có id này (xem cong_no.ts). */
+  hoanCho?: string;
   capNhat?: number;
 }
 
@@ -28,6 +30,12 @@ export const NHOM_THU = [
   'Góp quỹ, bàn giao',
   'Khác',
 ];
+
+/** Thu nhóm này = người ngoài / thành viên ứng tiền cho phòng (phòng phải trả). */
+export const NHOM_THU_UNG = 'Ứng, vay';
+/** Chi nhóm này = phòng ứng tiền cho người (người phải hoàn) — trừ dòng trả ứng (có hoanCho). */
+export const NHOM_CHI_UNG = 'Ứng, vay, trả';
+export const NHOM_HOAN = 'Hoàn ứng, hoàn tiền';
 
 export const NHOM_CHI = [
   'Công tác, làm việc',

@@ -1,4 +1,5 @@
-import type { GiaoDich, Loai } from './types.js';
+import { canhBaoCongNo } from './cong_no.js';
+import { NHOM_THU_UNG, type GiaoDich, type Loai } from './types.js';
 
 export interface BoLoc {
   loai?: Loai | '';
@@ -11,7 +12,12 @@ export interface BoLoc {
 
 export interface DongSo extends GiaoDich {
   ton: number;
+  /** vanDe + cảnh báo cần cả sổ (công nợ ứng, liên kết trả) */
+  canhBao: string[];
 }
+
+/** Khoản nhóm "Khác" từ mức này trở lên thì nhắc xếp nhóm cụ thể */
+export const NGUONG_KHAC = 5_000_000;
 
 const boDau = (s: string) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
@@ -20,17 +26,19 @@ export function sapXep(ds: GiaoDich[]): GiaoDich[] {
   return [...ds].sort(
     (a, b) =>
       (a.ngay ?? '').localeCompare(b.ngay ?? '') ||
-      a.loai.localeCompare(b.loai) ||
+      // Cùng ngày: thu trước chi, để tồn quỹ giữa ngày không âm giả
+      (a.loai === b.loai ? 0 : a.loai === 'thu' ? -1 : 1) ||
       a.id.localeCompare(b.id),
   );
 }
 
 /** Sổ quỹ theo thời gian, kèm tồn quỹ lũy kế sau mỗi dòng (tính trên toàn bộ, trước khi lọc). */
-export function soQuy(ds: GiaoDich[]): DongSo[] {
+export function soQuy(ds: GiaoDich[], homNay = new Date().toLocaleDateString('sv-SE')): DongSo[] {
   let ton = 0;
+  const cbNo = canhBaoCongNo(ds, homNay);
   return sapXep(ds).map((g) => {
     ton += (g.loai === 'thu' ? 1 : -1) * (g.soTien ?? 0);
-    return { ...g, ton };
+    return { ...g, ton, canhBao: [...vanDe(g), ...(cbNo.get(g.id) ?? [])] };
   });
 }
 
@@ -39,8 +47,13 @@ export function vanDe(g: GiaoDich): string[] {
   if (g.soTien == null) v.push('Không có số tiền');
   if (!g.ngay) v.push('Không có ngày');
   if (g.loai === 'chi' && !g.hinhThuc) v.push('Chưa ghi TM/CK');
+  if (g.nhom === 'Khác' && (g.soTien ?? 0) >= NGUONG_KHAC) v.push('Nhóm "Khác" từ 5 triệu — nên xếp nhóm cụ thể');
+  if (g.loai === 'thu' && g.daHoan && g.nhom !== NHOM_THU_UNG) v.push('Khoản thu đánh dấu "Đã hoàn" nhưng không phải tiền ứng');
   return v;
 }
+
+/** Cảnh báo của một dòng: đủ (kể cả công nợ) nếu dòng lấy từ soQuy, không thì chỉ vanDe. */
+export const canhBao = (g: GiaoDich): string[] => ('canhBao' in g ? (g as DongSo).canhBao : vanDe(g));
 
 export function loc<T extends GiaoDich>(ds: T[], b: BoLoc): T[] {
   const tk = b.tuKhoa ? boDau(b.tuKhoa.trim()) : '';
@@ -49,7 +62,7 @@ export function loc<T extends GiaoDich>(ds: T[], b: BoLoc): T[] {
     if (b.nhom && g.nhom !== b.nhom) return false;
     if (b.nam && g.ngay?.slice(0, 4) !== b.nam) return false;
     if (b.thang && g.ngay?.slice(5, 7) !== b.thang) return false;
-    if (b.chiCanKiemTra && vanDe(g).length === 0) return false;
+    if (b.chiCanKiemTra && canhBao(g).length === 0) return false;
     if (tk && !boDau(`${g.noiDung} ${g.doiTuong} ${g.ghiChu}`).includes(tk)) return false;
     return true;
   });
@@ -161,6 +174,7 @@ export function docJson(raw: unknown): GiaoDich[] {
       hinhThuc: o.hinhThuc === 'TM' || o.hinhThuc === 'CK' ? o.hinhThuc : '',
       nhom: s(o.nhom) || 'Khác',
       nguon: s(o.nguon) || undefined,
+      hoanCho: s(o.hoanCho) || undefined,
     };
   });
 }
