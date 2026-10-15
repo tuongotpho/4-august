@@ -20,6 +20,7 @@ import { NHOM_CHI, NHOM_THU, type GiaoDich } from '../lib/types.js';
 import { apMau, MAU_MAC_DINH, mauTuGiaoDich, ngayTruoc, type MauNhap } from '../lib/mau_nhap.js';
 import { ChonMau } from './ChonMau.js';
 import { FormGiaoDich } from './FormGiaoDich.js';
+import { KetNoiAI } from './KetNoiAI.js';
 import { ThongKe } from './ThongKe.js';
 
 export function App() {
@@ -57,6 +58,7 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
   /** Form đang mở: sửa một giao dịch, hoặc thêm mới (theo mẫu hoặc trống). */
   const [form, setForm] = useState<{ ban?: GiaoDich; mau?: MauNhap | null } | null>(null);
   const [moChonMau, setMoChonMau] = useState(false);
+  const [moAI, setMoAI] = useState(false);
   const [mauRieng, setMauRieng] = useState<MauNhap[] | null>(null);
   const dsMau = mauRieng ?? MAU_MAC_DINH;
   const fileRef = useRef<HTMLInputElement>(null);
@@ -111,7 +113,8 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
         <div className="tai-khoan">
           {user ? (
             <>
-              <span className="nho">{user.email}</span>
+              {store.ai && <button onClick={() => setMoAI(true)}>Kết nối AI</button>}
+              <span className="nho an-dt">{user.email}</span>
               <button onClick={onDangXuat}>Đăng xuất</button>
             </>
           ) : (
@@ -229,6 +232,8 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
       <button className="nut-noi" aria-label="Thêm giao dịch" onClick={() => setMoChonMau(true)}>
         +
       </button>
+
+      {moAI && store.ai && <KetNoiAI ai={store.ai} onDong={() => setMoAI(false)} />}
 
       {moChonMau && (
         <ChonMau

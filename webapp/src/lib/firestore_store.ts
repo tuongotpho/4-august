@@ -4,13 +4,16 @@ import {
   deleteField,
   doc,
   getDocs,
+  limit,
   onSnapshot,
+  orderBy,
+  query,
   setDoc,
   writeBatch,
   type Firestore,
 } from 'firebase/firestore';
 import type { MauNhap } from './mau_nhap.js';
-import type { DataStore } from './store.js';
+import type { DataStore, NhatKyAI, PhienAI } from './store.js';
 import type { GiaoDich } from './types.js';
 
 /** Dữ liệu ở users/{uid}/giao_dich/{id} — chỉ chủ tài khoản đọc/ghi (xem firestore.rules). */
@@ -19,6 +22,35 @@ export class FirestoreStore implements DataStore {
     private db: Firestore,
     private uid: string,
   ) {}
+
+  private nhanh(ten: string) {
+    return collection(this.db, 'users', this.uid, ten);
+  }
+
+  /** Phiên AI do máy chủ MCP tạo (users/{uid}/phienAI) — xoá = thu hồi; nhật ký ở users/{uid}/nhatKyAI */
+  ai = {
+    theoDoiPhien: (cb: (ds: PhienAI[]) => void) =>
+      onSnapshot(this.nhanh('phienAI'), (snap) =>
+        cb(
+          snap.docs
+            .map((d) => {
+              const x = d.data();
+              return { id: d.id, tenMay: x.tenMay ?? '', ungDung: x.ungDung ?? '', noiNhan: x.noiNhan ?? '', taoLuc: x.taoLuc?.toDate?.() ?? null };
+            })
+            .sort((a, b) => (b.taoLuc?.getTime() ?? 0) - (a.taoLuc?.getTime() ?? 0)),
+        ),
+      ),
+    thuHoi: (id: string) => deleteDoc(doc(this.nhanh('phienAI'), id)),
+    theoDoiNhatKy: (cb: (ds: NhatKyAI[]) => void) =>
+      onSnapshot(query(this.nhanh('nhatKyAI'), orderBy('luc', 'desc'), limit(30)), (snap) =>
+        cb(
+          snap.docs.map((d) => {
+            const x = d.data();
+            return { id: d.id, luc: x.luc?.toDate?.() ?? null, tenMay: x.tenMay ?? '', congCu: x.congCu ?? '', moTa: x.moTa ?? '' };
+          }),
+        ),
+      ),
+  };
 
   private col() {
     return collection(this.db, 'users', this.uid, 'giao_dich');

@@ -43,6 +43,22 @@ Nút **+** tròn góc dưới → bảng **mẫu nhập** (Sinh nhật, Hoa sinh
 
 Thêm mẫu riêng: điền form rồi bấm **☆ Làm mẫu**. Sửa mẫu (đổi tên, xóa, sắp xếp, khôi phục mặc định) trong bảng mẫu → **✎ Sửa mẫu**. Mẫu lưu theo tài khoản nên dùng chung giữa máy tính và điện thoại.
 
-Quy tắc Firestore: `cd webapp && firebase deploy --only firestore` (firebase.json chỉ trỏ database `quyphong`). **Không** dùng `--only firestore:rules`: với database có tên, lệnh đó báo xong nhưng không tải quy tắc lên.
+Quy tắc Firestore: `cd webapp && npm run deploy:rules` (= `firebase deploy --only firestore:quyphong`, chỉ đụng database `quyphong`). **Không** dùng `--only firestore:rules`: với database có tên, lệnh đó báo xong nhưng không tải quy tắc lên.
 
-Triển khai: Vercel, *Root Directory* = `webapp`, thêm các biến `VITE_FIREBASE_*`.
+Triển khai: Vercel (dự án `quyphong`, *Root Directory* = `webapp`), push `main` là tự triển khai. Biến môi trường: `VITE_FIREBASE_*` và khoá bí mật `QUY_MCP_KHOA` (≥ 32 ký tự, loại sensitive; đổi khoá = mọi máy AI phải kết nối lại).
+
+## 3. Kết nối AI (MCP)
+
+Cho Claude xem sổ quỹ và ghi thu / chi bằng lời ("chi sinh nhật sếp Nam 3 triệu tiền mặt"). Cùng cách làm với app hoadon: máy chủ chạy trên Vercel (`webapp/api/mcp.ts` → `webapp/mcp/web.ts`), dùng **quyền tài khoản Google của chính người dùng** (Firestore REST), không giữ chìa khoá tổng.
+
+- Địa chỉ: `https://<tên miền Vercel>/mcp` — xem và chép trong web app, nút **Kết nối AI**.
+- **claude.ai / app Claude điện thoại:** Cài đặt → Connectors → Add custom connector → dán địa chỉ.
+- **Claude Code:** `claude mcp add --transport http quyphong https://<tên miền>/mcp`, rồi `/mcp` → quyphong → Authenticate.
+- Công cụ: `tong_quan`, `danh_sach_giao_dich`, `tong_hop`, `danh_sach_mau`, `them_giao_dich` (theo mẫu, chặn nghi trùng), `sua_giao_dich`, `xoa_giao_dich` (phải xác nhận đúng nội dung).
+- Mỗi máy được cho phép là một phiên ở `users/{uid}/phienAI` — thu hồi trong **Kết nối AI**; mỗi lần AI ghi / xoá có nhật ký ở `users/{uid}/nhatKyAI`.
+- Code trong `webapp/mcp/` dùng chung `webapp/src/lib` → import phải có đuôi `.js` (Vercel chạy Node ESM).
+
+```
+npm run test:emu   # emulator: FirestoreStore + vòng đầy đủ AI ↔ web app (OAuth, công cụ, thu hồi)
+npm run mcp:web    # chạy thử máy chủ trên máy: http://localhost:8789/mcp (⚠️ dữ liệu thật)
+```
