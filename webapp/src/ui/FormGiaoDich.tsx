@@ -1,120 +1,221 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { nhanTien, ngayTruoc, TIEN_NHANH } from '../lib/mau_nhap.js';
 import { taoId } from '../lib/store.js';
 import { dinhDangTien, docTien } from '../lib/tinh_toan.js';
 import { NHOM_CHI, NHOM_THU, type GiaoDich, type Loai } from '../lib/types.js';
 
 interface Props {
+  /** Giao dịch đang sửa (null = thêm mới). */
   ban?: GiaoDich | null;
+  /** Giá trị điền sẵn khi thêm mới (từ mẫu). */
+  macDinh?: GiaoDich;
+  tenMau?: string;
   onLuu: (g: GiaoDich) => Promise<void>;
   onXoa?: (id: string) => Promise<void>;
+  onLuuMau?: (g: GiaoDich) => void;
   onDong: () => void;
 }
 
-const homNay = () => new Date().toLocaleDateString('sv-SE'); // yyyy-mm-dd theo giờ máy
+const trong = (): GiaoDich => ({
+  id: taoId(),
+  loai: 'chi',
+  ngay: ngayTruoc(0),
+  soTien: null,
+  noiDung: '',
+  doiTuong: '',
+  ghiChu: '',
+  daHoan: false,
+  hinhThuc: 'CK',
+  nhom: 'Khác',
+});
 
-export function FormGiaoDich({ ban, onLuu, onXoa, onDong }: Props) {
-  const [g, setG] = useState<GiaoDich>(
-    ban ?? {
-      id: taoId(),
-      loai: 'chi',
-      ngay: homNay(),
-      soTien: null,
-      noiDung: '',
-      doiTuong: '',
-      ghiChu: '',
-      daHoan: false,
-      hinhThuc: 'CK',
-      nhom: 'Khác',
-    },
-  );
-  const [tienChu, setTienChu] = useState(ban?.soTien != null ? dinhDangTien(ban.soTien) : '');
+export function FormGiaoDich({ ban, macDinh, tenMau, onLuu, onXoa, onLuuMau, onDong }: Props) {
+  const goc = () => (macDinh ? { ...macDinh, id: taoId() } : trong());
+  const [g, setG] = useState<GiaoDich>(ban ?? goc());
+  const [tienChu, setTienChu] = useState(() => {
+    const n = ban?.soTien ?? macDinh?.soTien;
+    return n != null ? dinhDangTien(n) : '';
+  });
   const [loi, setLoi] = useState('');
+  const [thongBao, setThongBao] = useState('');
   const [dangLuu, setDangLuu] = useState(false);
+  const [moRong, setMoRong] = useState(!!ban);
+  const oTien = useRef<HTMLInputElement>(null);
+  const oNoiDung = useRef<HTMLInputElement>(null);
+
+  // Từ mẫu: con trỏ vào ô tiền (bàn phím số bật lên ngay). Nhập trống: vào nội dung.
+  useEffect(() => {
+    if (ban) return;
+    (macDinh && macDinh.soTien == null ? oTien : oNoiDung).current?.focus();
+  }, []);
 
   const dsNhom = g.loai === 'thu' ? NHOM_THU : NHOM_CHI;
   const doi = <K extends keyof GiaoDich>(k: K, v: GiaoDich[K]) => setG((x) => ({ ...x, [k]: v }));
-
   const doiLoai = (l: Loai) =>
     setG((x) => ({ ...x, loai: l, nhom: (l === 'thu' ? NHOM_THU : NHOM_CHI).includes(x.nhom) ? x.nhom : 'Khác' }));
 
-  async function gui(e: React.FormEvent) {
-    e.preventDefault();
+  function kiemTra(): GiaoDich | null {
     const soTien = docTien(tienChu);
-    if (!g.noiDung.trim()) return setLoi('Nhập nội dung');
-    if (!g.ngay) return setLoi('Chọn ngày');
-    if (tienChu.trim() && soTien == null) return setLoi('Số tiền không hợp lệ (ví dụ: 1.500.000 hoặc 1,5tr)');
+    if (tienChu.trim() && soTien == null) return setLoi('Số tiền không hợp lệ (ví dụ: 1.500.000, 1,5tr, 500k)'), null;
+    if (!g.noiDung.trim()) return setLoi('Nhập nội dung'), null;
+    if (!g.ngay) return setLoi('Chọn ngày'), null;
+    setLoi('');
+    return { ...g, noiDung: g.noiDung.trim(), soTien };
+  }
+
+  async function luu(nhapTiep: boolean) {
+    const gd = kiemTra();
+    if (!gd) return;
     setDangLuu(true);
     try {
-      await onLuu({ ...g, noiDung: g.noiDung.trim(), soTien });
-      onDong();
+      await onLuu(gd);
+      if (!nhapTiep) return onDong();
+      // Giữ mẫu, loại, ngày, hình thức; xóa tiền và nội dung riêng để nhập khoản kế tiếp
+      const moi = goc();
+      setG({ ...moi, ngay: gd.ngay, hinhThuc: gd.hinhThuc });
+      setTienChu(moi.soTien != null ? dinhDangTien(moi.soTien) : '');
+      setThongBao(`Đã lưu: ${gd.noiDung} — ${dinhDangTien(gd.soTien)}`);
+      (moi.soTien == null ? oTien : oNoiDung).current?.focus();
     } catch (err) {
       setLoi(String(err));
+    } finally {
       setDangLuu(false);
     }
   }
 
+  const homNay = ngayTruoc(0);
+  const homQua = ngayTruoc(1);
+
   return (
     <div className="phu" onMouseDown={(e) => e.target === e.currentTarget && onDong()}>
-      <form className="hop" onSubmit={gui}>
-        <h2>{ban ? 'Sửa giao dịch' : 'Thêm giao dịch'}</h2>
-        <div className="chon-loai">
-          {(['thu', 'chi'] as const).map((l) => (
+      <form
+        className="hop"
+        onSubmit={(e) => {
+          e.preventDefault();
+          luu(false);
+        }}
+      >
+        <div className="dau-hop rong">
+          <h2>{ban ? 'Sửa giao dịch' : tenMau ? tenMau : 'Thêm giao dịch'}</h2>
+          <button type="button" className="dong" onClick={onDong} aria-label="Đóng">
+            ✕
+          </button>
+        </div>
+
+        <div className="chon-loai rong">
+          {(['chi', 'thu'] as const).map((l) => (
             <button type="button" key={l} className={g.loai === l ? `chon ${l}` : ''} onClick={() => doiLoai(l)}>
               {l === 'thu' ? 'Thu' : 'Chi'}
             </button>
           ))}
         </div>
-        <label>
-          Ngày
-          <input type="date" value={g.ngay ?? ''} onChange={(e) => doi('ngay', e.target.value || null)} />
-        </label>
-        <label>
+
+        <label className="rong o-tien">
           Số tiền (đồng)
           <input
-            inputMode="decimal"
-            placeholder="1.500.000 hoặc 1,5tr"
+            ref={oTien}
+            inputMode="numeric"
+            enterKeyHint="next"
+            placeholder="0"
             value={tienChu}
             onChange={(e) => setTienChu(e.target.value)}
             onBlur={() => {
               const n = docTien(tienChu);
               if (n != null) setTienChu(dinhDangTien(n));
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                oNoiDung.current?.focus();
+              }
+            }}
           />
         </label>
+        <div className="chip-hang rong">
+          {TIEN_NHANH.map((n) => (
+            <button type="button" key={n} className={docTien(tienChu) === n ? 'chip chon' : 'chip'} onClick={() => setTienChu(dinhDangTien(n))}>
+              {nhanTien(n)}
+            </button>
+          ))}
+        </div>
+
         <label className="rong">
           Nội dung
-          <input value={g.noiDung} onChange={(e) => doi('noiDung', e.target.value)} autoFocus />
+          <input
+            ref={oNoiDung}
+            value={g.noiDung}
+            enterKeyHint="done"
+            onChange={(e) => doi('noiDung', e.target.value)}
+            onFocus={(e) => {
+              // Con trỏ cuối câu để gõ tiếp sau phần mẫu điền sẵn
+              const el = e.target;
+              requestAnimationFrame(() => el.setSelectionRange(el.value.length, el.value.length));
+            }}
+          />
         </label>
-        <label>
-          Nhóm
-          <select value={g.nhom} onChange={(e) => doi('nhom', e.target.value)}>
-            {dsNhom.map((n) => (
-              <option key={n}>{n}</option>
+
+        <div className="rong">
+          <div className="nhan-nho">Ngày</div>
+          <div className="chip-hang">
+            <button type="button" className={g.ngay === homNay ? 'chip chon' : 'chip'} onClick={() => doi('ngay', homNay)}>
+              Hôm nay
+            </button>
+            <button type="button" className={g.ngay === homQua ? 'chip chon' : 'chip'} onClick={() => doi('ngay', homQua)}>
+              Hôm qua
+            </button>
+            <input type="date" className="chip-ngay" value={g.ngay ?? ''} onChange={(e) => doi('ngay', e.target.value || null)} />
+          </div>
+        </div>
+
+        <div className="rong">
+          <div className="nhan-nho">Hình thức</div>
+          <div className="chip-hang">
+            {(
+              [
+                ['CK', 'Chuyển khoản'],
+                ['TM', 'Tiền mặt'],
+              ] as const
+            ).map(([v, t]) => (
+              <button type="button" key={v} className={g.hinhThuc === v ? 'chip chon' : 'chip'} onClick={() => doi('hinhThuc', g.hinhThuc === v ? '' : v)}>
+                {t}
+              </button>
             ))}
-          </select>
-        </label>
-        <label>
-          {g.loai === 'thu' ? 'Đơn vị / người nộp' : 'Người nhận'}
-          <input value={g.doiTuong} onChange={(e) => doi('doiTuong', e.target.value)} />
-        </label>
-        <label>
-          Hình thức
-          <select value={g.hinhThuc} onChange={(e) => doi('hinhThuc', e.target.value as GiaoDich['hinhThuc'])}>
-            <option value="">—</option>
-            <option value="CK">Chuyển khoản</option>
-            <option value="TM">Tiền mặt</option>
-          </select>
-        </label>
-        <label className="o-chon">
-          <input type="checkbox" checked={g.daHoan} onChange={(e) => doi('daHoan', e.target.checked)} />
-          Đã hoàn
-        </label>
-        <label className="rong">
-          Ghi chú
-          <input value={g.ghiChu} onChange={(e) => doi('ghiChu', e.target.value)} />
-        </label>
+          </div>
+        </div>
+
+        {!moRong ? (
+          <button type="button" className="lien-ket rong" onClick={() => setMoRong(true)}>
+            {g.nhom} · {g.doiTuong || 'thêm người, ghi chú…'} ▾
+          </button>
+        ) : (
+          <>
+            <label>
+              Nhóm
+              <select value={g.nhom} onChange={(e) => doi('nhom', e.target.value)}>
+                {dsNhom.map((n) => (
+                  <option key={n}>{n}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {g.loai === 'thu' ? 'Đơn vị / người nộp' : 'Người nhận'}
+              <input value={g.doiTuong} onChange={(e) => doi('doiTuong', e.target.value)} />
+            </label>
+            <label className="rong">
+              Ghi chú
+              <input value={g.ghiChu} onChange={(e) => doi('ghiChu', e.target.value)} />
+            </label>
+            <label className="o-chon rong">
+              <input type="checkbox" checked={g.daHoan} onChange={(e) => doi('daHoan', e.target.checked)} />
+              Đã hoàn
+            </label>
+          </>
+        )}
+
         {g.nguon && <p className="nho rong">Dòng gốc trong Excel: {g.nguon}</p>}
         {loi && <p className="loi rong">{loi}</p>}
+        {thongBao && !loi && <p className="da-luu rong">✓ {thongBao}</p>}
+
         <div className="nut-hang rong">
           {ban && onXoa && (
             <button
@@ -129,10 +230,17 @@ export function FormGiaoDich({ ban, onLuu, onXoa, onDong }: Props) {
               Xóa
             </button>
           )}
+          {!ban && onLuuMau && (
+            <button type="button" title="Lưu các ô đang điền thành một mẫu nhập nhanh" onClick={() => onLuuMau({ ...g, soTien: docTien(tienChu) })}>
+              ☆ Làm mẫu
+            </button>
+          )}
           <span style={{ flex: 1 }} />
-          <button type="button" onClick={onDong}>
-            Hủy
-          </button>
+          {!ban && (
+            <button type="button" disabled={dangLuu} onClick={() => luu(true)}>
+              Lưu + tiếp
+            </button>
+          )}
           <button type="submit" className="chinh" disabled={dangLuu}>
             {dangLuu ? 'Đang lưu…' : 'Lưu'}
           </button>

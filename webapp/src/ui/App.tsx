@@ -17,6 +17,8 @@ import {
   type BoLoc,
 } from '../lib/tinh_toan.js';
 import { NHOM_CHI, NHOM_THU, type GiaoDich } from '../lib/types.js';
+import { apMau, MAU_MAC_DINH, mauTuGiaoDich, ngayTruoc, type MauNhap } from '../lib/mau_nhap.js';
+import { ChonMau } from './ChonMau.js';
 import { FormGiaoDich } from './FormGiaoDich.js';
 import { ThongKe } from './ThongKe.js';
 
@@ -52,10 +54,21 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
   const [loi, setLoi] = useState('');
   const [tab, setTab] = useState<Tab>('so');
   const [boLoc, setBoLoc] = useState<BoLoc>({});
-  const [dangSua, setDangSua] = useState<GiaoDich | null | 'moi'>(null);
+  /** Form đang mở: sửa một giao dịch, hoặc thêm mới (theo mẫu hoặc trống). */
+  const [form, setForm] = useState<{ ban?: GiaoDich; mau?: MauNhap | null } | null>(null);
+  const [moChonMau, setMoChonMau] = useState(false);
+  const [mauRieng, setMauRieng] = useState<MauNhap[] | null>(null);
+  const dsMau = mauRieng ?? MAU_MAC_DINH;
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => store.theoDoi(setDs, (e) => setLoi(e.message)), [store]);
+  useEffect(() => store.theoDoiMau(setMauRieng), [store]);
+
+  const themMau = (g: GiaoDich) => {
+    const ten = prompt('Tên mẫu (hiện trên nút)', g.noiDung.trim());
+    if (ten == null) return;
+    store.luuMau([...dsMau, mauTuGiaoDich(g, ten)]).then(() => alert(`Đã thêm mẫu "${ten || g.noiDung}"`));
+  };
 
   const so = useMemo(() => soQuy(ds ?? []), [ds]);
   const daLoc = useMemo(() => loc(so, boLoc), [so, boLoc]);
@@ -136,7 +149,7 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
         <button onClick={xuat} disabled={!daLoc.length}>
           Xuất Excel (CSV)
         </button>
-        <button className="chinh" onClick={() => setDangSua('moi')}>
+        <button className="chinh an-dt" onClick={() => setMoChonMau(true)}>
           + Thêm
         </button>
         <input
@@ -206,19 +219,38 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
           </div>
 
           {tab === 'so' ? (
-            <BangSo ds={daLoc} onChon={setDangSua} />
+            <BangSo ds={daLoc} onChon={(g) => setForm({ ban: g })} />
           ) : (
             <ThongKe ds={daLoc} />
           )}
         </>
       )}
 
-      {dangSua && (
+      <button className="nut-noi" aria-label="Thêm giao dịch" onClick={() => setMoChonMau(true)}>
+        +
+      </button>
+
+      {moChonMau && (
+        <ChonMau
+          dsMau={dsMau}
+          onChon={(m) => {
+            setMoChonMau(false);
+            setForm({ mau: m });
+          }}
+          onLuuMau={(x) => store.luuMau(x)}
+          onDong={() => setMoChonMau(false)}
+        />
+      )}
+
+      {form && (
         <FormGiaoDich
-          ban={dangSua === 'moi' ? null : dangSua}
+          ban={form.ban ?? null}
+          macDinh={form.mau ? apMau(form.mau, ngayTruoc(0)) : undefined}
+          tenMau={form.mau ? `${form.mau.bieuTuong} ${form.mau.ten}` : undefined}
           onLuu={(g) => store.luu(g)}
           onXoa={(id) => store.xoa(id)}
-          onDong={() => setDangSua(null)}
+          onLuuMau={themMau}
+          onDong={() => setForm(null)}
         />
       )}
     </div>

@@ -1,6 +1,7 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDocs,
   onSnapshot,
@@ -8,6 +9,7 @@ import {
   writeBatch,
   type Firestore,
 } from 'firebase/firestore';
+import type { MauNhap } from './mau_nhap.js';
 import type { DataStore } from './store.js';
 import type { GiaoDich } from './types.js';
 
@@ -58,5 +60,21 @@ export class FirestoreStore implements DataStore {
       viec.slice(i, i + 450).forEach((f) => f(b));
       await b.commit();
     }
+  }
+
+  /** Mẫu nhập để chung một tài liệu: users/{uid}/cai_dat/mau_nhap { ds: [...] } */
+  private docMau() {
+    return doc(this.db, 'users', this.uid, 'cai_dat', 'mau_nhap');
+  }
+
+  theoDoiMau(cb: (ds: MauNhap[] | null) => void) {
+    return onSnapshot(this.docMau(), (snap) => {
+      const ds = snap.data()?.ds;
+      cb(Array.isArray(ds) ? ds : null);
+    });
+  }
+
+  async luuMau(ds: MauNhap[] | null) {
+    await setDoc(this.docMau(), { ds: ds ?? deleteField() }, { merge: true });
   }
 }

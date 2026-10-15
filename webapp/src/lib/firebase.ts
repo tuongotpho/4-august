@@ -20,8 +20,10 @@ export function firebase() {
     });
     if (env.VITE_FIREBASE_EMULATOR) {
       connectAuthEmulator(getAuth(app), 'http://127.0.0.1:9099', { disableWarnings: true });
-      connectFirestoreEmulator(getFirestore(app), '127.0.0.1', 8080);
+      connectFirestoreEmulator(getFirestore(app, env.VITE_FIREBASE_DATABASE_ID || '(default)'), '127.0.0.1', 8080);
     }
   }
-  return { auth: getAuth(app), db: getFirestore(app) };
+  // Project dùng chung nhiều app → quỹ phòng nằm ở database riêng (VITE_FIREBASE_DATABASE_ID, vd. "quyphong")
+  const dbId = env.VITE_FIREBASE_DATABASE_ID || '(default)';
+  return { auth: getAuth(app), db: getFirestore(app, dbId) };
 }
