@@ -43,6 +43,6 @@ Nút **+** tròn góc dưới → bảng **mẫu nhập** (Sinh nhật, Hoa sinh
 
 Thêm mẫu riêng: điền form rồi bấm **☆ Làm mẫu**. Sửa mẫu (đổi tên, xóa, sắp xếp, khôi phục mặc định) trong bảng mẫu → **✎ Sửa mẫu**. Mẫu lưu theo tài khoản nên dùng chung giữa máy tính và điện thoại.
 
-Quy tắc Firestore: `cd webapp && firebase deploy --only firestore:rules` (firebase.json chỉ trỏ database `quyphong`).
+Quy tắc Firestore: `cd webapp && firebase deploy --only firestore` (firebase.json chỉ trỏ database `quyphong`). **Không** dùng `--only firestore:rules`: với database có tên, lệnh đó báo xong nhưng không tải quy tắc lên.
 
 Triển khai: Vercel, *Root Directory* = `webapp`, thêm các biến `VITE_FIREBASE_*`.
