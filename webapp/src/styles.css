@@ -1,0 +1,129 @@
+:root {
+  --nen: #f5f6f8;
+  --the: #fff;
+  --chu: #1d2330;
+  --phu: #6b7280;
+  --vien: #e3e6eb;
+  --chinh: #1f4e78;
+  --thu: #15803d;
+  --chi: #b91c1c;
+  --am: #c2410c;
+  --hoan: #e0f2fe;
+  --canh-bao: #fef3c7;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --nen: #12151b;
+    --the: #1b2029;
+    --chu: #e6e8ec;
+    --phu: #9aa3b2;
+    --vien: #2c333f;
+    --chinh: #5b9bd5;
+    --thu: #4ade80;
+    --chi: #f87171;
+    --am: #fb923c;
+    --hoan: #0c3b57;
+    --canh-bao: #5b4307;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--nen);
+  color: var(--chu);
+  font: 14px/1.45 system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+button, input, select {
+  font: inherit;
+  color: inherit;
+  background: var(--the);
+  border: 1px solid var(--vien);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+button { cursor: pointer; }
+button:disabled { opacity: .5; cursor: default; }
+button.chinh { background: var(--chinh); border-color: var(--chinh); color: #fff; }
+button.nguy { color: var(--chi); border-color: var(--chi); }
+code { font-size: 12px; }
+
+.trang { max-width: 1200px; margin: 0 auto; padding: 16px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+h1 { font-size: 20px; margin: 0; }
+.tai-khoan { display: flex; gap: 8px; align-items: center; }
+.giua { min-height: 60vh; display: flex; flex-direction: column; gap: 16px; align-items: center; justify-content: center; }
+.nho { font-size: 12px; color: var(--phu); }
+.loi { color: var(--chi); }
+.thu { color: var(--thu); }
+.chi { color: var(--chi); }
+.am { color: var(--am); }
+
+.tong-hop { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+.o-so { background: var(--the); border: 1px solid var(--vien); border-radius: 10px; padding: 12px 16px; }
+.o-so span { display: block; color: var(--phu); font-size: 12px; }
+.o-so b { font-size: 22px; font-variant-numeric: tabular-nums; }
+
+.the-tab, .bo-loc { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.the-tab > button.chon { border-color: var(--chinh); color: var(--chinh); font-weight: 600; }
+.bo-loc input[type=search] { flex: 1 1 220px; }
+.o-chon { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+
+.cuon { overflow-x: auto; }
+.bang { width: 100%; border-collapse: collapse; background: var(--the); border: 1px solid var(--vien); border-radius: 10px; }
+.bang th, .bang td { padding: 7px 10px; border-bottom: 1px solid var(--vien); text-align: left; vertical-align: top; }
+.bang th { position: sticky; top: 0; background: var(--the); font-size: 12px; color: var(--phu); font-weight: 600; }
+.so-quy tbody tr { cursor: pointer; }
+.so-quy tbody tr:hover { background: color-mix(in srgb, var(--chinh) 8%, transparent); }
+.so { text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ngay { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.nhan-tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-right: 4px; white-space: nowrap; }
+.nhan-tag.hoan { background: var(--hoan); }
+.nhan-tag.canh-bao { background: var(--canh-bao); font-weight: 700; }
+.trong { text-align: center; padding: 48px 16px; background: var(--the); border: 1px dashed var(--vien); border-radius: 10px; }
+
+/* Form */
+.phu { position: fixed; inset: 0; background: rgb(0 0 0 / .4); display: flex; align-items: flex-start; justify-content: center; padding: 5vh 16px; overflow: auto; z-index: 10; }
+.hop { background: var(--the); border-radius: 12px; padding: 20px; width: 100%; max-width: 560px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.hop h2 { grid-column: 1 / -1; margin: 0; font-size: 18px; }
+.hop label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--phu); }
+.hop label input, .hop label select { color: var(--chu); font-size: 14px; }
+.hop label.o-chon { flex-direction: row; align-self: end; color: var(--chu); font-size: 14px; }
+.rong { grid-column: 1 / -1; }
+.chon-loai { grid-column: 1 / -1; display: flex; gap: 8px; }
+.chon-loai button { flex: 1; }
+.chon-loai .chon.thu { background: var(--thu); color: #fff; border-color: var(--thu); }
+.chon-loai .chon.chi { background: var(--chi); color: #fff; border-color: var(--chi); }
+.nut-hang { display: flex; gap: 8px; }
+
+/* Thống kê */
+.thong-ke { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.thong-ke .the:first-child, .thong-ke .the:last-child { grid-column: 1 / -1; }
+.the { background: var(--the); border: 1px solid var(--vien); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.the h3 { margin: 0 0 8px; font-size: 15px; }
+.chu-giai { font-size: 12px; color: var(--phu); display: flex; gap: 6px; align-items: center; }
+.chu-giai .o { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.chu-giai .o.thu, .thanh.thu { background: var(--thu); }
+.chu-giai .o.chi, .thanh.chi { background: var(--chi); }
+.bieu-do { display: flex; gap: 4px; height: 200px; align-items: stretch; overflow-x: auto; padding-top: 8px; }
+.cot { flex: 1 0 24px; display: flex; flex-direction: column; }
+.cap { flex: 1; display: flex; align-items: flex-end; gap: 2px; justify-content: center; }
+.cap .thanh { width: 9px; border-radius: 2px 2px 0 0; min-height: 1px; }
+.cot .nhan { font-size: 10px; color: var(--phu); text-align: center; line-height: 1.2; padding-top: 4px; }
+.bang-nhom { width: 100%; border-collapse: collapse; }
+.bang-nhom td { padding: 4px 6px; }
+.thanh-ngang { width: 35%; }
+.thanh-ngang .thanh { height: 10px; border-radius: 3px; opacity: .8; }
+
+@media (max-width: 700px) {
+  .trang { padding: 12px; }
+  .tong-hop { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tong-hop .o-so:first-child { grid-column: 1 / -1; }
+  .o-so { padding: 8px 12px; }
+  .o-so b { font-size: 17px; }
+  .an-dt { display: none; }
+  .bang th, .bang td { padding: 6px; }
+  .thong-ke { grid-template-columns: 1fr; }
+  .hop { grid-template-columns: 1fr; }
+}
