@@ -55,10 +55,20 @@ beforeAll(async () => {
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Sheet1')
   XLSX.writeFile(wb, path.join(goc, 'excel', 'DANH SÁCH HÓA ĐƠN.xlsx'))
+  // Danh sách DN rủi ro (file Excel giả kiểu "PHỤ LỤC QR HDRR"): nhà cung cấp 0200000002 nằm trong đó
+  fs.mkdirSync(path.join(goc, 'ruiro'))
+  const rr = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(rr, XLSX.utils.aoa_to_sheet([
+    ['DANH SÁCH NGƯỜI NỘP THUẾ KHÔNG HOẠT ĐỘNG TẠI ĐỊA CHỈ ĐÃ ĐĂNG KÝ'],
+    ['STT', 'MST', 'Tên người nộp thuế', 'Số thông báo', 'Trạng thái', 'Ngày chuyển trạng thái'],
+    [1, '0200000002', 'NHÀ CUNG CẤP', '45/TB', 'Không hoạt động tại địa chỉ đăng ký', '01/06/2026'],
+    [2, '0300000009', 'DN KHÁC', '46/TB', '', ''],
+  ]), 'Phụ lục 1')
+  XLSX.writeFile(rr, path.join(goc, 'ruiro', 'T6.2026.xlsx'))
 
   const server = taoMayChu(nguonThuMuc(() => ({
     thuMuc: [{ duongDan: path.join(goc, 'xml'), chi: 'xml' }, { duongDan: path.join(goc, 'excel'), chi: 'excel' }],
-    traVe: [], thuMucXuat: path.join(goc, 'ra'), nguon: 'test',
+    traVe: [], thuMucXuat: path.join(goc, 'ra'), ruiRo: [path.join(goc, 'ruiro')], nguon: 'test',
   })))
   const [a, b] = InMemoryTransport.createLinkedPair()
   client = new Client({ name: 'test', version: '1' })
@@ -74,7 +84,7 @@ describe('Máy chủ MCP khaithue', () => {
   it('khai báo đủ công cụ; chỉ xuat_xml_gtgt được ghi', async () => {
     const { tools } = await client.listTools()
     expect(tools.map((t) => t.name).sort()).toEqual([
-      'chung_tu_nop_tien', 'danh_sach_cong_ty', 'doi_soat', 'doi_tac', 'lap_to_khai_gtgt', 'nap_ho_so', 'so_theo_doi_gtgt', 'tong_quan', 'tra_hoa_don', 'xuat_xml_gtgt',
+      'chung_tu_nop_tien', 'danh_sach_cong_ty', 'doi_soat', 'doi_tac', 'lap_to_khai_gtgt', 'nap_ho_so', 'so_theo_doi_gtgt', 'soi_rui_ro', 'tong_quan', 'tra_hoa_don', 'xuat_xml_gtgt',
     ])
     expect(tools.filter((t) => !t.annotations?.readOnlyHint).map((t) => t.name)).toEqual(['xuat_xml_gtgt'])
   })
@@ -129,5 +139,16 @@ describe('Máy chủ MCP khaithue', () => {
     expect(r.loi).toBe(true)
     expect(r.kq.loi).toContain('Không có công ty MST 0000000000')
     expect((await goi('danh_sach_cong_ty')).kq).toHaveLength(1)
+  })
+
+  it('soi DN rủi ro: bắt đúng nhà cung cấp trong danh sách, bỏ hoá đơn bị thay thế, đưa lên đầu cảnh báo tổng quan', async () => {
+    const { kq } = await goi('soi_rui_ro')
+    expect(kq).toMatchObject({ daCoDanhSach: true, soMstDanhSach: 2, daSoi: { nhaCungCap: 1, khachHang: 2 }, soDoiTacDinh: 1 })
+    expect(kq.doiTac).toEqual([expect.objectContaining({
+      chieu: 'nhà cung cấp', mst: '0200000002', tongThue: 3000000, cacQuy: ['2026-Q2'],
+      hoaDon: [{ so: 'C26TBB-7', ngay: '05/06/2026', quy: '2026-Q2', chuaThue: 30000000, thue: 3000000, lapSauNgayNgungHoatDong: true }],
+    })])
+    const tq = (await goi('tong_quan', { ngay_hom_nay: '2026-07-01' })).kq
+    expect(tq.canhBao[0]).toMatch(/^⛔ LỖI: Nhà cung cấp Nhà Cung Cấp \(MST 0200000002\) nằm trong DANH SÁCH DN RỦI RO/)
   })
 })

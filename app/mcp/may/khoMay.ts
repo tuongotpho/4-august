@@ -11,7 +11,8 @@ import type { ToKhaiDaNop } from '../../src/core/docToKhai.js'
 import type { HoaDon, KyKeKhai } from '../../src/core/types.js'
 import { gopTuMay, khoaKy, khoTrong, moRongHoaDon, type CongTyLuu, type HoaDonGon, type ToKhaiMay } from '../../src/core/kho.js'
 import type { DuLieu } from '../congCu.js'
-import type { FirebaseNguoiDung } from './firebaseRest.js'
+import { LoiFirebase, type FirebaseNguoiDung } from './firebaseRest.js'
+import { giaiNenDs, type DsRuiRo } from '../../src/core/ruiRo.js'
 
 export const maBam = (du: Uint8Array | string) =>
   createHash('sha256').update(typeof du === 'string' ? Buffer.from(du, 'utf8') : du).digest('hex').slice(0, 32)
@@ -43,11 +44,28 @@ export interface DuLieuMay {
   tepHoaDon: Record<string, TepHoaDonMay[]>
   daXuat: Record<string, DaXuatMay[]>
   chungTu: ChungTuMay[]
+  /** Danh sách DN rủi ro nạp ở app hoá đơn đỏ (null = chưa nạp); loiRuiRo = không đọc được */
+  ruiRo?: DsRuiRo | null
+  loiRuiRo?: string
+}
+
+/** Kho file + đường dẫn danh sách DN rủi ro của app hoá đơn đỏ (cùng dự án Firebase, cùng tài khoản) */
+export const KHO_RUI_RO = 'hoadon-npsc'
+export const duongDanRuiRo = (uid: string) => `users/${uid}/ruiRo/ds.json.gz`
+
+export async function taiDsRuiRoMay(fb: FirebaseNguoiDung): Promise<{ ds: DsRuiRo | null; loi?: string }> {
+  try {
+    return { ds: await giaiNenDs(await fb.taiVeTep(duongDanRuiRo(fb.uid), KHO_RUI_RO)) }
+  } catch (e) {
+    if (e instanceof LoiFirebase && e.trangThai === 404) return { ds: null }
+    return { ds: null, loi: (e as Error).message }
+  }
 }
 
 export async function taiDuLieuMay(fb: FirebaseNguoiDung): Promise<DuLieuMay> {
   const uid = fb.uid
   const kq: DuLieuMay = { congTy: [], toKhai: [], tepHoaDon: {}, daXuat: {}, chungTu: [] }
+  const ruiRo = taiDsRuiRoMay(fb)
   const cts = await fb.docBoSuuTap<CongTyLuu>(`nguoiDung/${uid}/congTy`)
   await Promise.all(cts.map(async (c) => {
     kq.congTy.push({ hoSo: c.hoSo, kyNguon: c.kyNguon ?? '', suaTay: !!c.suaTay })
@@ -65,6 +83,9 @@ export async function taiDuLieuMay(fb: FirebaseNguoiDung): Promise<DuLieuMay> {
   // thứ tự ổn định (các bộ sưu tập về song song)
   kq.congTy.sort((a, b) => a.hoSo.mst.localeCompare(b.hoSo.mst))
   kq.toKhai.sort((a, b) => a.id.localeCompare(b.id))
+  const rr = await ruiRo
+  kq.ruiRo = rr.ds
+  if (rr.loi) kq.loiRuiRo = rr.loi
   return kq
 }
 
@@ -80,6 +101,7 @@ export function dungDuLieu(may: DuLieuMay): DuLieu {
   return {
     kho,
     hoaDon,
+    ruiRo: { ds: may.ruiRo ?? null, nguon: `danh sách nạp ở app hoá đơn đỏ (gs://${KHO_RUI_RO})`, ...(may.loiRuiRo ? { loi: may.loiRuiRo } : {}) },
     baoCao: {
       nguon: 'mây (Firebase, database khaithue) — đúng dữ liệu web app đang dùng',
       napLuc: new Date().toISOString(),

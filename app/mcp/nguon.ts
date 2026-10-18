@@ -9,18 +9,21 @@
 //       { "duongDan": "F:/.../Du-lieu-chuan", "chi": "excel" }
 //     ],
 //     "traVe": ["ten-file-to-khai-bi-CQT-tra-ve.xml"],      <- như tích "CQT trả về" trên app
-//     "thuMucXuat": "F:/.../xml-ra"                          <- nơi ghi file XML tờ khai lập ra (mặc định app/.xml-ra)
-//   }
+//     "thuMucXuat": "F:/.../xml-ra",                         <- nơi ghi file XML tờ khai lập ra (mặc định app/.xml-ra)
+//     "ruiRo": ["F:/.../DN-rui-ro"]                          <- file/thư mục danh sách DN rủi ro về hoá đơn (Excel
+//   }                                                           "PHỤ LỤC QR HDRR", hoặc ds.json(.gz) xuất từ app hoá đơn)
 // Hoặc nhanh: biến môi trường KHAITHUE_THU_MUC="thư mục 1;thư mục 2" (quét cả XML lẫn Excel).
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { gunzipSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import * as XLSX from 'xlsx'
 import { docTep, phanLoai, phuSongCuaTep, type TepHoaDon } from '../src/core/excel.js'
 import { datKhongChapNhan, ghiPhuSong, khoTrong, napHoaDon, napTaiLieu } from '../src/core/kho.js'
 import { docTaiLieu } from '../src/core/taiLieu.js'
 import type { HoaDon } from '../src/core/types.js'
+import { docDsRuiRo, gopDsRuiRo, type DsRuiRo } from '../src/core/ruiRo.js'
 import { xuatXmlGTGT, type DuLieu } from './congCu.js'
 import type { NguonMcp } from './mayChu.js'
 
@@ -37,6 +40,8 @@ export interface CauHinh {
   thuMuc: ThuMuc[]
   traVe: string[]
   thuMucXuat: string
+  /** File / thư mục danh sách DN rủi ro về hoá đơn */
+  ruiRo?: string[]
   /** File cấu hình đã đọc (để báo cho người dùng biết sửa ở đâu) */
   nguon: string
 }
@@ -48,6 +53,7 @@ export function docCauHinh(env: NodeJS.ProcessEnv = process.env): CauHinh {
       thuMuc: env.KHAITHUE_THU_MUC.split(';').map((s) => s.trim()).filter(Boolean).map((duongDan) => ({ duongDan })),
       traVe: [],
       thuMucXuat: env.KHAITHUE_THU_MUC_XUAT || macDinhXuat,
+      ruiRo: (env.KHAITHUE_RUI_RO ?? '').split(';').map((s) => s.trim()).filter(Boolean),
       nguon: 'biến môi trường KHAITHUE_THU_MUC',
     }
   }
@@ -55,11 +61,12 @@ export function docCauHinh(env: NodeJS.ProcessEnv = process.env): CauHinh {
   if (!fs.existsSync(file)) {
     throw new Error(`Chưa có cấu hình nguồn dữ liệu. Tạo file ${file} (xem mẫu ở app/mcp/mcp.mau.json) hoặc đặt biến KHAITHUE_THU_MUC.`)
   }
-  const j = JSON.parse(fs.readFileSync(file, 'utf8')) as { thuMuc?: (string | ThuMuc)[]; traVe?: string[]; thuMucXuat?: string }
+  const j = JSON.parse(fs.readFileSync(file, 'utf8')) as { thuMuc?: (string | ThuMuc)[]; traVe?: string[]; thuMucXuat?: string; ruiRo?: string | string[] }
   return {
     thuMuc: (j.thuMuc ?? []).map((t) => (typeof t === 'string' ? { duongDan: t } : t)),
     traVe: j.traVe ?? [],
     thuMucXuat: j.thuMucXuat || macDinhXuat,
+    ruiRo: typeof j.ruiRo === 'string' ? [j.ruiRo] : (j.ruiRo ?? []),
     nguon: file,
   }
 }
@@ -145,7 +152,36 @@ export function napDuLieu(ch: CauHinh): DuLieu {
       })
     }
   }
-  return { kho, hoaDon, baoCao }
+  return { kho, hoaDon, baoCao, ruiRo: napRuiRo(ch.ruiRo ?? [], baoCao.loi) }
+}
+
+/** Đọc các file danh sách DN rủi ro (Excel, hoặc ds.json / ds.json.gz cất từ app hoá đơn), gộp lại */
+export function napRuiRo(duongDan: string[], loi: string[]): NonNullable<DuLieu['ruiRo']> {
+  if (!duongDan.length) return { ds: null, nguon: 'chưa khai mục "ruiRo" (file/thư mục danh sách DN rủi ro) trong cấu hình MCP' }
+  let ds: DsRuiRo | null = null
+  for (const p of duongDan) {
+    if (!fs.existsSync(p)) {
+      loi.push(`Không thấy file/thư mục danh sách DN rủi ro: ${p}`)
+      continue
+    }
+    const files = fs.statSync(p).isDirectory() ? quet(p) : [p]
+    for (const f of files.sort()) {
+      try {
+        if (/\.xls[xm]?$/i.test(f)) {
+          const wb = XLSX.readFile(f)
+          const sheets = wb.SheetNames.map((ten) => ({ ten, rows: XLSX.utils.sheet_to_json<(string | number | null)[]>(wb.Sheets[ten], { header: 1, raw: true, defval: null }) }))
+          ds = gopDsRuiRo(ds, docDsRuiRo(sheets, path.basename(f), fs.statSync(f).mtimeMs))
+        } else if (/\.json(\.gz)?$/i.test(f)) {
+          const b = fs.readFileSync(f)
+          const moi = JSON.parse((b[0] === 0x1f && b[1] === 0x8b ? gunzipSync(b) : b).toString('utf8')) as DsRuiRo
+          ds = gopDsRuiRo(ds, moi)
+        }
+      } catch (e) {
+        loi.push(`${path.basename(f)}: không đọc được danh sách DN rủi ro (${(e as Error).message})`)
+      }
+    }
+  }
+  return { ds, nguon: `thư mục trên máy: ${duongDan.join('; ')}` }
 }
 
 /** Nguồn "thư mục trên máy" cho máy chủ MCP: nạp một lần, gọi nap_ho_so để đọc lại */

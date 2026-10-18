@@ -4,6 +4,72 @@ import { tien } from '../core/nhan'
 import { kyDeDoc, NHOM_NOP, nhomNop, tenTieuMuc } from '../core/taiLieu'
 import type { DoiSoatChieu, DoiSoatQuy, DoiTac, DongDoiTac, DongQuy, NguonQuy, TongQuan as TQ } from '../core/tongQuan'
 import { DanhSachCanhBao } from './chung'
+import type { KetQuaSoi } from '../core/ruiRo'
+
+/** Trạng thái danh sách DN rủi ro (dùng chung với app hoá đơn đỏ) */
+export type TrangThaiRuiRo = 'chuaDangNhap' | 'dangTai' | 'chuaNap' | 'co' | `loi:${string}`
+
+const ngayVN = (ms: number) => new Date(ms).toLocaleDateString('vi-VN')
+
+function SoiRuiRo({ kq, tt }: { kq: KetQuaSoi | null; tt: TrangThaiRuiRo }) {
+  if (tt === 'chuaDangNhap') return <p className="text-slate-500">Đăng nhập Google (trên cùng) để app đọc danh sách DN rủi ro anh đã nạp ở app hoá đơn đỏ.</p>
+  if (tt === 'dangTai') return <p className="text-slate-500">Đang tải danh sách DN rủi ro…</p>
+  if (tt.startsWith('loi:')) return <p className="text-red-700">⚠️ Không đọc được danh sách DN rủi ro: {tt.slice(4)}</p>
+  if (tt === 'chuaNap' || !kq) {
+    return (
+      <p className="text-amber-800">
+        Tài khoản này chưa nạp danh sách DN rủi ro nào. Nạp file Excel "PHỤ LỤC QR HDRR" của cơ quan thuế ở{' '}
+        <a className="underline" href="https://hoadon-npsc.vercel.app" target="_blank" rel="noreferrer">app hoá đơn đỏ</a> → Cài đặt; app này tự đọc dùng chung.
+      </p>
+    )
+  }
+  const moiNhat = kq.cacFile.reduce((m, f) => Math.max(m, f.napLuc), 0)
+  return (
+    <div className="space-y-3 text-sm">
+      <p className="text-slate-600">
+        Đã soi <b>{kq.soNhaCungCap}</b> nhà cung cấp và <b>{kq.soKhachHang}</b> khách hàng (theo hoá đơn còn hiệu lực) với danh sách{' '}
+        <b>{tien(kq.soMstDanhSach)}</b> MST rủi ro — {kq.cacFile.length} file, nạp gần nhất {moiNhat ? ngayVN(moiNhat) : '—'}.
+      </p>
+      {kq.doiTac.length === 0 ? (
+        <p className="text-emerald-700">✅ Không đối tác nào nằm trong danh sách. (Không có tên trong danh sách chưa chắc đã an toàn — chỉ là chưa bị cơ quan thuế công bố.)</p>
+      ) : (
+        kq.doiTac.map((d) => (
+          <div key={`${d.l}|${d.mst}`} className={`rounded-lg border p-3 ${d.l === 'mua' ? 'border-red-300 bg-red-50' : 'border-amber-300 bg-amber-50'}`}>
+            <p className="font-semibold">
+              {d.l === 'mua' ? '⛔ Nhà cung cấp' : '⚠️ Khách hàng'} {d.ten} — MST {d.mst}
+              {d.khop.quaDonViChuQuan && <span className="font-normal"> (chi nhánh của DN {d.khop.mst})</span>}
+              {d.congAn && <span className="ml-2 rounded bg-red-700 px-2 py-0.5 text-xs text-white">ĐÃ CHUYỂN CÔNG AN</span>}
+            </p>
+            <ul className="ml-4 list-disc text-slate-700">{d.moTa.map((m, i) => <li key={i}>{m}</li>)}</ul>
+            <p className="mt-1">
+              {d.hoaDon.length} hoá đơn · {tien(d.tongV)} đ chưa thuế · thuế <b>{tien(d.tongT)} đ</b>
+              {d.l === 'mua' && ' (thuế đầu vào có thể bị loại khỏi khấu trừ)'}
+            </p>
+            <div className="overflow-x-auto">
+              <table className="mt-1 w-full">
+                <thead className="text-left text-slate-500">
+                  <tr><th className="pr-3">Hoá đơn</th><th className="pr-3">Ngày</th><th className="pr-3">Quý</th><th className="pr-3 text-right">Chưa thuế</th><th className="pr-3 text-right">Thuế</th><th /></tr>
+                </thead>
+                <tbody>
+                  {d.hoaDon.map((h) => (
+                    <tr key={`${h.kh}-${h.so}`} className="border-t border-slate-200">
+                      <td className="pr-3">{h.kh}-{h.so}</td>
+                      <td className="pr-3">{h.ng}</td>
+                      <td className="pr-3">{tenKy(h.ky)}</td>
+                      <td className="pr-3 text-right">{tien(h.v)}</td>
+                      <td className="pr-3 text-right">{tien(h.t)}</td>
+                      <td className="text-red-700">{h.sauNgung && 'lập SAU ngày DN ngừng hoạt động'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
 
 const trieu = (n: number) => (Math.abs(n) >= 1e9 ? `${(n / 1e9).toLocaleString('vi-VN', { maximumFractionDigits: 2 })} tỷ` : `${Math.round(n / 1e6).toLocaleString('vi-VN')} tr`)
 
@@ -468,9 +534,11 @@ function NopNganSach({ tq }: { tq: TQ }) {
   )
 }
 
-const CAC_PHAN = ['soLieu', 'bieuDo', 'canXuLy', 'theoQuy', 'doiSoat', 'khachHang', 'nhaCungCap', 'chungTu', 'khac']
+const CAC_PHAN = ['soLieu', 'bieuDo', 'canXuLy', 'ruiRo', 'theoQuy', 'doiSoat', 'khachHang', 'nhaCungCap', 'chungTu', 'khac']
 
-export function TongQuanDN({ tq, tenCty, onMoQuy, layDoiTac, doiSoat }: {
+export function TongQuanDN({ tq, tenCty, onMoQuy, layDoiTac, doiSoat, ruiRo = null, trangThaiRuiRo = 'chuaDangNhap' }: {
+  ruiRo?: KetQuaSoi | null
+  trangThaiRuiRo?: TrangThaiRuiRo
   tq: TQ
   tenCty: string
   onMoQuy: (khoa: string) => void
@@ -549,6 +617,16 @@ export function TongQuanDN({ tq, tenCty, onMoQuy, layDoiTac, doiSoat }: {
 
       <PhanThuGon id="canXuLy" tieuDe={<>Cần xử lý {loi > 0 && <span className="text-red-700">({loi} lỗi)</span>}</>} phu={`${tq.canhBao.length} mục`} dong={dong} setDong={setDong}>
         {tq.canhBao.length ? <DanhSachCanhBao ds={tq.canhBao} /> : <p className="text-emerald-700">✅ Không có gì cần xử lý.</p>}
+      </PhanThuGon>
+
+      <PhanThuGon
+        id="ruiRo"
+        tieuDe={<>🚨 Soi DN rủi ro về hoá đơn {!!ruiRo?.doiTac.length && <span className="text-red-700">({ruiRo.doiTac.length} đối tác dính)</span>}</>}
+        phu={ruiRo && trangThaiRuiRo === 'co' ? `${ruiRo.soNhaCungCap + ruiRo.soKhachHang} đối tác · ${tien(ruiRo.soMstDanhSach)} MST` : undefined}
+        dong={dong}
+        setDong={setDong}
+      >
+        <SoiRuiRo kq={ruiRo} tt={trangThaiRuiRo} />
       </PhanThuGon>
 
       <PhanThuGon id="theoQuy" tieuDe="Theo dõi từng quý" phu={`${tq.quy.length} quý`} dong={dong} setDong={setDong}>

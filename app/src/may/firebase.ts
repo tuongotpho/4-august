@@ -23,15 +23,18 @@ const cauHinh = {
 /** Đăng nhập Google chỉ chạy trên trang web (http/https), không chạy khi mở file .html trực tiếp */
 export const coMay = typeof location !== 'undefined' && /^https?:$/.test(location.protocol)
 
-const app = initializeApp(cauHinh)
+export const app = initializeApp(cauHinh)
 export const auth = getAuth(app)
 export const db = getFirestore(app, 'khaithue')
 export const luuTru = getStorage(app, 'gs://khaithue')
+/** Kho file của app hoá đơn đỏ (cùng dự án) — chỉ ĐỌC danh sách DN rủi ro anh đã nạp bên đó */
+export const luuTruHoaDon = getStorage(app, 'gs://hoadon-npsc')
 
 if (GIA_LAP) {
   connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
   connectFirestoreEmulator(db, '127.0.0.1', Number(import.meta.env.VITE_CONG_FIRESTORE_GIA_LAP) || 8080)
   connectStorageEmulator(luuTru, '127.0.0.1', 9199)
+  connectStorageEmulator(luuTruHoaDon, '127.0.0.1', 9199)
   // CHỈ máy giả lập: đăng nhập bằng tài khoản Google giả để thử (bản build thật không có đoạn này)
   if (typeof window !== 'undefined') (window as unknown as { __dangNhapThu: (email: string) => Promise<unknown> }).__dangNhapThu = async (email: string) => {
     const { GoogleAuthProvider, signInWithCredential } = await import('firebase/auth')

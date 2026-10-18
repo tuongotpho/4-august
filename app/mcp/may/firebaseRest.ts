@@ -171,8 +171,10 @@ export class FirebaseNguoiDung {
     }, this.cfg)
   }
 
-  async taiVeTep(p: string): Promise<Uint8Array> {
-    const r = await goi(`${this.tep(p)}?alt=media`, { headers: { Authorization: `Firebase ${this.idToken}` } }, this.cfg)
+  /** Tải file; kho = bucket khác cùng dự án (vd. hoadon-npsc của app hoá đơn đỏ — chỉ đọc) */
+  async taiVeTep(p: string, kho = BUCKET): Promise<Uint8Array> {
+    const url = kho === BUCKET ? this.tep(p) : `${this.cfg.storage}/v0/b/${kho}/o/${encodeURIComponent(p)}`
+    const r = await goi(`${url}?alt=media`, { headers: { Authorization: `Firebase ${this.idToken}` } }, this.cfg)
     if (r.status === 404) throw new LoiFirebase(404, `Không có file ${p}`)
     return new Uint8Array(await r.arrayBuffer())
   }

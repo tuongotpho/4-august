@@ -9,6 +9,8 @@ import { denNgay, hanNop, ngayISO, quyCanKhai, tuNgay } from './core/ky'
 import { boCongTy, dauKy, datKhongChapNhan, ghiAppXuat, ghiPhuSong, gopTuMay, kyTruoc, napHoaDon, napTaiLieu, napToKhai, rutGonHoaDon, suaHoSo, tncnGanNhat, type Kho } from './core/kho'
 import { docTaiLieu, khoaChungTu } from './core/taiLieu'
 import { tinhDoiSoat, tinhDoiTac, tinhTongQuan } from './core/tongQuan'
+import { soiRuiRo, type DsRuiRo } from './core/ruiRo'
+import { taiDsRuiRo } from './may/ruiRoMay'
 import { NapHangLoat, TongQuanDN } from './ui/TongQuan'
 import type { ToKhaiDaNop } from './core/docToKhai'
 import { coMay } from './may/firebase'
@@ -50,6 +52,8 @@ export default function App() {
   const [trangThaiMay, setTrangThaiMay] = useState('')
   /** Công ty khai lúc CHƯA đăng nhập trên máy này — chỉ đưa vào tài khoản khi người dùng đồng ý */
   const [congTyKhach, setCongTyKhach] = useState(0)
+  /** Danh sách DN rủi ro dùng chung với app hoá đơn đỏ: undefined = chưa tải xong, null = chưa nạp bên đó */
+  const [dsRuiRo, setDsRuiRo] = useState<{ ds?: DsRuiRo | null; loi?: string }>({})
   async function lamMoiMay(uid: string) {
     const du = await taiDuLieuMay(uid)
     setMay(du)
@@ -104,6 +108,7 @@ export default function App() {
     chuRef.current = chu
     xoaHoaDon()
     setMay(null)
+    setDsRuiRo({})
     setKhoState(docKho(chu))
     if (!chu) {
       setTrangThaiMay('')
@@ -112,6 +117,9 @@ export default function App() {
     }
     setCongTyKhach(Object.keys(docKho(null).congTy).length)
     setTrangThaiMay('Đang tải hồ sơ trên mây…')
+    taiDsRuiRo(chu)
+      .then((ds) => chuRef.current === chu && setDsRuiRo({ ds }))
+      .catch((e) => chuRef.current === chu && setDsRuiRo({ loi: (e as Error).message }))
     lamMoiMay(chu)
       .then(() => setTrangThaiMay(''))
       .catch((e) => setTrangThaiMay(`⚠️ Không tải được hồ sơ trên mây: ${(e as Error).message}`))
@@ -519,7 +527,12 @@ export default function App() {
     ...kiemSoHoaDonBan(banTinh),
   )
   const tncn = tinhTNCN(nhapTNCN)
-  const tq = useMemo(() => (mst ? tinhTongQuan(kho, mst) : null), [kho, mst])
+  const ruiRo = useMemo(() => (mst ? soiRuiRo(kho, mst, dsRuiRo.ds) : null), [kho, mst, dsRuiRo])
+  // Đối tác dính danh sách rủi ro đứng ĐẦU mục "Cần xử lý"
+  const tq = useMemo(() => {
+    const t = mst ? tinhTongQuan(kho, mst) : null
+    return t && ruiRo?.canhBao.length ? { ...t, canhBao: [...ruiRo.canhBao, ...t.canhBao] } : t
+  }, [kho, mst, ruiRo])
   const doiSoat = useMemo(() => (mst ? tinhDoiSoat(kho, mst) : []), [kho, mst])
   const layDoiTac = useCallback((nam: number | null) => tinhDoiTac(kho, mst ?? '', nam), [kho, mst])
   const ct = gtgt.toKhai.ct
@@ -614,7 +627,7 @@ export default function App() {
             <NapHangLoat onFiles={(f) => void napHangLoat(f)} tienDo={tienDo} />
             {ketQuaNap && <p className="text-sm text-emerald-800">{ketQuaNap}</p>}
             {!user && coMay && <p className="text-sm text-slate-500">Mẹo: đăng nhập Google (trên cùng) trước khi nạp để hồ sơ được lưu lên mây, mở ở máy khác cũng thấy.</p>}
-            {tq && hoSo ? <TongQuanDN tq={tq} tenCty={hoSo.tenNNT} onMoQuy={moQuyKeKhai} layDoiTac={layDoiTac} doiSoat={doiSoat} /> : <p className="text-slate-500">Nạp hồ sơ để xem tổng quan.</p>}
+            {tq && hoSo ? <TongQuanDN tq={tq} tenCty={hoSo.tenNNT} onMoQuy={moQuyKeKhai} layDoiTac={layDoiTac} doiSoat={doiSoat} ruiRo={ruiRo} trangThaiRuiRo={!user ? 'chuaDangNhap' : dsRuiRo.loi ? `loi:${dsRuiRo.loi}` : dsRuiRo.ds === undefined ? 'dangTai' : dsRuiRo.ds === null ? 'chuaNap' : 'co'} /> : <p className="text-slate-500">Nạp hồ sơ để xem tổng quan.</p>}
           </section>
         )}
 

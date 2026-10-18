@@ -10,6 +10,7 @@ import { hanNop, quyCanKhai } from '../src/core/ky.js'
 import { NHAN_GTGT } from '../src/core/nhan.js'
 import { daXacNhan, tenTieuMuc, kyCuaChungTu } from '../src/core/taiLieu.js'
 import { tinhDoiSoat, tinhDoiTac, tinhTongQuan } from '../src/core/tongQuan.js'
+import { soiRuiRo as soiRuiRoLoi, type DsRuiRo } from '../src/core/ruiRo.js'
 import type { CanhBao, HoaDon, KyKeKhai } from '../src/core/types.js'
 import { tenFileXML, xmlGTGT } from '../src/core/xml.js'
 
@@ -22,6 +23,8 @@ export interface DuLieu {
   hoaDon: Record<string, HoaDon[]>
   /** Báo cáo lần nạp: nguồn, số file, lỗi... (hình dạng tuỳ nguồn) */
   baoCao: Record<string, unknown>
+  /** Danh sách DN rủi ro về hoá đơn (thư mục: theo cấu hình "ruiRo"; mây: nạp ở app hoá đơn đỏ) */
+  ruiRo?: { ds: DsRuiRo | null; nguon: string; loi?: string }
 }
 
 /** Công ty đang hỏi: truyền MST thì dùng MST đó, không thì công ty mặc định của sổ */
@@ -69,10 +72,11 @@ export function danhSachCongTy(d: DuLieu) {
 export function tongQuan(d: DuLieu, a: { mst?: string; ngay_hom_nay?: string }) {
   const mst = chonMst(d.kho, a.mst)
   const tq = tinhTongQuan(d.kho, mst, a.ngay_hom_nay ? new Date(a.ngay_hom_nay) : new Date())
+  const rr = d.ruiRo?.ds ? soiRuiRoLoi(d.kho, mst, d.ruiRo.ds).canhBao : []
   return {
     mst,
     hanToi: tq.hanToi,
-    canhBao: tq.canhBao.map(chu),
+    canhBao: [...rr, ...tq.canhBao].map(chu),
     nam: tq.nam,
     quy: tq.quy.map((q) => ({
       quy: q.khoa,
@@ -281,6 +285,39 @@ export function chungTuNopTien(d: DuLieu, a: { mst?: string; nam?: number }) {
     chungTu: ds.map((c) => ({
       so: c.so, ngay: c.ngay, tong: c.tong, ...(daXacNhan(c) ? {} : { chuaXacNhan: 'không có số chứng từ — không tính là đã nộp' }),
       dong: c.dong.map((x) => ({ loai: tenTieuMuc(x.ndkt), tieuMuc: x.ndkt, kyThue: kyCuaChungTu(x.kyThue), tien: x.tien, noiDung: x.noiDung })),
+    })),
+  }
+}
+
+/** Soi MST mọi nhà cung cấp / khách hàng trên hoá đơn còn hiệu lực với danh sách DN rủi ro về hoá đơn */
+export function soiRuiRo(d: DuLieu, a: { mst?: string; tra_mst?: string }) {
+  const mst = chonMst(d.kho, a.mst)
+  const rr = d.ruiRo
+  if (!rr?.ds) {
+    return {
+      mst,
+      daCoDanhSach: false,
+      nguonDanhSach: rr?.nguon ?? null,
+      ...(rr?.loi ? { loi: rr.loi } : {}),
+      huongDan: 'Chưa có danh sách DN rủi ro. Nạp file Excel "PHỤ LỤC QR HDRR" của cơ quan thuế ở app hoá đơn đỏ (Cài đặt) — bản mạng tự đọc dùng chung; bản thư mục thì khai thư mục chứa các file đó ở mục "ruiRo" trong du-lieu-rieng/mcp.json.',
+    }
+  }
+  const kq = soiRuiRoLoi(d.kho, mst, rr.ds)
+  const loc = a.tra_mst?.trim()
+  return {
+    mst,
+    daCoDanhSach: true,
+    nguonDanhSach: rr.nguon,
+    soMstDanhSach: kq.soMstDanhSach,
+    cacFile: kq.cacFile.map((f) => ({ ten: f.ten, soDong: f.soDong, napLuc: new Date(f.napLuc).toISOString().slice(0, 10) })),
+    daSoi: { nhaCungCap: kq.soNhaCungCap, khachHang: kq.soKhachHang },
+    soDoiTacDinh: kq.doiTac.length,
+    ketLuan: kq.doiTac.length ? `${kq.doiTac.length} đối tác nằm trong danh sách rủi ro — xem doiTac` : 'Không đối tác nào nằm trong danh sách (không có tên chưa chắc đã an toàn, chỉ là chưa bị cơ quan thuế công bố).',
+    canhBao: kq.canhBao.map(chu),
+    doiTac: kq.doiTac.filter((x) => !loc || x.mst.includes(loc)).map((x) => ({
+      chieu: x.l === 'mua' ? 'nhà cung cấp' : 'khách hàng', mst: x.mst, ten: x.ten, khopQuaCongTyMe: x.khop.quaDonViChuQuan ? x.khop.mst : undefined,
+      daChuyenCongAn: x.congAn, danhSach: x.moTa, tongChuaThue: x.tongV, tongThue: x.tongT, cacQuy: x.cacKy,
+      hoaDon: x.hoaDon.map((h) => ({ so: `${h.kh}-${h.so}`, ngay: h.ng, quy: h.ky, chuaThue: h.v, thue: h.t, ...(h.sauNgung ? { lapSauNgayNgungHoatDong: true } : {}) })),
     })),
   }
 }

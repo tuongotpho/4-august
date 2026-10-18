@@ -137,6 +137,13 @@ export function taoMayChu(nguon: NguonMcp) {
     annotations: chiDoc,
   }, chay(cc.doiTac))
 
+  server.registerTool('soi_rui_ro', {
+    title: 'Soi DN rủi ro về hoá đơn',
+    description: 'So MST mọi nhà cung cấp (mua vào) và khách hàng (bán ra) trên hoá đơn còn hiệu lực với DANH SÁCH DN RỦI RO VỀ HOÁ ĐƠN của cơ quan thuế (file "PHỤ LỤC QR HDRR" người dùng nạp ở app hoá đơn đỏ). Trả về đối tác dính danh sách, từng hoá đơn, quý, tiền thuế đầu vào có nguy cơ bị loại, DN đã chuyển công an, hoá đơn lập sau ngày DN ngừng hoạt động.',
+    inputSchema: { mst, tra_mst: z.string().optional().describe('Chỉ hiện đối tác có MST chứa chuỗi này') },
+    annotations: chiDoc,
+  }, chay(cc.soiRuiRo))
+
   server.registerTool('doi_soat', {
     title: 'Đối soát tờ khai ↔ hoá đơn',
     description: 'So tờ khai đã nộp với hoá đơn từng quý: doanh thu [34] và mua vào [23] lệch tổng hoá đơn bao nhiêu, tháng nào đã có danh sách hoá đơn, và tới từng đối tác lệch giữa phụ lục giảm thuế và hoá đơn (kèm số hoá đơn).',
