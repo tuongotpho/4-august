@@ -7,6 +7,7 @@
 //   "Chỉ tiêu [22] NNT kê khai phải = Chỉ tiêu [43] trên TK lần đầu của kỳ liền kề trước"
 // => [22] lấy từ bản LẦN ĐẦU. Khai bổ sung kỳ trước làm đổi [43] thì phần chênh không đưa vào [22].
 
+import { gocThanhHoaDon, khoaGoc, type HoaDonGoc } from './hoaDonGoc.js'
 import type { HoaDon, HoSoDN, KyKeKhai } from './types.js'
 import type { ToKhaiDaNop } from './docToKhai.js'
 import { datChungTu, daXacNhan, type ChungTu, type TaiLieu } from './taiLieu.js'
@@ -83,6 +84,8 @@ export interface Kho {
   hoaDon?: Record<string, Record<string, HoaDonGon>>
   /** Các tháng (yyyy-MM) đã có DANH SÁCH hoá đơn tải từ cổng thuế, theo chiều — để biết quý nào đủ */
   phuSong?: Record<string, { ban: string[]; mua: string[] }>
+  /** Hoá đơn GỐC (file XML/PDF từng hoá đơn): dòng hàng, mã CQT, chữ ký — theo công ty, khoá như sổ hoá đơn */
+  goc?: Record<string, Record<string, HoaDonGoc>>
 }
 
 export const khoTrong = (): Kho => ({ phienBan: 1, chon: null, congTy: {}, gtgt: {}, tncn: {} })
@@ -276,7 +279,7 @@ export function gopTuMay(
   congTy: CongTyLuu[],
   toKhai: ToKhaiMay[],
   chungTu: ChungTu[] = [],
-  hoaDon: { mst: string; hd: HoaDonGon[]; phu?: { ban: string[]; mua: string[] } }[] = [],
+  hoaDon: { mst: string; hd: HoaDonGon[]; phu?: { ban: string[]; mua: string[] }; goc?: HoaDonGoc }[] = [],
 ): Kho {
   let kho = kho0
   for (const t of toKhai) {
@@ -309,7 +312,8 @@ export function gopTuMay(
   }
   kho = structuredClone(kho)
   for (const c of chungTu) datChungTu(((kho.chungTu ??= {})[c.mst] ??= {}), c)
-  for (const { mst, hd, phu } of hoaDon) {
+  for (const { mst, hd, phu, goc } of hoaDon) {
+    if (goc) ((kho.goc ??= {})[mst] ??= {})[khoaGoc(goc, mst)] = goc
     if (phu) kho = ghiPhuSong(kho, mst, phu)
     kho = napHoaDon(kho, mst, hd.filter((g) => !g.x).map((g) => moRongHoaDon(g, mst)))
     kho = napHoaDon(kho, mst, hd.filter((g) => g.x).map((g) => moRongHoaDon(g, mst)), true)
@@ -325,6 +329,21 @@ export function gopTuMay(
 // của mình, file XML thì có: nếu ghép cả MST vào khoá thì cùng một hoá đơn bị tính 2 lần)
 const khoaGon = (h: Pick<HoaDon, 'loai' | 'mstBan' | 'kyHieu' | 'so'>) =>
   `${h.loai}|${h.loai === 'ban' ? '' : h.mstBan}|${h.kyHieu}|${Number(h.so) || h.so}`
+
+/** Công ty của một hoá đơn gốc: bên bán hoặc bên mua là công ty đã có trong sổ */
+export function congTyCuaGoc(kho: Kho, h: Pick<HoaDonGoc, 'mstBan' | 'mstMua'>): string | null {
+  return kho.congTy[h.mstBan] ? h.mstBan : kho.congTy[h.mstMua] ? h.mstMua : null
+}
+
+/** Nạp hoá đơn GỐC (XML/PDF từng hoá đơn): lưu dòng hàng + dấu hiệu kiểm tra, và đưa phần đầu vào sổ như file lẻ */
+export function napGoc(kho0: Kho, h: HoaDonGoc): KetQuaNap {
+  const mst = congTyCuaGoc(kho0, h)
+  if (!mst) return { kho: kho0, moTa: `Hoá đơn ${h.kyHieu}-${h.so}: chưa biết của công ty nào (MST bán ${h.mstBan || '?'}, mua ${h.mstMua || '?'}) — nạp tờ khai XML của công ty trước`, loi: true }
+  const kho = napHoaDon(kho0, mst, [gocThanhHoaDon(h, mst)], true)
+  ;((kho.goc ??= {})[mst] ??= {})[khoaGoc(h, mst)] = h
+  const loai = h.mstBan === mst ? 'bán ra' : 'mua vào'
+  return { kho, moTa: `Hoá đơn ${loai} ${h.kyHieu}-${h.so} ngày ${h.ngay} (${h.nguon.toUpperCase()}, ${h.dong.length} dòng hàng)` }
+}
 
 /** Nạp hoá đơn (đã biết bán/mua) vào sổ rút gọn. Trùng thì giữ trạng thái "bị thay thế/huỷ" nếu có. */
 export function napHoaDon(kho0: Kho, mst: string, ds: HoaDon[], tuXmlLe = false): Kho {

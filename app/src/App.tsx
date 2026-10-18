@@ -6,10 +6,13 @@ import { tinhTNCN, NHAP_TNCN_TRONG, type NhapTNCN } from './core/tncn'
 import { docToKhai } from './core/docToKhai'
 import { tenFileXML, xmlGTGT, xmlTNCN } from './core/xml'
 import { denNgay, hanNop, ngayISO, quyCanKhai, tuNgay } from './core/ky'
-import { boCongTy, dauKy, datKhongChapNhan, ghiAppXuat, ghiPhuSong, gopTuMay, kyTruoc, napHoaDon, napTaiLieu, napToKhai, rutGonHoaDon, suaHoSo, tncnGanNhat, type Kho } from './core/kho'
+import { boCongTy, dauKy, datKhongChapNhan, ghiAppXuat, ghiPhuSong, gopTuMay, kyTruoc, napGoc, napHoaDon, napTaiLieu, napToKhai, rutGonHoaDon, suaHoSo, tncnGanNhat, type Kho } from './core/kho'
 import { docTaiLieu, khoaChungTu } from './core/taiLieu'
 import { tinhDoiSoat, tinhDoiTac, tinhTongQuan } from './core/tongQuan'
 import { soiRuiRo, type DsRuiRo } from './core/ruiRo'
+import { canhBaoGoc, docPdfGoc, docXmlGoc, tongHopGoc } from './core/hoaDonGoc'
+import { moZip } from './core/nenZip'
+import { pdfThanhDong } from './may/pdfChu'
 import { taiDsRuiRo } from './may/ruiRoMay'
 import { NapHangLoat, TongQuanDN } from './ui/TongQuan'
 import type { ToKhaiDaNop } from './core/docToKhai'
@@ -58,7 +61,7 @@ export default function App() {
     const du = await taiDuLieuMay(uid)
     setMay(du)
     capNhatKho((k) =>
-      gopTuMay(k, du.congTy, du.toKhai, du.chungTu, Object.entries(du.tepHoaDon).flatMap(([mst, ds]) => ds.map((d) => ({ mst, hd: d.hd ?? [], phu: d.phu })))),
+      gopTuMay(k, du.congTy, du.toKhai, du.chungTu, Object.entries(du.tepHoaDon).flatMap(([mst, ds]) => ds.map((d) => ({ mst, hd: d.hd ?? [], phu: d.phu, goc: d.goc })))),
     )
     void boSungFileCu(uid, du)
     return du
@@ -308,13 +311,27 @@ export default function App() {
    * Nạp HÀNG LOẠT toàn bộ hồ sơ (tờ khai mọi mẫu, chứng từ, hoá đơn XML, Excel hoá đơn) vào sổ;
    * đã đăng nhập thì lưu cả file gốc lên mây. Không đụng tới phần "Kê khai quý" đang làm dở.
    */
-  async function napHangLoat(ds: File[]) {
+  async function napHangLoat(ds0: File[]) {
+    const dem = { toKhai: 0, chungTu: 0, hoaDon: 0, pdf: 0, pdfKhongDoc: 0, excel: 0, boQua: 0, loiMay: 0, trung: 0, zip: 0, rar: 0 }
+    // Gói ZIP: mở ngay trên máy, lấy các file đọc được (kể cả ZIP lồng trong ZIP). RAR/7Z trình duyệt không mở được
+    const ds: File[] = []
+    for (const f of ds0) {
+      if (/\.zip$/i.test(f.name)) {
+        try {
+          for (const t of moZip(new Uint8Array(await f.arrayBuffer()))) ds.push(new File([t.du as Uint8Array<ArrayBuffer>], t.ten.split('/').pop()!))
+          dem.zip++
+        } catch {
+          dem.boQua++
+        }
+      } else if (/\.(rar|7z)$/i.test(f.name)) dem.rar++
+      else ds.push(f)
+    }
     const xml = ds.filter((f) => /\.xml$/i.test(f.name))
+    const pdf = ds.filter((f) => /\.pdf$/i.test(f.name))
     const excel = ds.filter((f) => /\.(xlsx|xls|csv)$/i.test(f.name))
-    const tong = xml.length + excel.length
+    const tong = xml.length + pdf.length + excel.length
     let k = kho
     let xong = 0
-    const dem = { toKhai: 0, chungTu: 0, hoaDon: 0, excel: 0, boQua: 0, loiMay: 0, trung: 0 }
     const uid = user?.uid
     const viec: (() => Promise<unknown>)[] = []
     // Chứng từ đã có trên mây (cùng số + ngày lập) thì không lưu thêm bản nữa, kể cả khi file tải lại khác vài byte
@@ -329,7 +346,9 @@ export default function App() {
       try {
         const text = await f.text()
         const tl = docTaiLieu(text)
-        const r = napTaiLieu(k, tl, f.name)
+        // Hoá đơn XML: đọc thêm dòng hàng, mã CQT, chữ ký (hoá đơn gốc)
+        const goc = tl.loai === 'hoaDon' ? docXmlGoc(text, f.name) : null
+        const r = goc ? napGoc(k, goc) : napTaiLieu(k, tl, f.name)
         if (r.loi) {
           dem.boQua++
           continue
@@ -353,11 +372,39 @@ export default function App() {
             const loai = mstCty === tl.hd.mstBan ? 'ban' : 'mua'
             const du = new TextEncoder().encode(text).buffer as ArrayBuffer
             const kyHD = quyNhieuNhat([tl.hd])
-            viec.push(() => luuTepHoaDon(uid, mstCty, f.name, du, kyHD, loai === 'ban' ? 1 : 0, loai === 'mua' ? 1 : 0, rutGonHoaDon([{ ...tl.hd, loai }], true)))
+            viec.push(() => luuTepHoaDon(uid, mstCty, f.name, du, kyHD, loai === 'ban' ? 1 : 0, loai === 'mua' ? 1 : 0, rutGonHoaDon([{ ...tl.hd, loai }], true), undefined, goc ?? undefined))
           }
         }
       } catch {
         dem.boQua++
+      }
+    }
+
+    // 1b) Hoá đơn PDF (bản thể hiện): đọc chữ ngay trên máy, dò phần đầu + dòng hàng
+    for (const f of pdf) {
+      buoc(f.name)
+      try {
+        const du = await f.arrayBuffer()
+        const goc = docPdfGoc(await pdfThanhDong(du), f.name)
+        if (!goc) {
+          dem.pdfKhongDoc++
+          continue
+        }
+        const r = napGoc(k, goc)
+        if (r.loi) {
+          dem.pdfKhongDoc++
+          continue
+        }
+        k = r.kho
+        dem.pdf++
+        if (uid) {
+          const mstCty = k.congTy[goc.mstBan] ? goc.mstBan : goc.mstMua
+          const loai = mstCty === goc.mstBan ? 'ban' : 'mua'
+          const hd = { kyHieuMau: goc.kyHieuMau, kyHieu: goc.kyHieu, so: goc.so, ngay: goc.ngay, mstBan: goc.mstBan, tenBan: goc.tenBan, mstMua: goc.mstMua, tenMua: goc.tenMua, chuaThue: goc.chuaThue, thue: goc.thue, trangThai: 'Hóa đơn mới', file: f.name }
+          viec.push(() => luuTepHoaDon(uid, mstCty, f.name, du, quyNhieuNhat([hd]), loai === 'ban' ? 1 : 0, loai === 'mua' ? 1 : 0, rutGonHoaDon([{ ...hd, loai }], true), undefined, goc))
+        }
+      } catch {
+        dem.pdfKhongDoc++
       }
     }
 
@@ -408,8 +455,10 @@ export default function App() {
     }
     setTienDo(null)
     setKetQuaNap(
-      `Đã nạp ${dem.toKhai} tờ khai, ${dem.chungTu} chứng từ, ${dem.hoaDon} hoá đơn XML, ${dem.excel} file Excel.` +
+      `Đã nạp ${dem.toKhai} tờ khai, ${dem.chungTu} chứng từ, ${dem.hoaDon} hoá đơn XML, ${dem.pdf} hoá đơn PDF, ${dem.excel} file Excel${dem.zip ? ` (mở ${dem.zip} gói ZIP)` : ''}.` +
         (dem.boQua ? ` Bỏ qua ${dem.boQua} file không đọc được.` : '') +
+        (dem.pdfKhongDoc ? ` ${dem.pdfKhongDoc} file PDF không phải hoá đơn của công ty / không đọc được chữ (ảnh scan, báo cáo...).` : '') +
+        (dem.rar ? ` ⚠️ ${dem.rar} file RAR/7Z: trình duyệt không mở được — giải nén ra thư mục rồi chọn cả thư mục, hoặc nén lại thành ZIP.` : '') +
         (dem.trung ? ` ${dem.trung} chứng từ đã có sẵn trên mây (cùng số, cùng ngày) — không lưu thêm.` : '') +
         (uid ? (dem.loiMay ? ` ⚠️ ${dem.loiMay} file chưa lưu được lên mây — nạp lại sau.` : ' ☁️ Đã lưu hết lên mây.') : ' (Chưa đăng nhập: chỉ lưu trên máy này.)'),
     )
@@ -529,10 +578,12 @@ export default function App() {
   const tncn = tinhTNCN(nhapTNCN)
   const ruiRo = useMemo(() => (mst ? soiRuiRo(kho, mst, dsRuiRo.ds) : null), [kho, mst, dsRuiRo])
   // Đối tác dính danh sách rủi ro đứng ĐẦU mục "Cần xử lý"
+  const goc = useMemo(() => (mst ? tongHopGoc(kho, mst) : null), [kho, mst])
   const tq = useMemo(() => {
     const t = mst ? tinhTongQuan(kho, mst) : null
-    return t && ruiRo?.canhBao.length ? { ...t, canhBao: [...ruiRo.canhBao, ...t.canhBao] } : t
-  }, [kho, mst, ruiRo])
+    const them = [...(ruiRo?.canhBao ?? []), ...(goc ? canhBaoGoc(goc) : [])]
+    return t && them.length ? { ...t, canhBao: [...them, ...t.canhBao] } : t
+  }, [kho, mst, ruiRo, goc])
   const doiSoat = useMemo(() => (mst ? tinhDoiSoat(kho, mst) : []), [kho, mst])
   const layDoiTac = useCallback((nam: number | null) => tinhDoiTac(kho, mst ?? '', nam), [kho, mst])
   const ct = gtgt.toKhai.ct
@@ -627,7 +678,7 @@ export default function App() {
             <NapHangLoat onFiles={(f) => void napHangLoat(f)} tienDo={tienDo} />
             {ketQuaNap && <p className="text-sm text-emerald-800">{ketQuaNap}</p>}
             {!user && coMay && <p className="text-sm text-slate-500">Mẹo: đăng nhập Google (trên cùng) trước khi nạp để hồ sơ được lưu lên mây, mở ở máy khác cũng thấy.</p>}
-            {tq && hoSo ? <TongQuanDN tq={tq} tenCty={hoSo.tenNNT} onMoQuy={moQuyKeKhai} layDoiTac={layDoiTac} doiSoat={doiSoat} ruiRo={ruiRo} trangThaiRuiRo={!user ? 'chuaDangNhap' : dsRuiRo.loi ? `loi:${dsRuiRo.loi}` : dsRuiRo.ds === undefined ? 'dangTai' : dsRuiRo.ds === null ? 'chuaNap' : 'co'} /> : <p className="text-slate-500">Nạp hồ sơ để xem tổng quan.</p>}
+            {tq && hoSo ? <TongQuanDN tq={tq} tenCty={hoSo.tenNNT} onMoQuy={moQuyKeKhai} layDoiTac={layDoiTac} doiSoat={doiSoat} ruiRo={ruiRo} goc={goc} trangThaiRuiRo={!user ? 'chuaDangNhap' : dsRuiRo.loi ? `loi:${dsRuiRo.loi}` : dsRuiRo.ds === undefined ? 'dangTai' : dsRuiRo.ds === null ? 'chuaNap' : 'co'} /> : <p className="text-slate-500">Nạp hồ sơ để xem tổng quan.</p>}
           </section>
         )}
 

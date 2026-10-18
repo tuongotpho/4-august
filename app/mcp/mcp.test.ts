@@ -55,6 +55,8 @@ beforeAll(async () => {
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Sheet1')
   XLSX.writeFile(wb, path.join(goc, 'excel', 'DANH SÁCH HÓA ĐƠN.xlsx'))
+  // File gốc của HĐ mua C26TBB-7 (XML, có dòng hàng viên nén)
+  fs.writeFileSync(path.join(goc, 'xml', 'C26TBB7.xml'), `<HDon><DLHDon><TTChung><KHMSHDon>1</KHMSHDon><KHHDon>C26TBB</KHHDon><SHDon>7</SHDon><NLap>2026-06-05</NLap></TTChung><NDHDon><NBan><Ten>Nhà Cung Cấp</Ten><MST>0200000002</MST></NBan><NMua><Ten>${hoSo.tenNNT}</Ten><MST>${MST}</MST></NMua><DSHHDVu><HHDVu><TChat>1</TChat><THHDVu>Viên nén gỗ</THHDVu><DVTinh>tấn</DVTinh><SLuong>12.5</SLuong><DGia>2400000</DGia><ThTien>30000000</ThTien><TSuat>10%</TSuat></HHDVu></DSHHDVu><TToan><TgTCThue>30000000</TgTCThue><TgTThue>3000000</TgTThue></TToan></NDHDon></DLHDon><MCCQT>00ABC</MCCQT><DSCKS><NBan><Signature Id="seller"><SigningTime>2026-06-05T08:00:00</SigningTime></Signature></NBan></DSCKS></HDon>`)
   // Danh sách DN rủi ro (file Excel giả kiểu "PHỤ LỤC QR HDRR"): nhà cung cấp 0200000002 nằm trong đó
   fs.mkdirSync(path.join(goc, 'ruiro'))
   const rr = XLSX.utils.book_new()
@@ -84,14 +86,14 @@ describe('Máy chủ MCP khaithue', () => {
   it('khai báo đủ công cụ; chỉ xuat_xml_gtgt được ghi', async () => {
     const { tools } = await client.listTools()
     expect(tools.map((t) => t.name).sort()).toEqual([
-      'chung_tu_nop_tien', 'danh_sach_cong_ty', 'doi_soat', 'doi_tac', 'lap_to_khai_gtgt', 'nap_ho_so', 'so_theo_doi_gtgt', 'soi_rui_ro', 'tong_quan', 'tra_hoa_don', 'xuat_xml_gtgt',
+      'chung_tu_nop_tien', 'danh_sach_cong_ty', 'doi_soat', 'doi_tac', 'hoa_don_goc', 'lap_to_khai_gtgt', 'nap_ho_so', 'so_theo_doi_gtgt', 'soi_rui_ro', 'tong_quan', 'tra_hoa_don', 'xuat_xml_gtgt',
     ])
     expect(tools.filter((t) => !t.annotations?.readOnlyHint).map((t) => t.name)).toEqual(['xuat_xml_gtgt'])
   })
 
   it('nạp hồ sơ: nhận đúng công ty, không file nào lỗi', async () => {
     const { kq } = await goi('nap_ho_so')
-    expect(kq).toMatchObject({ soXml: 1, soExcel: 1, soSheetHoaDon: 1, loi: [], congTyMacDinh: MST })
+    expect(kq).toMatchObject({ soXml: 2, soExcel: 1, soSheetHoaDon: 1, loi: [], congTyMacDinh: MST })
   })
 
   it('lập tờ khai quý 2: [22] = [43] quý 1, đúng công thức và phụ lục, bỏ hoá đơn bị thay thế', async () => {
@@ -150,5 +152,13 @@ describe('Máy chủ MCP khaithue', () => {
     })])
     const tq = (await goi('tong_quan', { ngay_hom_nay: '2026-07-01' })).kq
     expect(tq.canhBao[0]).toMatch(/^⛔ LỖI: Nhà cung cấp Nhà Cung Cấp \(MST 0200000002\) nằm trong DANH SÁCH DN RỦI RO/)
+  })
+
+  it('hoá đơn gốc: XML có dòng hàng khớp danh sách Excel, ra số tấn viên nén theo quý, chỉ ra hoá đơn chưa có file gốc', async () => {
+    const { kq } = await goi('hoa_don_goc', { tim: 'C26TBB-7' })
+    expect(kq.soFileGoc).toEqual({ tong: 1, xml: 1, pdf: 0 })
+    expect(kq.soVoiCongThue).toMatchObject({ hoaDonConHieuLuc: 3, daCoGoc: 1, chuaCoGoc: 2, lechTien: [] })
+    expect(kq.theoQuy).toEqual([expect.objectContaining({ khoa: '2026-Q2', muaVienNen: { tấn: 12.5 }, tienMuaVienNen: 30000000 })])
+    expect(kq.chiTiet[0]).toMatchObject({ nhom: 'Viên nén / nguyên liệu gỗ', dong: [{ ten: 'Viên nén gỗ', sl: 12.5 }] })
   })
 })

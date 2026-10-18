@@ -5,6 +5,8 @@ import { kyDeDoc, NHOM_NOP, nhomNop, tenTieuMuc } from '../core/taiLieu'
 import type { DoiSoatChieu, DoiSoatQuy, DoiTac, DongDoiTac, DongQuy, NguonQuy, TongQuan as TQ } from '../core/tongQuan'
 import { DanhSachCanhBao } from './chung'
 import type { KetQuaSoi } from '../core/ruiRo'
+import type { TongHopGoc } from '../core/hoaDonGoc'
+import { HoaDonGocDN } from './HoaDonGoc'
 
 /** Trạng thái danh sách DN rủi ro (dùng chung với app hoá đơn đỏ) */
 export type TrangThaiRuiRo = 'chuaDangNhap' | 'dangTai' | 'chuaNap' | 'co' | `loi:${string}`
@@ -89,12 +91,34 @@ function SoiRuiRo({ kq, tt }: { kq: KetQuaSoi | null; tt: TrangThaiRuiRo }) {
 const trieu = (n: number) => (Math.abs(n) >= 1e9 ? `${(n / 1e9).toLocaleString('vi-VN', { maximumFractionDigits: 2 })} tỷ` : `${Math.round(n / 1e6).toLocaleString('vi-VN')} tr`)
 
 /** Ô nạp hàng loạt: chọn nhiều file hoặc cả thư mục */
+const NHAN_DUOC = /\.(xml|xlsx|xls|csv|pdf|zip|rar|7z)$/i
+
+/** Kéo thả cả THƯ MỤC: đọc đệ quy các file bên trong (Chrome, Edge, Firefox) */
+async function docMucKeoTha(dt: DataTransfer): Promise<File[]> {
+  const goc = [...dt.items].map((it) => it.webkitGetAsEntry()).filter((m): m is FileSystemEntry => !!m)
+  if (!goc.length) return [...dt.files]
+  const kq: File[] = []
+  const di = async (m: FileSystemEntry): Promise<void> => {
+    if (m.isFile) kq.push(await new Promise<File>((ok, loi) => (m as FileSystemFileEntry).file(ok, loi)))
+    else if (m.isDirectory) {
+      const doc = (m as FileSystemDirectoryEntry).createReader()
+      for (;;) {
+        const lo = await new Promise<FileSystemEntry[]>((ok, loi) => doc.readEntries(ok, loi))
+        if (!lo.length) break
+        for (const x of lo) await di(x)
+      }
+    }
+  }
+  for (const m of goc) await di(m)
+  return kq
+}
+
 export function NapHangLoat({ onFiles, tienDo }: { onFiles: (f: File[]) => void; tienDo: { xong: number; tong: number; dangLam: string } | null }) {
   const tepRef = useRef<HTMLInputElement>(null)
   const thuMucRef = useRef<HTMLInputElement>(null)
   const [keo, setKeo] = useState(false)
-  const nhan = (ds: FileList | null) => {
-    const loc = [...(ds ?? [])].filter((f) => /\.(xml|xlsx|xls|csv)$/i.test(f.name))
+  const nhan = (ds: FileList | File[] | null) => {
+    const loc = [...(ds ?? [])].filter((f) => NHAN_DUOC.test(f.name) && !f.name.startsWith('~$'))
     if (loc.length) onFiles(loc)
   }
   return (
@@ -107,16 +131,16 @@ export function NapHangLoat({ onFiles, tienDo }: { onFiles: (f: File[]) => void;
       onDrop={(e) => {
         e.preventDefault()
         setKeo(false)
-        nhan(e.dataTransfer.files)
+        void docMucKeoTha(e.dataTransfer).then(nhan)
       }}
       className={`rounded-xl border-2 border-dashed p-5 text-center ${keo ? 'border-emerald-500 bg-emerald-50' : 'border-slate-300'}`}
     >
-      <input ref={tepRef} type="file" multiple accept=".xml,.xlsx,.xls,.csv" className="hidden" onChange={(e) => { nhan(e.target.files); e.target.value = '' }} />
+      <input ref={tepRef} type="file" multiple accept=".xml,.xlsx,.xls,.csv,.pdf,.zip" className="hidden" onChange={(e) => { nhan(e.target.files); e.target.value = '' }} />
       {/* @ts-expect-error webkitdirectory: chọn cả thư mục (Chrome, Edge) */}
       <input ref={thuMucRef} type="file" webkitdirectory="" multiple className="hidden" onChange={(e) => { nhan(e.target.files); e.target.value = '' }} />
       <div className="text-lg font-medium">Nạp toàn bộ hồ sơ thuế</div>
       <p className="mt-1 text-sm text-slate-600">
-        Tờ khai XML (mọi mẫu), chứng từ nộp tiền XML, hoá đơn XML, Excel “Danh sách hóa đơn” — từ năm thành lập đến nay. Kéo thả vào đây, hoặc:
+        Tờ khai XML (mọi mẫu), chứng từ nộp tiền XML, hoá đơn XML hoặc PDF, Excel “Danh sách hóa đơn”, gói ZIP — từ năm thành lập đến nay. Kéo thả cả thư mục vào đây, hoặc:
       </p>
       <div className="mt-3 flex flex-wrap justify-center gap-3">
         <button disabled={!!tienDo} onClick={() => thuMucRef.current?.click()} className="rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white disabled:bg-slate-300">Chọn cả thư mục</button>
@@ -549,9 +573,10 @@ function NopNganSach({ tq }: { tq: TQ }) {
   )
 }
 
-const CAC_PHAN = ['soLieu', 'bieuDo', 'canXuLy', 'ruiRo', 'theoQuy', 'doiSoat', 'khachHang', 'nhaCungCap', 'chungTu', 'khac']
+const CAC_PHAN = ['soLieu', 'bieuDo', 'canXuLy', 'ruiRo', 'hoaDonGoc', 'theoQuy', 'doiSoat', 'khachHang', 'nhaCungCap', 'chungTu', 'khac']
 
-export function TongQuanDN({ tq, tenCty, onMoQuy, layDoiTac, doiSoat, ruiRo = null, trangThaiRuiRo = 'chuaDangNhap' }: {
+export function TongQuanDN({ tq, tenCty, onMoQuy, layDoiTac, doiSoat, ruiRo = null, trangThaiRuiRo = 'chuaDangNhap', goc = null }: {
+  goc?: TongHopGoc | null
   ruiRo?: KetQuaSoi | null
   trangThaiRuiRo?: TrangThaiRuiRo
   tq: TQ
@@ -643,6 +668,18 @@ export function TongQuanDN({ tq, tenCty, onMoQuy, layDoiTac, doiSoat, ruiRo = nu
       >
         <SoiRuiRo kq={ruiRo} tt={trangThaiRuiRo} />
       </PhanThuGon>
+
+      {goc && (
+        <PhanThuGon
+          id="hoaDonGoc"
+          tieuDe={<>📄 Hoá đơn gốc (XML/PDF) — dòng hàng, kiểm tra {goc.soKhop.lechTien.length > 0 && <span className="text-red-700">({goc.soKhop.lechTien.length} lệch tiền)</span>}</>}
+          phu={goc.soGoc ? `${goc.soKhop.soCoGoc}/${goc.soKhop.soExcel} hoá đơn có file gốc` : 'chưa có file'}
+          dong={dong}
+          setDong={setDong}
+        >
+          <HoaDonGocDN t={goc} />
+        </PhanThuGon>
+      )}
 
       <PhanThuGon id="theoQuy" tieuDe="Theo dõi từng quý" phu={`${tq.quy.length} quý`} dong={dong} setDong={setDong}>
         <div className="overflow-x-auto">

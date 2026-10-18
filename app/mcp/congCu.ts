@@ -11,6 +11,7 @@ import { NHAN_GTGT } from '../src/core/nhan.js'
 import { daXacNhan, tenTieuMuc, kyCuaChungTu } from '../src/core/taiLieu.js'
 import { tinhDoiSoat, tinhDoiTac, tinhTongQuan } from '../src/core/tongQuan.js'
 import { soiRuiRo as soiRuiRoLoi, type DsRuiRo } from '../src/core/ruiRo.js'
+import { canhBaoGoc, tongHopGoc, TEN_NHOM, nhomHoaDon } from '../src/core/hoaDonGoc.js'
 import type { CanhBao, HoaDon, KyKeKhai } from '../src/core/types.js'
 import { tenFileXML, xmlGTGT } from '../src/core/xml.js'
 
@@ -73,10 +74,11 @@ export function tongQuan(d: DuLieu, a: { mst?: string; ngay_hom_nay?: string }) 
   const mst = chonMst(d.kho, a.mst)
   const tq = tinhTongQuan(d.kho, mst, a.ngay_hom_nay ? new Date(a.ngay_hom_nay) : new Date())
   const rr = d.ruiRo?.ds ? soiRuiRoLoi(d.kho, mst, d.ruiRo.ds).canhBao : []
+  const goc = canhBaoGoc(tongHopGoc(d.kho, mst))
   return {
     mst,
     hanToi: tq.hanToi,
-    canhBao: [...rr, ...tq.canhBao].map(chu),
+    canhBao: [...rr, ...goc, ...tq.canhBao].map(chu),
     nam: tq.nam,
     quy: tq.quy.map((q) => ({
       quy: q.khoa,
@@ -323,5 +325,30 @@ export function soiRuiRo(d: DuLieu, a: { mst?: string; tra_mst?: string }) {
       daChuyenCongAn: x.congAn, danhSach: x.moTa, tongChuaThue: x.tongV, tongThue: x.tongT, cacQuy: x.cacKy,
       hoaDon: x.hoaDon.map((h) => ({ so: `${h.kh}-${h.so}`, ngay: h.ng, quy: h.ky, chuaThue: h.v, thue: h.t, ...(h.sauNgung ? { lapSauNgayNgungHoatDong: true } : {}) })),
     })),
+  }
+}
+
+/** Hoá đơn gốc (XML/PDF): so với danh sách cổng thuế, kết quả kiểm tra, số lượng hàng + tiền theo quý; tra một hoá đơn */
+export function hoaDonGoc(d: DuLieu, a: { mst?: string; tim?: string; gioi_han?: number }) {
+  const mst = chonMst(d.kho, a.mst)
+  const t = tongHopGoc(d.kho, mst)
+  const n = a.gioi_han ?? 50
+  const tim = a.tim?.trim().toUpperCase()
+  const chiTiet = tim
+    ? Object.values(d.kho.goc?.[mst] ?? {}).filter((h) => `${h.kyHieu}-${h.so} ${h.tenBan} ${h.tenMua} ${h.mstBan} ${h.mstMua} ${h.tenFile}`.toUpperCase().includes(tim)).slice(0, n)
+        .map((h) => ({ ...h, nhom: TEN_NHOM[nhomHoaDon(h, mst)] }))
+    : undefined
+  return {
+    mst,
+    giaiThich: 'Hoá đơn gốc = file XML/PDF từng hoá đơn (có dòng hàng). Số tờ khai vẫn lấy từ danh sách Excel cổng thuế; phần này để soát và phân loại.',
+    soFileGoc: { tong: t.soGoc, xml: t.soXml, pdf: t.soPdf },
+    soVoiCongThue: {
+      hoaDonConHieuLuc: t.soKhop.soExcel, daCoGoc: t.soKhop.soCoGoc, chuaCoGoc: t.soKhop.thieuGoc.length,
+      lechTien: t.soKhop.lechTien, gocKhongCoTrongDanhSach: t.soKhop.khongCoTrongExcel,
+    },
+    chuaCoGoc: t.soKhop.thieuGoc.slice(0, n),
+    theoQuy: t.theoQuy,
+    kiemTra: t.kiemTra.map(chu).slice(0, n),
+    ...(chiTiet ? { chiTiet } : {}),
   }
 }

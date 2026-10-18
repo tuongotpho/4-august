@@ -137,6 +137,13 @@ export function taoMayChu(nguon: NguonMcp) {
     annotations: chiDoc,
   }, chay(cc.doiTac))
 
+  server.registerTool('hoa_don_goc', {
+    title: 'Hoá đơn gốc (XML/PDF)',
+    description: 'File XML/PDF từng hoá đơn đã nạp: so với danh sách hoá đơn cổng thuế (hoá đơn nào CHƯA có file gốc, lệch tiền), kết quả kiểm tra (mã CQT, chữ ký người bán, ngày ký, thay thế/điều chỉnh, thuế suất lạ, HĐ mua từ 5 triệu), số tấn viên nén mua/bán + tiền vận chuyển theo quý. tim = tra dòng hàng của một hoá đơn (số, ký hiệu, tên/MST đối tác, tên file).',
+    inputSchema: { mst, tim: z.string().optional().describe('Tìm hoá đơn: "C25TNA-18", số, tên hoặc MST đối tác'), gioi_han: z.number().int().min(1).max(500).optional().describe('Số dòng tối đa mỗi danh sách (mặc định 50)') },
+    annotations: chiDoc,
+  }, chay(cc.hoaDonGoc))
+
   server.registerTool('soi_rui_ro', {
     title: 'Soi DN rủi ro về hoá đơn',
     description: 'So MST mọi nhà cung cấp (mua vào) và khách hàng (bán ra) trên hoá đơn còn hiệu lực với DANH SÁCH DN RỦI RO VỀ HOÁ ĐƠN của cơ quan thuế (file "PHỤ LỤC QR HDRR" người dùng nạp ở app hoá đơn đỏ). Trả về đối tác dính danh sách, từng hoá đơn, quý, tiền thuế đầu vào có nguy cơ bị loại, DN đã chuyển công an, hoá đơn lập sau ngày DN ngừng hoạt động.',

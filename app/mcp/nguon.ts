@@ -20,7 +20,9 @@ import { gunzipSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import * as XLSX from 'xlsx'
 import { docTep, phanLoai, phuSongCuaTep, type TepHoaDon } from '../src/core/excel.js'
-import { datKhongChapNhan, ghiPhuSong, khoTrong, napHoaDon, napTaiLieu } from '../src/core/kho.js'
+import { datKhongChapNhan, ghiPhuSong, khoTrong, napGoc, napHoaDon, napTaiLieu } from '../src/core/kho.js'
+import { docPdfGoc, docXmlGoc } from '../src/core/hoaDonGoc.js'
+import { pdfThanhDong } from './pdfChu.js'
 import { docTaiLieu } from '../src/core/taiLieu.js'
 import type { HoaDon } from '../src/core/types.js'
 import { docDsRuiRo, gopDsRuiRo, type DsRuiRo } from '../src/core/ruiRo.js'
@@ -108,14 +110,28 @@ export function napDuLieu(ch: CauHinh): DuLieu {
 
   // 1) XML trước (tờ khai cho biết công ty là ai), xếp theo tên để kết quả ổn định giữa các lần nạp
   let kho = khoTrong()
+  // Hoá đơn XML để sau tờ khai (cần biết công ty là ai); hoá đơn đọc cả dòng hàng (hoá đơn gốc)
+  const hdXml: { f: string; text: string }[] = []
   for (const f of [...new Set(xml)].sort()) {
     try {
-      const r = napTaiLieu(kho, docTaiLieu(fs.readFileSync(f, 'utf8')), path.basename(f))
+      const text = fs.readFileSync(f, 'utf8')
+      const tl = docTaiLieu(text)
+      if (tl.loai === 'hoaDon') {
+        hdXml.push({ f, text })
+        continue
+      }
+      const r = napTaiLieu(kho, tl, path.basename(f))
       kho = r.kho
       if (r.loi) baoCao.loi.push(`${path.basename(f)}: ${r.moTa}`)
     } catch (e) {
       baoCao.loi.push(`${path.basename(f)}: không đọc được (${(e as Error).message})`)
     }
+  }
+  for (const { f, text } of hdXml) {
+    const goc = docXmlGoc(text, path.basename(f))
+    const r = goc ? napGoc(kho, goc) : napTaiLieu(kho, docTaiLieu(text), path.basename(f))
+    kho = r.kho
+    if (r.loi) baoCao.loi.push(`${path.basename(f)}: ${r.moTa}`)
   }
   baoCao.soXml = xml.length
 
@@ -190,11 +206,34 @@ export function nguonThuMuc(layCauHinh: () => CauHinh = () => docCauHinh()): Ngu
   let ch: CauHinh | null = null
   const napLai = async () => {
     ch = layCauHinh()
-    return (duLieu = napDuLieu(ch))
+    return (duLieu = await napPdfThuMuc(napDuLieu(ch), ch))
   }
   return {
     lay: async () => duLieu ?? napLai(),
     napLai,
     xuatXml: (d, a) => xuatXmlGTGT(d, a, (ch ?? layCauHinh()).thuMucXuat),
   }
+}
+
+/** Hoá đơn PDF trong các thư mục (trừ thư mục chỉ lấy Excel): đọc chữ, dò hoá đơn gốc. Không phải hoá đơn (báo cáo...) thì bỏ qua */
+export async function napPdfThuMuc(d: DuLieu, ch: CauHinh): Promise<DuLieu> {
+  const pdf = ch.thuMuc.filter((t) => t.chi !== 'excel' && fs.existsSync(t.duongDan)).flatMap((t) => quet(t.duongDan)).filter((f) => /\.pdf$/i.test(f))
+  let kho = d.kho
+  let soPdf = 0
+  let khongPhaiHoaDon = 0
+  for (const f of [...new Set(pdf)].sort()) {
+    try {
+      const goc = docPdfGoc(await pdfThanhDong(new Uint8Array(fs.readFileSync(f))), path.basename(f))
+      const r = goc ? napGoc(kho, goc) : null
+      if (!r || r.loi) {
+        khongPhaiHoaDon++
+        continue
+      }
+      kho = r.kho
+      soPdf++
+    } catch {
+      khongPhaiHoaDon++
+    }
+  }
+  return { ...d, kho, baoCao: { ...d.baoCao, soPdfHoaDon: soPdf, soPdfKhac: khongPhaiHoaDon } }
 }

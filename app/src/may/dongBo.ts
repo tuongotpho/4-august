@@ -10,6 +10,7 @@
 //
 // Mã bản ghi = mã băm SHA-256 của nội dung file: nạp lại cùng một file không sinh bản trùng.
 
+import type { HoaDonGoc } from '../core/hoaDonGoc'
 import { collection, deleteDoc, doc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { deleteObject, getBytes, ref, uploadBytes } from 'firebase/storage'
 import { db, luuTru } from './firebase'
@@ -59,16 +60,18 @@ export interface TepHoaDonMay {
   hd?: HoaDonGon[]
   /** Các tháng file này phủ (theo kỳ ghi trên đầu file + tháng có hoá đơn), theo chiều */
   phu?: { ban: string[]; mua: string[] }
+  /** File là hoá đơn GỐC (XML/PDF một hoá đơn): phần đọc được — dòng hàng, mã CQT, chữ ký */
+  goc?: HoaDonGoc
 }
 
 export async function luuTepHoaDon(
   uid: string, mst: string, ten: string, du: ArrayBuffer, ky: KyKeKhai | null, soBan: number, soMua: number,
-  hd: HoaDonGon[] = [], phu: { ban: string[]; mua: string[] } = { ban: [], mua: [] },
+  hd: HoaDonGon[] = [], phu: { ban: string[]; mua: string[] } = { ban: [], mua: [] }, goc?: HoaDonGoc,
 ) {
   const id = await maBam(du)
   const duongDan = `nguoiDung/${uid}/${mst}/hoaDon/${id}/${tenAnToan(ten)}`
   await uploadBytes(ref(luuTru, duongDan), new Uint8Array(du))
-  const ghi: Omit<TepHoaDonMay, 'id'> = { ten, ky: ky ? khoaKy(ky) : '', soBan, soMua, kichThuoc: du.byteLength, duongDan, hd, phu }
+  const ghi: Omit<TepHoaDonMay, 'id'> = { ten, ky: ky ? khoaKy(ky) : '', soBan, soMua, kichThuoc: du.byteLength, duongDan, hd, phu, ...(goc ? { goc } : {}) }
   await setDoc(doc(db, `${nhanhCongTy(uid, mst)}/tepHoaDon/${id}`), { ...ghi, napLuc: serverTimestamp() })
 }
 

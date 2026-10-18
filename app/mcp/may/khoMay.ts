@@ -13,6 +13,7 @@ import { gopTuMay, khoaKy, khoTrong, moRongHoaDon, type CongTyLuu, type HoaDonGo
 import type { DuLieu } from '../congCu.js'
 import { LoiFirebase, type FirebaseNguoiDung } from './firebaseRest.js'
 import { giaiNenDs, type DsRuiRo } from '../../src/core/ruiRo.js'
+import type { HoaDonGoc } from '../../src/core/hoaDonGoc.js'
 
 export const maBam = (du: Uint8Array | string) =>
   createHash('sha256').update(typeof du === 'string' ? Buffer.from(du, 'utf8') : du).digest('hex').slice(0, 32)
@@ -34,6 +35,7 @@ export interface TepHoaDonMay {
   duongDan: string
   hd?: HoaDonGon[]
   phu?: { ban: string[]; mua: string[] }
+  goc?: HoaDonGoc
 }
 export interface DaXuatMay { id: string; loai: 'gtgt' | 'tncn'; ky: string; tenFile: string; ct40: number | null; duongDan: string }
 export type ChungTuMay = ChungTu & { id: string; duongDan: string; tenFile: string }
@@ -92,7 +94,7 @@ export async function taiDuLieuMay(fb: FirebaseNguoiDung): Promise<DuLieuMay> {
 /** Dựng sổ từ mây Y HỆT web app (App.lamMoiMay -> gopTuMay) */
 export function dungDuLieu(may: DuLieuMay): DuLieu {
   const kho = gopTuMay(khoTrong(), may.congTy, may.toKhai, may.chungTu,
-    Object.entries(may.tepHoaDon).flatMap(([mst, ds]) => ds.map((d) => ({ mst, hd: d.hd ?? [], phu: d.phu }))))
+    Object.entries(may.tepHoaDon).flatMap(([mst, ds]) => ds.map((d) => ({ mst, hd: d.hd ?? [], phu: d.phu, goc: d.goc }))))
   // Hoá đơn đầy đủ để lập tờ khai: lấy từ danh sách Excel (không lấy hoá đơn XML lẻ)
   const hoaDon: Record<string, HoaDon[]> = {}
   for (const [mst, nhom] of Object.entries(kho.hoaDon ?? {})) hoaDon[mst] = Object.values(nhom).filter((g) => !g.x).map((g) => moRongHoaDon(g, mst))
