@@ -29,20 +29,26 @@ function SoiRuiRo({ kq, tt }: { kq: KetQuaSoi | null; tt: TrangThaiRuiRo }) {
       <p className="text-slate-600">
         Đã soi <b>{kq.soNhaCungCap}</b> nhà cung cấp và <b>{kq.soKhachHang}</b> khách hàng (theo hoá đơn còn hiệu lực) với danh sách{' '}
         <b>{tien(kq.soMstDanhSach)}</b> MST rủi ro — {kq.cacFile.length} file, nạp gần nhất {moiNhat ? ngayVN(moiNhat) : '—'}.
+        {kq.quyTheoPhuLuc.length > 0 && <> Quý {kq.quyTheoPhuLuc.map(tenKy).join(', ')} chưa đủ danh sách hoá đơn: soi theo phụ lục tờ khai.</>}
       </p>
+      {kq.namThieuDanhSach.length > 0 && (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-amber-900">
+          ⚠️ Hồ sơ có năm {kq.namThieuDanhSach.join(', ')} nhưng danh sách rủi ro chưa có công văn năm đó — nạp thêm file "PHỤ LỤC QR HDRR" các năm này ở app hoá đơn đỏ.
+        </p>
+      )}
       {kq.doiTac.length === 0 ? (
         <p className="text-emerald-700">✅ Không đối tác nào nằm trong danh sách. (Không có tên trong danh sách chưa chắc đã an toàn — chỉ là chưa bị cơ quan thuế công bố.)</p>
       ) : (
         kq.doiTac.map((d) => (
           <div key={`${d.l}|${d.mst}`} className={`rounded-lg border p-3 ${d.l === 'mua' ? 'border-red-300 bg-red-50' : 'border-amber-300 bg-amber-50'}`}>
             <p className="font-semibold">
-              {d.l === 'mua' ? '⛔ Nhà cung cấp' : '⚠️ Khách hàng'} {d.ten} — MST {d.mst}
+              {d.l === 'mua' && !d.theoTen ? '⛔ Nhà cung cấp' : d.l === 'mua' ? '⚠️ Nhà cung cấp' : '⚠️ Khách hàng'} {d.ten} — {d.theoTen ? `TRÙNG TÊN với DN MST ${d.mst} (phụ lục không ghi MST, cần kiểm lại)` : `MST ${d.mst}`}
               {d.khop.quaDonViChuQuan && <span className="font-normal"> (chi nhánh của DN {d.khop.mst})</span>}
               {d.congAn && <span className="ml-2 rounded bg-red-700 px-2 py-0.5 text-xs text-white">ĐÃ CHUYỂN CÔNG AN</span>}
             </p>
             <ul className="ml-4 list-disc text-slate-700">{d.moTa.map((m, i) => <li key={i}>{m}</li>)}</ul>
             <p className="mt-1">
-              {d.hoaDon.length} hoá đơn · {tien(d.tongV)} đ chưa thuế · thuế <b>{tien(d.tongT)} đ</b>
+              {d.hoaDon.length} hoá đơn{d.phuLuc.length > 0 && ` + ${d.phuLuc.length} dòng phụ lục tờ khai`} · {tien(d.tongV)} đ chưa thuế · thuế <b>{tien(d.tongT)} đ</b>
               {d.l === 'mua' && ' (thuế đầu vào có thể bị loại khỏi khấu trừ)'}
             </p>
             <div className="overflow-x-auto">
@@ -51,6 +57,15 @@ function SoiRuiRo({ kq, tt }: { kq: KetQuaSoi | null; tt: TrangThaiRuiRo }) {
                   <tr><th className="pr-3">Hoá đơn</th><th className="pr-3">Ngày</th><th className="pr-3">Quý</th><th className="pr-3 text-right">Chưa thuế</th><th className="pr-3 text-right">Thuế</th><th /></tr>
                 </thead>
                 <tbody>
+                  {d.phuLuc.map((p) => (
+                    <tr key={`pl-${p.ky}-${p.ten}`} className="border-t border-slate-200">
+                      <td className="pr-3" colSpan={2}>Phụ lục tờ khai: {p.ten}</td>
+                      <td className="pr-3">{tenKy(p.ky)}</td>
+                      <td className="pr-3 text-right">{tien(p.v)}</td>
+                      <td className="pr-3 text-right">{tien(p.t)}</td>
+                      <td />
+                    </tr>
+                  ))}
                   {d.hoaDon.map((h) => (
                     <tr key={`${h.kh}-${h.so}`} className="border-t border-slate-200">
                       <td className="pr-3">{h.kh}-{h.so}</td>

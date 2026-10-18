@@ -8,7 +8,8 @@
 // File này không phụ thuộc thư viện nào: web app, máy chủ MCP và test dùng chung.
 
 import { conHieuLuc } from './excel.js'
-import type { Kho } from './kho.js'
+import { tinhTrangKy, type Kho } from './kho.js'
+import { chuanTen, tinhDoiTac } from './tongQuan.js'
 import type { CanhBao, HoaDon, LoaiHD } from './types.js'
 import { tien } from './nhan.js'
 
@@ -144,11 +145,22 @@ export interface HoaDonRuiRo {
   sauNgung: boolean // lập SAU ngày DN chuyển trạng thái không hoạt động
 }
 
+/** Dòng phụ lục giảm thuế trên tờ khai (quý chưa có đủ danh sách hoá đơn) */
+export interface PhuLucRuiRo {
+  ky: string
+  ten: string
+  v: number
+  t: number
+}
+
 export interface DoiTacRuiRo {
   l: LoaiHD // mua = nhà cung cấp, ban = khách hàng
-  mst: string // MST trên hoá đơn
+  mst: string // MST trên hoá đơn (hoặc MST trong danh sách nếu chỉ khớp theo tên)
   ten: string
   khop: KetQuaTra
+  /** Chỉ khớp theo TÊN (phụ lục tờ khai không ghi MST, chưa thấy hoá đơn nào của đối tác này) — cần kiểm lại MST */
+  theoTen?: boolean
+  phuLuc: PhuLucRuiRo[]
   congAn: boolean
   moTa: string[] // từng dòng trong danh sách: phụ lục; biện pháp; CV; trạng thái
   hoaDon: HoaDonRuiRo[]
@@ -164,6 +176,10 @@ export interface KetQuaSoi {
   /** Đã soi bao nhiêu đối tác (theo hoá đơn còn hiệu lực) */
   soNhaCungCap: number
   soKhachHang: number
+  /** Quý chưa có đủ danh sách hoá đơn: soi thêm theo phụ lục giảm thuế trên tờ khai */
+  quyTheoPhuLuc: string[]
+  /** Năm có hoá đơn / tờ khai mà danh sách rủi ro chưa có công văn năm đó */
+  namThieuDanhSach: number[]
   doiTac: DoiTacRuiRo[]
   canhBao: CanhBao[]
 }
@@ -195,7 +211,7 @@ export function soiRuiRo(kho: Kho, mst: string, ds: DsRuiRo | null | undefined):
         l: g.l, mst: m, ten: g.ten || khop.dong[0].ten, khop,
         congAn: khop.dong.some((x) => daChuyenCongAn(x, ds?.nhom)),
         moTa: khop.dong.map((x) => moTaDong(x, ds?.nhom)),
-        hoaDon: [], tongV: 0, tongT: 0, cacKy: [],
+        hoaDon: [], phuLuc: [], tongV: 0, tongT: 0, cacKy: [],
       }
       doiTac.set(k, d)
     }
@@ -203,10 +219,61 @@ export function soiRuiRo(kho: Kho, mst: string, ds: DsRuiRo | null | undefined):
     d.tongV += g.v
     d.tongT += g.t
   }
+  // Quý chưa có đủ danh sách hoá đơn: lấy đối tác từ phụ lục giảm thuế trên tờ khai (đúng cách bảng đối tác làm).
+  // Phụ lục chỉ ghi TÊN -> dò MST theo tên đã học từ hoá đơn các quý khác; không ra MST thì so tên với danh sách.
+  const mstTheoTen = new Map<string, string>()
+  for (const g of Object.values(kho.hoaDon?.[mst] ?? {})) {
+    const m = chuanMst(g.l === 'mua' ? g.mb : g.mm ?? '')
+    if (m && g.ten) mstTheoTen.set(chuanTen(g.ten), m)
+  }
+  const theoTenDs = new Map<string, DnRuiRo[]>()
+  for (const d of ds?.dong ?? []) if (d.ten) theoTenDs.set(chuanTen(d.ten), [...(theoTenDs.get(chuanTen(d.ten)) ?? []), d])
+  const quyTheoPhuLuc = new Set<string>()
+  for (const nq of tinhDoiTac(kho, mst, null).nguonQuy) {
+    for (const l of ['mua', 'ban'] as const) {
+      if (nq[l] !== 'toKhai' && nq[l] !== 'toKhaiThieuHD') continue
+      quyTheoPhuLuc.add(nq.khoa)
+      const tt = tinhTrangKy(kho, mst, nq.khoa)
+      const pb = tt.boSungMoiNhat ?? tt.lanDau
+      const pl = l === 'mua' ? (pb?.plMua ?? []).map((x) => ({ ten: x.ten, v: x.giaTri, t: x.thue })) : (pb?.plBan ?? []).map((x) => ({ ten: x.ten, v: x.giaTri, t: x.thueGiam * 4 }))
+      for (const x of pl) {
+        if (!x.ten) continue
+        const m = mstTheoTen.get(chuanTen(x.ten))
+        if (m) daSoi[l].add(m)
+        let khop = m ? traMst(m, bang) : undefined
+        let theoTen = false
+        if (!m) {
+          const hit = theoTenDs.get(chuanTen(x.ten))
+          if (hit) {
+            khop = { mst: hit[0].mst, quaDonViChuQuan: false, dong: hit }
+            theoTen = true
+          }
+        }
+        if (!khop) continue
+        const mstDT = m ?? khop.mst
+        const k = `${l}|${mstDT}`
+        let d = doiTac.get(k)
+        if (!d) {
+          d = {
+            l, mst: mstDT, ten: x.ten, khop, ...(theoTen ? { theoTen } : {}),
+            congAn: khop.dong.some((y) => daChuyenCongAn(y, ds?.nhom)),
+            moTa: khop.dong.map((y) => moTaDong(y, ds?.nhom)),
+            hoaDon: [], phuLuc: [], tongV: 0, tongT: 0, cacKy: [],
+          }
+          doiTac.set(k, d)
+        }
+        if (d.hoaDon.some((h) => h.ky === nq.khoa)) continue // quý thiếu tháng: đã tính theo hoá đơn của đối tác này
+        d.phuLuc.push({ ky: nq.khoa, ten: x.ten, v: x.v, t: x.t })
+        d.tongV += x.v
+        d.tongT += x.t
+      }
+    }
+  }
+
   const kq = [...doiTac.values()]
   for (const d of kq) {
     d.hoaDon.sort((a, b) => iso(a.ng).localeCompare(iso(b.ng)) || a.so.localeCompare(b.so))
-    d.cacKy = [...new Set(d.hoaDon.map((h) => h.ky))].sort()
+    d.cacKy = [...new Set([...d.hoaDon.map((h) => h.ky), ...d.phuLuc.map((p) => p.ky)])].sort()
   }
   // Nhà cung cấp trước, rồi tiền thuế lớn trước
   kq.sort((a, b) => (a.l === b.l ? b.tongT - a.tongT : a.l === 'mua' ? -1 : 1))
@@ -215,25 +282,46 @@ export function soiRuiRo(kho: Kho, mst: string, ds: DsRuiRo | null | undefined):
     const sau = d.hoaDon.filter((h) => h.sauNgung).length
     const vai = d.l === 'mua' ? 'Nhà cung cấp' : 'Khách hàng'
     return {
-      muc: d.l === 'mua' ? 'loi' : 'chu_y',
+      muc: d.l === 'mua' && !d.theoTen ? 'loi' : 'chu_y',
       noiDung: [
-        `${vai} ${d.ten} (MST ${d.mst})`,
+        d.theoTen ? `${vai} ${d.ten} (phụ lục tờ khai, không ghi MST) TRÙNG TÊN với DN MST ${d.mst}, DN này` : `${vai} ${d.ten} (MST ${d.mst})`,
         d.khop.quaDonViChuQuan ? ` là chi nhánh của DN MST ${d.khop.mst}, DN này` : '',
         ' nằm trong DANH SÁCH DN RỦI RO về hoá đơn của cơ quan thuế',
         d.congAn ? ' — ĐÃ CHUYỂN HỒ SƠ SANG CÔNG AN' : '',
         ` (${d.moTa.join(' | ')}).`,
-        ` ${d.hoaDon.length} hoá đơn ${d.l === 'mua' ? 'mua vào' : 'bán ra'} quý ${d.cacKy.join(', ')}: ${tien(d.tongV)} đ chưa thuế, thuế ${tien(d.tongT)} đ`,
+        ` ${[d.hoaDon.length ? `${d.hoaDon.length} hoá đơn ${d.l === 'mua' ? 'mua vào' : 'bán ra'}` : '', d.phuLuc.length ? `${d.phuLuc.length} dòng phụ lục tờ khai` : ''].filter(Boolean).join(' + ')} quý ${d.cacKy.join(', ')}: ${tien(d.tongV)} đ chưa thuế, thuế ${tien(d.tongT)} đ`,
         d.l === 'mua' ? ' (thuế đầu vào này có thể bị loại khỏi khấu trừ)' : '',
         sau ? `. ${sau} hoá đơn lập SAU ngày DN chuyển trạng thái không hoạt động` : '',
+        d.theoTen ? '. Chỉ trùng tên — kiểm MST trên hoá đơn gốc' : '',
         '.',
       ].join(''),
     }
   })
+  // Nhắc nạp danh sách các năm còn thiếu: năm có hoá đơn / tờ khai mà danh sách chưa có công văn năm đó
+  const namThieuDanhSach: number[] = []
+  if (ds) {
+    const namDs = new Set(ds.dong.map((x) => Number(x.ngayCv.slice(0, 4))).filter((n) => n > 2000))
+    if (!namDs.size) for (const f of ds.cacFile) for (const m of f.ten.matchAll(/(20\d\d)/g)) namDs.add(Number(m[1]))
+    const namDuLieu = new Set([
+      ...Object.values(kho.hoaDon?.[mst] ?? {}).map((g) => Number(/(\d{4})$/.exec(g.ng)?.[1])),
+      ...Object.keys(kho.gtgt[mst] ?? {}).map((k) => Number(k.slice(0, 4))),
+    ].filter((n) => n > 2000))
+    const dauDs = Math.min(...namDs)
+    namThieuDanhSach.push(...[...namDuLieu].filter((n) => namDs.size && n < dauDs).sort())
+    if (namThieuDanhSach.length) {
+      canhBao.push({
+        muc: 'chu_y',
+        noiDung: `Danh sách DN rủi ro đang có chỉ gồm công văn từ năm ${dauDs}, nhưng hồ sơ có hoá đơn / tờ khai năm ${namThieuDanhSach.join(', ')}. DN bị công bố trong các năm đó mà không còn trong danh sách mới sẽ không bị phát hiện — nạp thêm file "PHỤ LỤC QR HDRR" của năm ${namThieuDanhSach.join(', ')} ở app hoá đơn đỏ.`,
+      })
+    }
+  }
   return {
     soMstDanhSach: bang.size,
     cacFile: ds?.cacFile ?? [],
     soNhaCungCap: daSoi.mua.size,
     soKhachHang: daSoi.ban.size,
+    quyTheoPhuLuc: [...quyTheoPhuLuc].sort(),
+    namThieuDanhSach,
     doiTac: kq,
     canhBao,
   }

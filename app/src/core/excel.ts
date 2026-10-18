@@ -57,6 +57,28 @@ export interface TepHoaDon {
   suaLechCot?: number
   /** Số dòng bị bỏ vì số tiền vô lý (không tự sửa được) */
   boDong?: number
+  /** Số dòng bị bỏ vì ô MST chứa CHỮ (vd. tên công ty) — file ghép tay dán sai thứ tự cột */
+  lechCotMst?: number
+  /** Đoạn MST tăng đều 1 đơn vị qua nhiều dòng liền nhau — dấu hiệu kéo chuột chép sai trong Excel */
+  mstTangDan?: { cot: 'người bán' | 'người mua'; soDong: number; tu: string; den: string }[]
+}
+
+/** Ô MST người bán chứa chữ = chắc chắn sai cột (hoá đơn điện tử bắt buộc có MST người bán) */
+const coChu = (v: O) => typeof v === 'string' && /\p{L}{2,}/u.test(v)
+/** Ô MST người mua có thể ghi chú chữ (khách lẻ...): chỉ coi là sai cột khi chứa TÊN doanh nghiệp */
+const laTenDN = (v: O) => typeof v === 'string' && /^\s*(CÔNG TY|CTY|CHI NHÁNH|DOANH NGHIỆP|HỢP TÁC XÃ|TẬP ĐOÀN)/iu.test(v.normalize('NFC'))
+
+/** Các đoạn ≥ 3 dòng liền nhau mà MST (10 chữ số) tăng đúng 1 đơn vị mỗi dòng */
+function doanTangDan(ds: string[]): { soDong: number; tu: string; den: string }[] {
+  const kq: { soDong: number; tu: string; den: string }[] = []
+  let dau = 0
+  for (let i = 1; i <= ds.length; i++) {
+    const lienTiep = i < ds.length && /^\d{10}$/.test(ds[i]) && /^\d{10}$/.test(ds[i - 1]) && Number(ds[i]) === Number(ds[i - 1]) + 1
+    if (lienTiep) continue
+    if (i - dau >= 3) kq.push({ soDong: i - dau, tu: ds[dau], den: ds[i - 1] })
+    dau = i
+  }
+  return kq
 }
 
 /** Đọc một sheet "DANH SÁCH HÓA ĐƠN". Không phải danh sách hoá đơn thì trả null. */
@@ -90,6 +112,7 @@ export function docTep(rows: O[][], tenFile: string): TepHoaDon | null {
   const laTien = (v: O) => typeof v === 'number' || (typeof v === 'string' && /^-?[\d.,]+$/.test(v.trim()) && !laMST(v))
   let suaLechCot = 0
   let boDong = 0
+  let lechCotMst = 0
 
   const hoaDon: HoaDon[] = []
   for (const r of rows.slice(iTieuDe + 1)) {
@@ -105,6 +128,11 @@ export function docTep(rows: O[][], tenFile: string): TepHoaDon | null {
     // Lưới an toàn: tiền là MST, hoặc thuế > 10,5% giá trị -> không phải dòng hoá đơn hợp lệ, bỏ và báo
     if (laMST(r[at(c.chuaThue)]) || (chuaThue > 0 && thue > chuaThue * 0.105 + 10)) {
       boDong++
+      continue
+    }
+    // Ô MST chứa chữ: dòng dán sai thứ tự cột -> đọc tiếp sẽ ra sai chiều bán/mua (từng xếp 2,4 tỷ bán ra thành mua vào)
+    if ((c.mstBan >= 0 && coChu(r[c.mstBan])) || (c.mstMua >= 0 && laTenDN(r[at(c.mstMua)]))) {
+      lechCotMst++
       continue
     }
     if (d) suaLechCot++
@@ -137,7 +165,15 @@ export function docTep(rows: O[][], tenFile: string): TepHoaDon | null {
       break
     }
   }
-  return { ten: tenFile, hoaDon, goiY, tu, den, ...(suaLechCot ? { suaLechCot } : {}), ...(boDong ? { boDong } : {}) }
+  const mstTangDan = [
+    ...doanTangDan(hoaDon.map((h) => h.mstBan)).map((x) => ({ cot: 'người bán' as const, ...x })),
+    ...doanTangDan(hoaDon.map((h) => h.mstMua)).map((x) => ({ cot: 'người mua' as const, ...x })),
+  ]
+  return {
+    ten: tenFile, hoaDon, goiY, tu, den,
+    ...(suaLechCot ? { suaLechCot } : {}), ...(boDong ? { boDong } : {}),
+    ...(lechCotMst ? { lechCotMst } : {}), ...(mstTangDan.length ? { mstTangDan } : {}),
+  }
 }
 
 export interface KetQuaPhanLoai {
@@ -238,6 +274,8 @@ export function phanLoai(teps: TepHoaDon[], mstBiet?: string | null, epBuoc: Rec
     theoTep[t.ten] = dem
     if (t.suaLechCot) canhBao.push({ muc: 'chu_y', noiDung: `${t.ten}: ${t.suaLechCot} dòng bị lệch cột (file ghép từ nhiều lần tải) — app đã tự đọc lại đúng cột. Nên mở file kiểm tra.` })
     if (t.boDong) canhBao.push({ muc: 'loi', noiDung: `${t.ten}: bỏ ${t.boDong} dòng có số tiền vô lý (nghi lệch cột không tự sửa được). Mở file kiểm tra các dòng đó.` })
+    if (t.lechCotMst) canhBao.push({ muc: 'loi', noiDung: `${t.ten}: bỏ ${t.lechCotMst} dòng có ô MST chứa CHỮ (vd. tên công ty) — file ghép tay dán sai thứ tự cột, đọc tiếp sẽ nhầm bán ra thành mua vào. Tải lại danh sách từ cổng thuế hoặc sửa cột rồi nạp lại.` })
+    for (const x of t.mstTangDan ?? []) canhBao.push({ muc: 'loi', noiDung: `${t.ten}: ${x.soDong} dòng liền nhau có MST ${x.cot} tăng đều 1 đơn vị (${x.tu} → ${x.den}) — dấu hiệu kéo chuột chép sai MST trong Excel. Mở file sửa lại cột MST rồi nạp lại.` })
     if (dem.khac) canhBao.push({ muc: 'chu_y', noiDung: `${t.ten}: ${dem.khac} hoá đơn không có MST ${mstCty ?? 'công ty'} ở bên bán lẫn bên mua — đã bỏ ra. Có tải nhầm file đơn vị khác không?` })
   }
   return { mst: mstCty, tenCongTy, dchiCongTy, hoaDon, theoTep, canhBao }

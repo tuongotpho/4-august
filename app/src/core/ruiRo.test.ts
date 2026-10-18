@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { khoTrong, napHoaDon } from './kho.js'
+import { khoTrong, napHoaDon, napToKhai } from './kho.js'
+import type { ToKhaiDaNop } from './docToKhai.js'
 import { bangRuiRo, docDsRuiRo, giaiNenDs, gopDsRuiRo, soiRuiRo, traMst, type DsRuiRo } from './ruiRo.js'
-import type { HoaDon } from './types.js'
+import type { HoaDon, HoSoDN } from './types.js'
 
 const CTY = '2600000001'
 const NCC_XAU = '0101234567' // giả: nằm trong danh sách rủi ro
@@ -48,7 +49,8 @@ describe('Soi đối tác theo danh sách DN rủi ro về hoá đơn', () => {
     ])
     expect(kq.doiTac[0].hoaDon.map((h) => h.sauNgung)).toEqual([false, true])
     expect(kq.doiTac[1].congAn).toBe(true)
-    expect(kq.canhBao.map((c) => c.muc)).toEqual(['loi', 'chu_y'])
+    expect(kq.canhBao.map((c) => c.muc)).toEqual(['loi', 'chu_y', 'chu_y'])
+    expect(kq.namThieuDanhSach).toEqual([2025]) // danh sách giả chỉ có công văn 2026 -> nhắc nạp năm 2025
     expect(kq.canhBao[0].noiDung).toContain('Nhà cung cấp CTY GIẢ A (MST 0101234567)')
     expect(kq.canhBao[0].noiDung).toContain('thuế 12.000.000 đ')
     expect(kq.canhBao[0].noiDung).toContain('1 hoá đơn lập SAU ngày DN chuyển trạng thái không hoạt động')
@@ -58,7 +60,9 @@ describe('Soi đối tác theo danh sách DN rủi ro về hoá đơn', () => {
   it('không có danh sách / không ai dính: không cảnh báo, vẫn đếm số đối tác đã soi', () => {
     const kho = napHoaDon(khoTrong(), CTY, [hd({ so: '1' })])
     expect(soiRuiRo(kho, CTY, null)).toMatchObject({ soMstDanhSach: 0, soNhaCungCap: 1, doiTac: [], canhBao: [] })
-    expect(soiRuiRo(kho, CTY, ds).canhBao).toEqual([])
+    expect(soiRuiRo(kho, CTY, ds).doiTac).toEqual([])
+    // danh sách đã có công văn năm của hoá đơn -> không nhắc gì
+    expect(soiRuiRo(kho, CTY, { ...ds, dong: ds.dong.map((d) => ({ ...d, ngayCv: '2025-01-15' })) }).canhBao).toEqual([])
   })
 
   it('đọc file Excel danh sách: tự dò cột theo tiêu đề, MST kiểu số mất số 0 đầu, ngày kiểu số', () => {
@@ -92,5 +96,33 @@ describe('Soi đối tác theo danh sách DN rủi ro về hoá đơn', () => {
     expect(nen[0]).toBe(0x1f)
     expect(await giaiNenDs(nen)).toEqual(gop)
     expect(await giaiNenDs(new TextEncoder().encode(JSON.stringify(ds)))).toEqual(ds)
+  })
+
+  it('quý chưa có danh sách hoá đơn: soi theo phụ lục tờ khai — dò MST theo tên đã học, không ra MST thì so tên', () => {
+    const HS = { mst: CTY, tenNNT: 'Cty mình' } as HoSoDN
+    const tk = (quy: 1 | 2 | 3 | 4, plMua: ToKhaiDaNop['plMua']): ToKhaiDaNop => ({
+      maTKhai: '842', loaiTKhai: 'C', soLan: 0, ngayLap: '', ky: { quy, nam: 2024 }, hoSo: HS, ct: { ct23: 1, ct34: 0 }, plMua, plBan: [], ct9: null,
+    })
+    let kho = napToKhai(khoTrong(), tk(1, [
+      { ten: 'Công ty TNHH giả A', giaTri: 20_000_000, thue: 1_600_000 }, // tên viết khác, MST học từ hoá đơn quý 2
+      { ten: 'CTY TNHH GIẢ C', giaTri: 5_000_000, thue: 400_000 }, // chưa từng có hoá đơn -> chỉ so được tên
+      { ten: 'NCC sạch', giaTri: 1_000_000, thue: 80_000 },
+    ]), 'q1.xml').kho
+    // Quý 2/2024 có danh sách hoá đơn -> app học tên "CÔNG TY TNHH GIẢ A" = MST NCC_XAU
+    kho = napHoaDon(kho, CTY, [hd({ so: '20', mstBan: NCC_XAU, tenBan: 'CÔNG TY TNHH GIẢ A', ngay: '10/05/2024' })])
+    const dsTen: DsRuiRo = { ...ds, dong: [...ds.dong, { ...ds.dong[0], mst: '0107777777', ten: 'Công ty TNHH Giả C' }] }
+    const kq = soiRuiRo(kho, CTY, dsTen)
+    expect(kq.quyTheoPhuLuc).toEqual(['2024-Q1'])
+    const a = kq.doiTac.find((d) => d.mst === NCC_XAU)!
+    expect(a).toMatchObject({ hoaDon: [expect.objectContaining({ so: '20' })], phuLuc: [{ ky: '2024-Q1', ten: 'Công ty TNHH giả A', v: 20_000_000, t: 1_600_000 }], tongT: 9_600_000, cacKy: ['2024-Q1', '2024-Q2'] })
+    expect(a.theoTen).toBeUndefined()
+    const c = kq.doiTac.find((d) => d.mst === '0107777777')!
+    expect(c).toMatchObject({ theoTen: true, phuLuc: [expect.objectContaining({ ky: '2024-Q1', t: 400_000 })] })
+    const cbC = kq.canhBao.find((x) => x.noiDung.includes('CTY TNHH GIẢ C'))!
+    expect(cbC.muc).toBe('chu_y') // chỉ trùng tên -> không kết luận chắc chắn
+    expect(cbC.noiDung).toContain('TRÙNG TÊN với DN MST 0107777777')
+    // Danh sách chỉ có công văn năm 2026, hồ sơ có năm 2024 -> nhắc nạp thêm
+    expect(kq.namThieuDanhSach).toEqual([2024])
+    expect(kq.canhBao.at(-1)!.noiDung).toContain('nạp thêm file "PHỤ LỤC QR HDRR" của năm 2024')
   })
 })
