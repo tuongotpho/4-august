@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { signInAnonymously, signOut } from 'firebase/auth'
 import { auth } from '../src/may/firebase'
-import { datCoTraVe, luuChungTu, xoaCongTyTrenMay, xoaTaiLieu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep } from '../src/may/dongBo'
+import { datCoTraVe, luuChungTu, xoaCongTyTrenMay, xoaTaiLieu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, luuLoHang, taiLenGiayTo, xoaLoHang } from '../src/may/dongBo'
 import { docTaiLieu } from '../src/core/taiLieu'
 import { tinhTongQuan } from '../src/core/tongQuan'
 import { docToKhai } from '../src/core/docToKhai'
@@ -78,5 +78,34 @@ describe('Đồng bộ hồ sơ lên mây (máy giả lập)', () => {
     may = await taiDuLieuMay(uid)
     expect(may.congTy.map((c) => c.hoSo.mst)).toEqual(['0900000009'])
     expect(may.tepHoaDon['0100000000']).toBeUndefined()
+  })
+
+  it('lô hàng: lưu lô + tải giấy tờ lên, tải về đúng, xoá lô xoá luôn file; xoá công ty xoá cả lô', async () => {
+    await signOut(auth)
+    const { user } = await signInAnonymously(auth)
+    const uid = user.uid
+    const M = '0100000009'
+    await luuCongTy(uid, { hoSo: { mst: M, tenNNT: 'Cty Lô' } as never, kyNguon: '', suaTay: false })
+    const lo = { id: 'lo-1', ten: 'Lô 01/03', ngayTao: '2026-03-01', ghiChu: '', hoaDon: ['mua|0200000002|C26TBB|7', 'ban||C26TNA|1'], tanTay: { ban: 12.5 }, giayTo: [] as never[] }
+    const g = await taiLenGiayTo(uid, M, lo.id, 'phieuCan', new File([new TextEncoder().encode('phieu can so 1')], 'phiếu cân 1.jpg', { type: 'image/jpeg' }))
+    expect(g).toMatchObject({ loai: 'phieuCan', ten: 'phiếu cân 1.jpg', kichThuoc: 14 })
+    await luuLoHang(uid, M, { ...lo, giayTo: [g] as never[] })
+    let may = await taiDuLieuMay(uid)
+    expect(may.loHang).toEqual([{ mst: M, lo: expect.objectContaining({ id: 'lo-1', ten: 'Lô 01/03', hoaDon: lo.hoaDon, tanTay: { ban: 12.5 }, giayTo: [g] }) }])
+    expect(new TextDecoder().decode(await taiTep(g.duongDan))).toBe('phieu can so 1')
+    // dựng lại sổ từ mây: có lô
+    const kho = gopTuMay(khoTrong(), may.congTy, may.toKhai, may.chungTu, [], may.loHang)
+    expect(Object.keys(kho.loHang![M])).toEqual(['lo-1'])
+    await xoaLoHang(uid, M, { ...lo, giayTo: [g] as never[] })
+    may = await taiDuLieuMay(uid)
+    expect(may.loHang).toEqual([])
+    await expect(taiTep(g.duongDan)).rejects.toThrow()
+    // lô thứ 2 rồi xoá cả công ty
+    const g2 = await taiLenGiayTo(uid, M, 'lo-2', 'hopDongMua', new File([new Uint8Array([1, 2, 3])], 'hd.pdf'))
+    await luuLoHang(uid, M, { ...lo, id: 'lo-2', giayTo: [g2] as never[] })
+    await xoaCongTyTrenMay(uid, M)
+    may = await taiDuLieuMay(uid)
+    expect(may.loHang).toEqual([])
+    await expect(taiTep(g2.duongDan)).rejects.toThrow()
   })
 })

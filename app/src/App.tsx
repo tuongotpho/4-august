@@ -6,11 +6,13 @@ import { tinhTNCN, NHAP_TNCN_TRONG, type NhapTNCN } from './core/tncn'
 import { docToKhai } from './core/docToKhai'
 import { tenFileXML, xmlGTGT, xmlTNCN } from './core/xml'
 import { denNgay, hanNop, ngayISO, quyCanKhai, tuNgay } from './core/ky'
-import { boCongTy, dauKy, datKhongChapNhan, ghiAppXuat, ghiPhuSong, gopTuMay, kyTruoc, napGoc, napHoaDon, napTaiLieu, napToKhai, rutGonHoaDon, suaHoSo, tncnGanNhat, type Kho } from './core/kho'
+import { boCongTy, dauKy, datKhongChapNhan, ghiAppXuat, ghiPhuSong, gopTuMay, kyTruoc, datLo, napGoc, napHoaDon, napTaiLieu, napToKhai, xoaLo, rutGonHoaDon, suaHoSo, tncnGanNhat, type Kho } from './core/kho'
 import { docTaiLieu, khoaChungTu } from './core/taiLieu'
 import { tinhDoiSoat, tinhDoiTac, tinhTongQuan } from './core/tongQuan'
 import { soiRuiRo, type DsRuiRo } from './core/ruiRo'
 import { canhBaoGoc, docPdfGoc, docXmlGoc, tongHopGoc } from './core/hoaDonGoc'
+import { tongHopLo, type LoHang } from './core/loHang'
+import { LoHangDN, type ThaoTacLo } from './ui/LoHang'
 import { moZip } from './core/nenZip'
 import { pdfThanhDong } from './may/pdfChu'
 import { taiDsRuiRo } from './may/ruiRoMay'
@@ -18,7 +20,7 @@ import { NapHangLoat, TongQuanDN } from './ui/TongQuan'
 import type { ToKhaiDaNop } from './core/docToKhai'
 import { coMay } from './may/firebase'
 import { dangNhap, dangXuat, useNguoiDung } from './may/useMay'
-import { boSungHoaDonTep, boSungPhuLuc, datCoTraVe, xoaCongTyTrenMay, xoaTaiLieu, type NhomTaiLieu, luuChungTu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, type DuLieuMay } from './may/dongBo'
+import { boSungHoaDonTep, boSungPhuLuc, datCoTraVe, xoaCongTyTrenMay, xoaTaiLieu, type NhomTaiLieu, luuChungTu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, type DuLieuMay, luuLoHang, xoaLoHang, taiLenGiayTo, xoaGiayTo } from './may/dongBo'
 import { KhoHoSo } from './ui/KhoHoSo'
 import { Logo, TaiKhoan } from './ui/DauTrang'
 import { NHAN_GTGT, NHAN_TNCN, tien } from './core/nhan'
@@ -61,7 +63,7 @@ export default function App() {
     const du = await taiDuLieuMay(uid)
     setMay(du)
     capNhatKho((k) =>
-      gopTuMay(k, du.congTy, du.toKhai, du.chungTu, Object.entries(du.tepHoaDon).flatMap(([mst, ds]) => ds.map((d) => ({ mst, hd: d.hd ?? [], phu: d.phu, goc: d.goc })))),
+      gopTuMay(k, du.congTy, du.toKhai, du.chungTu, Object.entries(du.tepHoaDon).flatMap(([mst, ds]) => ds.map((d) => ({ mst, hd: d.hd ?? [], phu: d.phu, goc: d.goc }))), du.loHang),
     )
     void boSungFileCu(uid, du)
     return du
@@ -172,7 +174,7 @@ export default function App() {
   const [ngayLap, setNgayLap] = useState(ngayISO())
   const [hienItDung, setHienItDung] = useState(false)
   const [daXuat, setDaXuat] = useState(false)
-  const [tab, setTab] = useState<'tongQuan' | 'keKhai' | 'kho'>(() => (Object.keys(docKho(null).gtgt).length ? 'tongQuan' : 'keKhai'))
+  const [tab, setTab] = useState<'tongQuan' | 'keKhai' | 'loHang' | 'kho'>(() => (Object.keys(docKho(null).gtgt).length ? 'tongQuan' : 'keKhai'))
   const [tienDo, setTienDo] = useState<{ xong: number; tong: number; dangLam: string } | null>(null)
   const [ketQuaNap, setKetQuaNap] = useState('')
 
@@ -579,6 +581,32 @@ export default function App() {
   const ruiRo = useMemo(() => (mst ? soiRuiRo(kho, mst, dsRuiRo.ds) : null), [kho, mst, dsRuiRo])
   // Đối tác dính danh sách rủi ro đứng ĐẦU mục "Cần xử lý"
   const goc = useMemo(() => (mst ? tongHopGoc(kho, mst) : null), [kho, mst])
+  const loTong = useMemo(() => (mst ? tongHopLo(kho, mst, Object.values(kho.loHang?.[mst] ?? {})) : null), [kho, mst])
+  // Lô hàng: lưu ngay trên máy; đăng nhập thì lưu cả lên mây (giấy tờ là file thật trên mây)
+  const thaoTacLo: ThaoTacLo = {
+    luu: async (lo: LoHang) => {
+      if (!mst) return
+      capNhatKho((k) => datLo(k, mst, lo))
+      if (user) await luuLoHang(user.uid, mst, lo)
+    },
+    xoa: async (lo: LoHang) => {
+      if (!mst) return
+      capNhatKho((k) => xoaLo(k, mst, lo.id))
+      if (user) await xoaLoHang(user.uid, mst, lo)
+    },
+    taiGiayTo: user && mst ? (lo, loai, f) => taiLenGiayTo(user.uid, mst, lo.id, loai, f) : null,
+    xoaGiayTo: (g) => xoaGiayTo(g),
+    moGiayTo: (g) => {
+      void taiTep(g.duongDan).then((du) => {
+        const url = URL.createObjectURL(new Blob([du]))
+        const a = document.createElement('a')
+        a.href = url
+        a.download = g.ten
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      }).catch((e) => setTrangThaiMay(`⚠️ Không tải được giấy tờ: ${(e as Error).message}`))
+    },
+  }
   const tq = useMemo(() => {
     const t = mst ? tinhTongQuan(kho, mst) : null
     const them = [...(ruiRo?.canhBao ?? []), ...(goc ? canhBaoGoc(goc) : [])]
@@ -660,7 +688,7 @@ export default function App() {
 
       <main className="mx-auto max-w-5xl space-y-5 px-4 py-6">
         <nav className="flex flex-wrap gap-2">
-          {([['tongQuan', '📊 Tổng quan'], ['keKhai', '📝 Kê khai quý'], ['kho', '🗂 Kho hồ sơ']] as const).map(([k, ten]) => (
+          {([['tongQuan', '📊 Tổng quan'], ['keKhai', '📝 Kê khai quý'], ['loHang', '📦 Lô hàng'], ['kho', '🗂 Kho hồ sơ']] as const).map(([k, ten]) => (
             <button key={k} onClick={() => setTab(k)} className={`rounded-xl px-4 py-2 font-medium ${tab === k ? 'bg-emerald-700 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>
               {ten}
             </button>
@@ -679,6 +707,17 @@ export default function App() {
             {ketQuaNap && <p className="text-sm text-emerald-800">{ketQuaNap}</p>}
             {!user && coMay && <p className="text-sm text-slate-500">Mẹo: đăng nhập Google (trên cùng) trước khi nạp để hồ sơ được lưu lên mây, mở ở máy khác cũng thấy.</p>}
             {tq && hoSo ? <TongQuanDN tq={tq} tenCty={hoSo.tenNNT} onMoQuy={moQuyKeKhai} layDoiTac={layDoiTac} doiSoat={doiSoat} ruiRo={ruiRo} goc={goc} trangThaiRuiRo={!user ? 'chuaDangNhap' : dsRuiRo.loi ? `loi:${dsRuiRo.loi}` : dsRuiRo.ds === undefined ? 'dangTai' : dsRuiRo.ds === null ? 'chuaNap' : 'co'} /> : <p className="text-slate-500">Nạp hồ sơ để xem tổng quan.</p>}
+          </section>
+        )}
+
+        {tab === 'loHang' && (
+          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+            <h2 className="text-xl font-semibold">📦 Lô hàng {hoSo && <span className="text-base font-normal text-slate-500">— {hoSo.tenNNT}</span>}</h2>
+            <p className="text-sm text-slate-600">
+              Mỗi lô = một lần mua – chở – bán (giao thẳng, không qua kho). Ghép hoá đơn mua + cước xe + bán; app tính tấn, lãi gộp và soát giấy tờ chứng minh hàng thật.
+              Số tấn lấy từ dòng hàng của hoá đơn gốc XML/PDF (nạp ở tab Tổng quan); chưa có thì gõ tay.
+            </p>
+            {loTong && mst ? <LoHangDN t={loTong} tt={thaoTacLo} dangNhap={!!user} /> : <p className="text-slate-500">Nạp hồ sơ (tờ khai + danh sách hoá đơn) trước.</p>}
           </section>
         )}
 

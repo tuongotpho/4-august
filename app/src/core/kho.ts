@@ -8,6 +8,7 @@
 // => [22] lấy từ bản LẦN ĐẦU. Khai bổ sung kỳ trước làm đổi [43] thì phần chênh không đưa vào [22].
 
 import { gocThanhHoaDon, khoaGoc, type HoaDonGoc } from './hoaDonGoc.js'
+import type { LoHang } from './loHang.js'
 import type { HoaDon, HoSoDN, KyKeKhai } from './types.js'
 import type { ToKhaiDaNop } from './docToKhai.js'
 import { datChungTu, daXacNhan, type ChungTu, type TaiLieu } from './taiLieu.js'
@@ -86,6 +87,8 @@ export interface Kho {
   phuSong?: Record<string, { ban: string[]; mua: string[] }>
   /** Hoá đơn GỐC (file XML/PDF từng hoá đơn): dòng hàng, mã CQT, chữ ký — theo công ty, khoá như sổ hoá đơn */
   goc?: Record<string, Record<string, HoaDonGoc>>
+  /** Lô hàng (mua – chở – bán ghép lại) theo công ty */
+  loHang?: Record<string, Record<string, LoHang>>
 }
 
 export const khoTrong = (): Kho => ({ phienBan: 1, chon: null, congTy: {}, gtgt: {}, tncn: {} })
@@ -280,6 +283,7 @@ export function gopTuMay(
   toKhai: ToKhaiMay[],
   chungTu: ChungTu[] = [],
   hoaDon: { mst: string; hd: HoaDonGon[]; phu?: { ban: string[]; mua: string[] }; goc?: HoaDonGoc }[] = [],
+  loHang?: { mst: string; lo: LoHang }[],
 ): Kho {
   let kho = kho0
   for (const t of toKhai) {
@@ -319,6 +323,12 @@ export function gopTuMay(
     kho = napHoaDon(kho, mst, hd.filter((g) => g.x).map((g) => moRongHoaDon(g, mst)), true)
   }
   kho = structuredClone(kho)
+  // Lô hàng trên mây là bản chuẩn: có danh sách từ mây thì thay hẳn (lô đã xoá ở máy khác không còn)
+  if (loHang) {
+    const theoCty: Record<string, Record<string, LoHang>> = {}
+    for (const { mst, lo } of loHang) (theoCty[mst] ??= {})[lo.id] = lo
+    kho.loHang = theoCty
+  }
   // Thông tin công ty trên mây là bản người dùng đã chốt -> ưu tiên
   for (const c of congTy) kho.congTy[c.hoSo.mst] = structuredClone(c)
   if (!kho.chon && congTy[0]) kho.chon = congTy[0].hoSo.mst
@@ -434,5 +444,18 @@ export function boCongTy(kho0: Kho, mst: string, giuThongTin = true): Kho {
     delete kho.congTy[mst]
     if (kho.chon === mst) kho.chon = Object.keys(kho.congTy)[0] ?? null
   }
+  return kho
+}
+
+/** Thêm / sửa một lô hàng */
+export function datLo(kho0: Kho, mst: string, lo: LoHang): Kho {
+  const kho: Kho = structuredClone(kho0)
+  ;((kho.loHang ??= {})[mst] ??= {})[lo.id] = structuredClone(lo)
+  return kho
+}
+
+export function xoaLo(kho0: Kho, mst: string, id: string): Kho {
+  const kho: Kho = structuredClone(kho0)
+  delete kho.loHang?.[mst]?.[id]
   return kho
 }

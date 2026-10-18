@@ -402,7 +402,13 @@ export interface TongHopGoc {
 }
 
 const congDon = (a: Record<string, number>, b: Record<string, number>) => {
-  for (const [k, v] of Object.entries(b)) a[k] = Math.round(((a[k] ?? 0) + v) * 1000) / 1000
+  for (const [k0, v0] of Object.entries(b)) {
+    // quy kg về tấn để cộng chung (hoá đơn ghi lẫn "Tấn" / "tấn" / "kg")
+    const laTan = /^(tấn|tan|t)$/i.test(k0)
+    const k = laTan || k0 === 'kg' ? 'tấn' : k0
+    const v = k0 === 'kg' ? v0 / 1000 : v0
+    a[k] = Math.round(((a[k] ?? 0) + v) * 1000) / 1000
+  }
 }
 
 export function tongHopGoc(kho: Kho, mst: string, quyTac = QUY_TAC_MAC_DINH): TongHopGoc {

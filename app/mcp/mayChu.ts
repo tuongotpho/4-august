@@ -144,6 +144,13 @@ export function taoMayChu(nguon: NguonMcp) {
     annotations: chiDoc,
   }, chay(cc.hoaDonGoc))
 
+  server.registerTool('lo_hang', {
+    title: 'Lô hàng (mua – chở – bán)',
+    description: 'Các lô hàng đã ghép trên web app: hoá đơn mua viên nén + cước xe + bán, tấn mua/bán/chênh, giá vốn, cước, doanh thu, lãi gộp, giấy tờ chứng minh còn thiếu; luỹ kế tấn mua/bán theo năm (bán > mua = dấu hiệu bán khống); gợi ý ghép lô cho hoá đơn chưa vào lô.',
+    inputSchema: { mst, gioi_han: z.number().int().min(1).max(200).optional().describe('Số lô / gợi ý tối đa (mặc định 30)') },
+    annotations: chiDoc,
+  }, chay(cc.loHang))
+
   server.registerTool('soi_rui_ro', {
     title: 'Soi DN rủi ro về hoá đơn',
     description: 'So MST mọi nhà cung cấp (mua vào) và khách hàng (bán ra) trên hoá đơn còn hiệu lực với DANH SÁCH DN RỦI RO VỀ HOÁ ĐƠN của cơ quan thuế (file "PHỤ LỤC QR HDRR" người dùng nạp ở app hoá đơn đỏ). Trả về đối tác dính danh sách, từng hoá đơn, quý, tiền thuế đầu vào có nguy cơ bị loại, DN đã chuyển công an, hoá đơn lập sau ngày DN ngừng hoạt động.',

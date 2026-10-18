@@ -86,7 +86,7 @@ describe('Máy chủ MCP khaithue', () => {
   it('khai báo đủ công cụ; chỉ xuat_xml_gtgt được ghi', async () => {
     const { tools } = await client.listTools()
     expect(tools.map((t) => t.name).sort()).toEqual([
-      'chung_tu_nop_tien', 'danh_sach_cong_ty', 'doi_soat', 'doi_tac', 'hoa_don_goc', 'lap_to_khai_gtgt', 'nap_ho_so', 'so_theo_doi_gtgt', 'soi_rui_ro', 'tong_quan', 'tra_hoa_don', 'xuat_xml_gtgt',
+      'chung_tu_nop_tien', 'danh_sach_cong_ty', 'doi_soat', 'doi_tac', 'hoa_don_goc', 'lap_to_khai_gtgt', 'lo_hang', 'nap_ho_so', 'so_theo_doi_gtgt', 'soi_rui_ro', 'tong_quan', 'tra_hoa_don', 'xuat_xml_gtgt',
     ])
     expect(tools.filter((t) => !t.annotations?.readOnlyHint).map((t) => t.name)).toEqual(['xuat_xml_gtgt'])
   })
@@ -160,5 +160,12 @@ describe('Máy chủ MCP khaithue', () => {
     expect(kq.soVoiCongThue).toMatchObject({ hoaDonConHieuLuc: 3, daCoGoc: 1, chuaCoGoc: 2, lechTien: [] })
     expect(kq.theoQuy).toEqual([expect.objectContaining({ khoa: '2026-Q2', muaVienNen: { tấn: 12.5 }, tienMuaVienNen: 30000000 })])
     expect(kq.chiTiet[0]).toMatchObject({ nhom: 'Viên nén / nguyên liệu gỗ', dong: [{ ten: 'Viên nén gỗ', sl: 12.5 }] })
+  })
+
+  it('lô hàng: bản thư mục chưa có lô (lô tạo trên web app) — vẫn ra luỹ kế tấn và gợi ý ghép lô', async () => {
+    const { kq } = await goi('lo_hang')
+    expect(kq).toMatchObject({ soLo: 0, laiGopCongDon: 0, soHoaDonChuaVaoLo: 3 })
+    expect(kq.luyKeTheoNam).toEqual([{ nam: 2026, tanMua: 12.5, tanBan: 0, hoaDonThieuGoc: 2 }])
+    expect(kq.goiYGhepLo).toEqual([])
   })
 })

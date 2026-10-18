@@ -12,6 +12,7 @@ import { daXacNhan, tenTieuMuc, kyCuaChungTu } from '../src/core/taiLieu.js'
 import { tinhDoiSoat, tinhDoiTac, tinhTongQuan } from '../src/core/tongQuan.js'
 import { soiRuiRo as soiRuiRoLoi, type DsRuiRo } from '../src/core/ruiRo.js'
 import { canhBaoGoc, tongHopGoc, TEN_NHOM, nhomHoaDon } from '../src/core/hoaDonGoc.js'
+import { goiYLo, tongHopLo, TEN_GIAY_TO } from '../src/core/loHang.js'
 import type { CanhBao, HoaDon, KyKeKhai } from '../src/core/types.js'
 import { tenFileXML, xmlGTGT } from '../src/core/xml.js'
 
@@ -350,5 +351,32 @@ export function hoaDonGoc(d: DuLieu, a: { mst?: string; tim?: string; gioi_han?:
     theoQuy: t.theoQuy,
     kiemTra: t.kiemTra.map(chu).slice(0, n),
     ...(chiTiet ? { chiTiet } : {}),
+  }
+}
+
+/** Lô hàng: mua – chở – bán ghép lại; tấn, lãi gộp, giấy tờ còn thiếu; luỹ kế tấn mua/bán theo năm; gợi ý ghép lô */
+export function loHang(d: DuLieu, a: { mst?: string; gioi_han?: number }) {
+  const mst = chonMst(d.kho, a.mst)
+  const t = tongHopLo(d.kho, mst, Object.values(d.kho.loHang?.[mst] ?? {}))
+  const n = a.gioi_han ?? 30
+  return {
+    mst,
+    giaiThich: 'Lô = một lần mua – chở – bán (giao thẳng, không kho). Tấn lấy từ dòng hàng hoá đơn gốc XML/PDF (null = thiếu file gốc, có thể gõ tay trên web app). Tạo / sửa lô làm trên web app.',
+    soLo: t.lo.length,
+    laiGopCongDon: t.lo.reduce((s, k) => s + k.laiGop, 0),
+    luyKeTheoNam: t.theoNam,
+    canhBao: t.canhBao.map(chu).slice(0, n),
+    lo: t.lo.slice(0, n).map((k) => ({
+      ten: k.lo.ten, tuNgay: k.tuNgay, denNgay: k.denNgay, nhaCungCap: k.nhaCungCap, benMua: k.benMua,
+      tanMua: k.tanMua, tanBan: k.tanBan, chenhTan: k.chenhTan, giaVon: k.giaVon, cuoc: k.cuoc, chiPhiKhac: k.chiPhiKhac, doanhThu: k.doanhThu, laiGop: k.laiGop,
+      giayTo: k.lo.giayTo.map((g) => `${TEN_GIAY_TO[g.loai]}: ${g.ten}`), giayToThieu: k.giayToThieu.map((l) => TEN_GIAY_TO[l]),
+      hoaDon: k.hoaDon.map((h) => ({ so: `${h.kh}-${h.so}`, ngay: h.ng, nhom: TEN_NHOM[h.nhom], doiTac: h.ten, chuaThue: h.v, tan: h.tan, conHieuLuc: h.conHieuLuc })),
+    })),
+    soHoaDonChuaVaoLo: t.chuaVaoLo.length,
+    goiYGhepLo: goiYLo(t).slice(0, n).map((g) => ({
+      ban: `${g.ban.kh}-${g.ban.so} ngày ${g.ban.ng} (${g.ban.ten}, ${g.ban.tan ?? '?'} tấn)`,
+      mua: g.mua.map((m) => `${m.kh}-${m.so} ngày ${m.ng} (${m.ten}, ${m.tan ?? '?'} tấn)`),
+      cuoc: g.cuoc.map((c) => `${c.kh}-${c.so} ngày ${c.ng} (${c.ten})`),
+    })),
   }
 }
