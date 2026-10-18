@@ -9,6 +9,7 @@
 
 import { gocThanhHoaDon, khoaGoc, type HoaDonGoc } from './hoaDonGoc.js'
 import type { LoHang } from './loHang.js'
+import type { SaoKe } from './saoKe.js'
 import type { HoaDon, HoSoDN, KyKeKhai } from './types.js'
 import type { ToKhaiDaNop } from './docToKhai.js'
 import { datChungTu, daXacNhan, type ChungTu, type TaiLieu } from './taiLieu.js'
@@ -89,6 +90,8 @@ export interface Kho {
   goc?: Record<string, Record<string, HoaDonGoc>>
   /** Lô hàng (mua – chở – bán ghép lại) theo công ty */
   loHang?: Record<string, Record<string, LoHang>>
+  /** Sao kê ngân hàng đã nạp (giao dịch + phần gán tay vào hoá đơn) theo công ty */
+  saoKe?: Record<string, Record<string, SaoKe>>
 }
 
 export const khoTrong = (): Kho => ({ phienBan: 1, chon: null, congTy: {}, gtgt: {}, tncn: {} })
@@ -284,6 +287,7 @@ export function gopTuMay(
   chungTu: ChungTu[] = [],
   hoaDon: { mst: string; hd: HoaDonGon[]; phu?: { ban: string[]; mua: string[] }; goc?: HoaDonGoc }[] = [],
   loHang?: { mst: string; lo: LoHang }[],
+  saoKe?: { mst: string; sk: SaoKe }[],
 ): Kho {
   let kho = kho0
   for (const t of toKhai) {
@@ -328,6 +332,11 @@ export function gopTuMay(
     const theoCty: Record<string, Record<string, LoHang>> = {}
     for (const { mst, lo } of loHang) (theoCty[mst] ??= {})[lo.id] = lo
     kho.loHang = theoCty
+  }
+  if (saoKe) {
+    const theoCty: Record<string, Record<string, SaoKe>> = {}
+    for (const { mst, sk } of saoKe) (theoCty[mst] ??= {})[sk.id] = sk
+    kho.saoKe = theoCty
   }
   // Thông tin công ty trên mây là bản người dùng đã chốt -> ưu tiên
   for (const c of congTy) kho.congTy[c.hoSo.mst] = structuredClone(c)
@@ -457,5 +466,18 @@ export function datLo(kho0: Kho, mst: string, lo: LoHang): Kho {
 export function xoaLo(kho0: Kho, mst: string, id: string): Kho {
   const kho: Kho = structuredClone(kho0)
   delete kho.loHang?.[mst]?.[id]
+  return kho
+}
+
+/** Thêm / sửa một sao kê (kể cả phần gán tay giao dịch -> hoá đơn) */
+export function datSaoKe(kho0: Kho, mst: string, sk: SaoKe): Kho {
+  const kho: Kho = structuredClone(kho0)
+  ;((kho.saoKe ??= {})[mst] ??= {})[sk.id] = structuredClone(sk)
+  return kho
+}
+
+export function xoaSaoKe(kho0: Kho, mst: string, id: string): Kho {
+  const kho: Kho = structuredClone(kho0)
+  delete kho.saoKe?.[mst]?.[id]
   return kho
 }

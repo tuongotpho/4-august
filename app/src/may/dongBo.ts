@@ -12,6 +12,7 @@
 
 import type { HoaDonGoc } from '../core/hoaDonGoc'
 import type { GiayTo, LoHang } from '../core/loHang'
+import type { SaoKe } from '../core/saoKe'
 import { collection, deleteDoc, doc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { deleteObject, getBytes, ref, uploadBytes } from 'firebase/storage'
 import { db, luuTru } from './firebase'
@@ -122,23 +123,26 @@ export interface DuLieuMay {
   daXuat: Record<string, DaXuatMay[]>
   chungTu: ChungTuMay[]
   loHang: { mst: string; lo: LoHang }[]
+  saoKe: { mst: string; sk: SaoKe }[]
 }
 
 /** Tải toàn bộ hồ sơ của tài khoản (chỉ số liệu, chưa tải file) */
 export async function taiDuLieuMay(uid: string): Promise<DuLieuMay> {
-  const kq: DuLieuMay = { congTy: [], toKhai: [], tepHoaDon: {}, daXuat: {}, chungTu: [], loHang: [] }
+  const kq: DuLieuMay = { congTy: [], toKhai: [], tepHoaDon: {}, daXuat: {}, chungTu: [], loHang: [], saoKe: [] }
   const cts = await getDocs(collection(db, `nguoiDung/${uid}/congTy`))
   await Promise.all(cts.docs.map(async (d) => {
     const c = d.data() as CongTyLuu
     kq.congTy.push({ hoSo: c.hoSo, kyNguon: c.kyNguon ?? '', suaTay: !!c.suaTay })
     const mst = d.id
-    const [tk, hd, xu, ct, lo] = await Promise.all([
+    const [tk, hd, xu, ct, lo, sk] = await Promise.all([
       getDocs(collection(db, `${nhanhCongTy(uid, mst)}/toKhai`)),
       getDocs(collection(db, `${nhanhCongTy(uid, mst)}/tepHoaDon`)),
       getDocs(collection(db, `${nhanhCongTy(uid, mst)}/daXuat`)),
       getDocs(collection(db, `${nhanhCongTy(uid, mst)}/chungTu`)),
       getDocs(collection(db, `${nhanhCongTy(uid, mst)}/loHang`)),
+      getDocs(collection(db, `${nhanhCongTy(uid, mst)}/saoKe`)),
     ])
+    kq.saoKe.push(...sk.docs.map((x) => ({ mst, sk: { ...(x.data() as Omit<SaoKe, 'id'>), id: x.id } })))
     kq.loHang.push(...lo.docs.map((x) => ({ mst, lo: { ...(x.data() as Omit<LoHang, 'id'>), id: x.id } })))
     kq.chungTu.push(...ct.docs.map((x) => ({ id: x.id, ...(x.data() as Omit<ChungTuMay, 'id'>) })))
     kq.toKhai.push(...tk.docs.map((x) => ({ id: x.id, ...(x.data() as Omit<ToKhaiMay, 'id'> & { duongDan: string }) })))
@@ -168,6 +172,8 @@ export async function xoaTaiLieu(uid: string, mst: string, nhom: NhomTaiLieu, id
 export async function xoaCongTyTrenMay(uid: string, mst: string, tienDo?: (xong: number, tong: number) => void): Promise<number> {
   const nhom: NhomTaiLieu[] = ['toKhai', 'tepHoaDon', 'chungTu', 'daXuat']
   const ds = (await Promise.all(nhom.map(async (n) => (await getDocs(collection(db, `${nhanhCongTy(uid, mst)}/${n}`))).docs.map((d) => ({ n, id: d.id, duongDan: (d.data() as { duongDan?: string }).duongDan }))))).flat()
+  // Sao kê: xoá bản ghi + file gốc
+  for (const d of (await getDocs(collection(db, `${nhanhCongTy(uid, mst)}/saoKe`))).docs) await xoaSaoKeMay(uid, mst, d.id, (d.data() as { duongDan?: string }).duongDan)
   // Lô hàng: xoá luôn giấy tờ đã tải lên của từng lô
   const lo = (await getDocs(collection(db, `${nhanhCongTy(uid, mst)}/loHang`))).docs.map((d) => ({ ...(d.data() as Omit<LoHang, 'id'>), id: d.id }))
   let xong = 0
@@ -252,4 +258,29 @@ export async function taiLenGiayTo(uid: string, mst: string, loId: string, loai:
 
 export async function xoaGiayTo(g: GiayTo) {
   if (g.duongDan) await deleteObject(ref(luuTru, g.duongDan)).catch(() => undefined)
+}
+
+// ---------------- SAO KÊ NGÂN HÀNG ----------------
+//   nguoiDung/{uid}/congTy/{mst}/saoKe/{id}               giao dịch đã đọc + gán tay (id = mã băm file -> nạp lại không trùng)
+//   Storage: nguoiDung/{uid}/{mst}/saoKe/{id}/{tên file}   file sao kê gốc
+
+export async function luuSaoKe(uid: string, mst: string, sk: SaoKe, du?: ArrayBuffer): Promise<string | undefined> {
+  const { id, ...ghi } = sk
+  let duongDan: string | undefined
+  if (du) {
+    duongDan = `nguoiDung/${uid}/${mst}/saoKe/${id}/${tenAnToan(sk.tenFile)}`
+    await uploadBytes(ref(luuTru, duongDan), new Uint8Array(du))
+  }
+  await setDoc(doc(db, `${nhanhCongTy(uid, mst)}/saoKe/${id}`), { ...ghi, ...(duongDan ? { duongDan } : {}), capNhat: serverTimestamp() }, { merge: true })
+  return duongDan
+}
+
+/** Chỉ ghi phần gán tay (không đụng giao dịch đã đọc) */
+export async function luuGhepTay(uid: string, mst: string, id: string, ghepTay: Record<string, string[]>) {
+  await updateDoc(doc(db, `${nhanhCongTy(uid, mst)}/saoKe/${id}`), { ghepTay, capNhat: serverTimestamp() })
+}
+
+export async function xoaSaoKeMay(uid: string, mst: string, id: string, duongDan?: string) {
+  if (duongDan) await deleteObject(ref(luuTru, duongDan)).catch(() => undefined)
+  await deleteDoc(doc(db, `${nhanhCongTy(uid, mst)}/saoKe/${id}`))
 }

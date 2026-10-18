@@ -15,6 +15,7 @@ import { LoiFirebase, type FirebaseNguoiDung } from './firebaseRest.js'
 import { giaiNenDs, type DsRuiRo } from '../../src/core/ruiRo.js'
 import type { HoaDonGoc } from '../../src/core/hoaDonGoc.js'
 import type { LoHang } from '../../src/core/loHang.js'
+import type { SaoKe } from '../../src/core/saoKe.js'
 
 export const maBam = (du: Uint8Array | string) =>
   createHash('sha256').update(typeof du === 'string' ? Buffer.from(du, 'utf8') : du).digest('hex').slice(0, 32)
@@ -51,6 +52,7 @@ export interface DuLieuMay {
   ruiRo?: DsRuiRo | null
   loiRuiRo?: string
   loHang?: { mst: string; lo: LoHang }[]
+  saoKe?: { mst: string; sk: SaoKe }[]
 }
 
 /** Kho file + đường dẫn danh sách DN rủi ro của app hoá đơn đỏ (cùng dự án Firebase, cùng tài khoản) */
@@ -73,13 +75,15 @@ export async function taiDuLieuMay(fb: FirebaseNguoiDung): Promise<DuLieuMay> {
   const cts = await fb.docBoSuuTap<CongTyLuu>(`nguoiDung/${uid}/congTy`)
   await Promise.all(cts.map(async (c) => {
     kq.congTy.push({ hoSo: c.hoSo, kyNguon: c.kyNguon ?? '', suaTay: !!c.suaTay })
-    const [tk, hd, xu, ct, lo] = await Promise.all([
+    const [tk, hd, xu, ct, lo, sk] = await Promise.all([
       fb.docBoSuuTap<Omit<ToKhaiMay, 'id'> & { duongDan: string }>(`${nhanhCongTy(uid, c.id)}/toKhai`),
       fb.docBoSuuTap<Omit<TepHoaDonMay, 'id'>>(`${nhanhCongTy(uid, c.id)}/tepHoaDon`),
       fb.docBoSuuTap<Omit<DaXuatMay, 'id'>>(`${nhanhCongTy(uid, c.id)}/daXuat`),
       fb.docBoSuuTap<Omit<ChungTuMay, 'id'>>(`${nhanhCongTy(uid, c.id)}/chungTu`),
       fb.docBoSuuTap<Omit<LoHang, 'id'>>(`${nhanhCongTy(uid, c.id)}/loHang`),
+      fb.docBoSuuTap<Omit<SaoKe, 'id'>>(`${nhanhCongTy(uid, c.id)}/saoKe`),
     ])
+    ;(kq.saoKe ??= []).push(...sk.map(({ id, ...x }) => ({ mst: c.id, sk: { ...(x as Omit<SaoKe, 'id'>), id } })))
     ;(kq.loHang ??= []).push(...lo.map(({ id, ...x }) => ({ mst: c.id, lo: { ...(x as Omit<LoHang, 'id'>), id } })))
     kq.toKhai.push(...tk)
     kq.chungTu.push(...ct)
@@ -98,7 +102,7 @@ export async function taiDuLieuMay(fb: FirebaseNguoiDung): Promise<DuLieuMay> {
 /** Dựng sổ từ mây Y HỆT web app (App.lamMoiMay -> gopTuMay) */
 export function dungDuLieu(may: DuLieuMay): DuLieu {
   const kho = gopTuMay(khoTrong(), may.congTy, may.toKhai, may.chungTu,
-    Object.entries(may.tepHoaDon).flatMap(([mst, ds]) => ds.map((d) => ({ mst, hd: d.hd ?? [], phu: d.phu, goc: d.goc }))), may.loHang ?? [])
+    Object.entries(may.tepHoaDon).flatMap(([mst, ds]) => ds.map((d) => ({ mst, hd: d.hd ?? [], phu: d.phu, goc: d.goc }))), may.loHang ?? [], may.saoKe ?? [])
   // Hoá đơn đầy đủ để lập tờ khai: lấy từ danh sách Excel (không lấy hoá đơn XML lẻ)
   const hoaDon: Record<string, HoaDon[]> = {}
   for (const [mst, nhom] of Object.entries(kho.hoaDon ?? {})) hoaDon[mst] = Object.values(nhom).filter((g) => !g.x).map((g) => moRongHoaDon(g, mst))

@@ -6,13 +6,15 @@ import { tinhTNCN, NHAP_TNCN_TRONG, type NhapTNCN } from './core/tncn'
 import { docToKhai } from './core/docToKhai'
 import { tenFileXML, xmlGTGT, xmlTNCN } from './core/xml'
 import { denNgay, hanNop, ngayISO, quyCanKhai, tuNgay } from './core/ky'
-import { boCongTy, dauKy, datKhongChapNhan, ghiAppXuat, ghiPhuSong, gopTuMay, kyTruoc, datLo, napGoc, napHoaDon, napTaiLieu, napToKhai, xoaLo, rutGonHoaDon, suaHoSo, tncnGanNhat, type Kho } from './core/kho'
+import { boCongTy, dauKy, datKhongChapNhan, ghiAppXuat, ghiPhuSong, gopTuMay, kyTruoc, datLo, datSaoKe, napGoc, napHoaDon, napTaiLieu, napToKhai, xoaLo, xoaSaoKe, rutGonHoaDon, suaHoSo, tncnGanNhat, type Kho } from './core/kho'
 import { docTaiLieu, khoaChungTu } from './core/taiLieu'
 import { tinhDoiSoat, tinhDoiTac, tinhTongQuan } from './core/tongQuan'
 import { soiRuiRo, type DsRuiRo } from './core/ruiRo'
 import { canhBaoGoc, docPdfGoc, docXmlGoc, tongHopGoc } from './core/hoaDonGoc'
 import { tongHopLo, type LoHang } from './core/loHang'
 import { LoHangDN, type ThaoTacLo } from './ui/LoHang'
+import { docSaoKe, tinhCongNo, type SaoKe } from './core/saoKe'
+import { CongNoDN, type ThaoTacSaoKe } from './ui/CongNo'
 import { moZip } from './core/nenZip'
 import { pdfThanhDong } from './may/pdfChu'
 import { taiDsRuiRo } from './may/ruiRoMay'
@@ -20,7 +22,7 @@ import { NapHangLoat, TongQuanDN } from './ui/TongQuan'
 import type { ToKhaiDaNop } from './core/docToKhai'
 import { coMay } from './may/firebase'
 import { dangNhap, dangXuat, useNguoiDung } from './may/useMay'
-import { boSungHoaDonTep, boSungPhuLuc, datCoTraVe, xoaCongTyTrenMay, xoaTaiLieu, type NhomTaiLieu, luuChungTu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, type DuLieuMay, luuLoHang, xoaLoHang, taiLenGiayTo, xoaGiayTo } from './may/dongBo'
+import { boSungHoaDonTep, boSungPhuLuc, datCoTraVe, xoaCongTyTrenMay, xoaTaiLieu, type NhomTaiLieu, luuChungTu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, type DuLieuMay, luuLoHang, xoaLoHang, taiLenGiayTo, xoaGiayTo, luuSaoKe, luuGhepTay, xoaSaoKeMay, maBam } from './may/dongBo'
 import { KhoHoSo } from './ui/KhoHoSo'
 import { Logo, TaiKhoan } from './ui/DauTrang'
 import { NHAN_GTGT, NHAN_TNCN, tien } from './core/nhan'
@@ -63,7 +65,7 @@ export default function App() {
     const du = await taiDuLieuMay(uid)
     setMay(du)
     capNhatKho((k) =>
-      gopTuMay(k, du.congTy, du.toKhai, du.chungTu, Object.entries(du.tepHoaDon).flatMap(([mst, ds]) => ds.map((d) => ({ mst, hd: d.hd ?? [], phu: d.phu, goc: d.goc }))), du.loHang),
+      gopTuMay(k, du.congTy, du.toKhai, du.chungTu, Object.entries(du.tepHoaDon).flatMap(([mst, ds]) => ds.map((d) => ({ mst, hd: d.hd ?? [], phu: d.phu, goc: d.goc }))), du.loHang, du.saoKe),
     )
     void boSungFileCu(uid, du)
     return du
@@ -174,7 +176,7 @@ export default function App() {
   const [ngayLap, setNgayLap] = useState(ngayISO())
   const [hienItDung, setHienItDung] = useState(false)
   const [daXuat, setDaXuat] = useState(false)
-  const [tab, setTab] = useState<'tongQuan' | 'keKhai' | 'loHang' | 'kho'>(() => (Object.keys(docKho(null).gtgt).length ? 'tongQuan' : 'keKhai'))
+  const [tab, setTab] = useState<'tongQuan' | 'keKhai' | 'loHang' | 'congNo' | 'kho'>(() => (Object.keys(docKho(null).gtgt).length ? 'tongQuan' : 'keKhai'))
   const [tienDo, setTienDo] = useState<{ xong: number; tong: number; dangLam: string } | null>(null)
   const [ketQuaNap, setKetQuaNap] = useState('')
 
@@ -581,6 +583,43 @@ export default function App() {
   const ruiRo = useMemo(() => (mst ? soiRuiRo(kho, mst, dsRuiRo.ds) : null), [kho, mst, dsRuiRo])
   // Đối tác dính danh sách rủi ro đứng ĐẦU mục "Cần xử lý"
   const goc = useMemo(() => (mst ? tongHopGoc(kho, mst) : null), [kho, mst])
+  const dsSaoKe = useMemo(() => Object.values((mst && kho.saoKe?.[mst]) || {}), [kho, mst])
+  const congNo = useMemo(() => (mst ? tinhCongNo(kho, mst, dsSaoKe) : null), [kho, mst, dsSaoKe])
+  const thaoTacSaoKe: ThaoTacSaoKe = {
+    napFile: async (fs) => {
+      if (!mst) return 'Chưa chọn công ty'
+      let ok = 0
+      const loi: string[] = []
+      for (const f of fs) {
+        const du = await f.arrayBuffer()
+        const wb = /\.csv$/i.test(f.name) ? XLSX.read(new TextDecoder().decode(du), { type: 'string', raw: true }) : XLSX.read(du)
+        const sk = wb.SheetNames.map((sh) => docSaoKe(XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[sh], { header: 1, raw: true, defval: null }) as never, f.name)).find((x) => !!x)
+        if (!sk) {
+          loi.push(f.name)
+          continue
+        }
+        // id = mã băm nội dung: nạp lại cùng file không sinh bản trùng, giữ phần gán tay cũ
+        const id = (await maBam(du)).slice(0, 24)
+        const cu = kho.saoKe?.[mst]?.[id]
+        const moi: SaoKe = { ...sk, id, ...(cu?.ghepTay ? { ghepTay: cu.ghepTay } : {}) }
+        capNhatKho((k) => datSaoKe(k, mst, moi))
+        if (user) await luuSaoKe(user.uid, mst, moi, du)
+        ok++
+      }
+      return `Đã đọc ${ok} sao kê.${loi.length ? ` Không nhận ra mẫu: ${loi.join(', ')} — gửi file này để bổ sung mẫu ngân hàng.` : ''}${user ? '' : ' (Chưa đăng nhập: chỉ lưu trên máy này.)'}`
+    },
+    xoa: async (sk) => {
+      if (!mst) return
+      capNhatKho((k) => xoaSaoKe(k, mst, sk.id))
+      if (user) await xoaSaoKeMay(user.uid, mst, sk.id, (sk as SaoKe & { duongDan?: string }).duongDan)
+    },
+    ghepTay: async (sk, gdId, khoaHD) => {
+      if (!mst) return
+      const ghepTay = { ...(sk.ghepTay ?? {}), [gdId]: khoaHD }
+      capNhatKho((k) => datSaoKe(k, mst, { ...sk, ghepTay }))
+      if (user) await luuGhepTay(user.uid, mst, sk.id, ghepTay)
+    },
+  }
   const loTong = useMemo(() => (mst ? tongHopLo(kho, mst, Object.values(kho.loHang?.[mst] ?? {})) : null), [kho, mst])
   // Lô hàng: lưu ngay trên máy; đăng nhập thì lưu cả lên mây (giấy tờ là file thật trên mây)
   const thaoTacLo: ThaoTacLo = {
@@ -688,7 +727,7 @@ export default function App() {
 
       <main className="mx-auto max-w-5xl space-y-5 px-4 py-6">
         <nav className="flex flex-wrap gap-2">
-          {([['tongQuan', '📊 Tổng quan'], ['keKhai', '📝 Kê khai quý'], ['loHang', '📦 Lô hàng'], ['kho', '🗂 Kho hồ sơ']] as const).map(([k, ten]) => (
+          {([['tongQuan', '📊 Tổng quan'], ['keKhai', '📝 Kê khai quý'], ['loHang', '📦 Lô hàng'], ['congNo', '💳 Công nợ'], ['kho', '🗂 Kho hồ sơ']] as const).map(([k, ten]) => (
             <button key={k} onClick={() => setTab(k)} className={`rounded-xl px-4 py-2 font-medium ${tab === k ? 'bg-emerald-700 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>
               {ten}
             </button>
@@ -718,6 +757,13 @@ export default function App() {
               Số tấn lấy từ dòng hàng của hoá đơn gốc XML/PDF (nạp ở tab Tổng quan); chưa có thì gõ tay.
             </p>
             {loTong && mst ? <LoHangDN t={loTong} tt={thaoTacLo} dangNhap={!!user} /> : <p className="text-slate-500">Nạp hồ sơ (tờ khai + danh sách hoá đơn) trước.</p>}
+          </section>
+        )}
+
+        {tab === 'congNo' && (
+          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+            <h2 className="text-xl font-semibold">💳 Sao kê & công nợ {hoSo && <span className="text-base font-normal text-slate-500">— {hoSo.tenNNT}</span>}</h2>
+            {congNo && mst ? <CongNoDN k={congNo} dsSaoKe={dsSaoKe} tt={thaoTacSaoKe} /> : <p className="text-slate-500">Nạp hồ sơ (tờ khai + danh sách hoá đơn) trước.</p>}
           </section>
         )}
 

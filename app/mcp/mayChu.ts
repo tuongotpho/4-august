@@ -151,6 +151,13 @@ export function taoMayChu(nguon: NguonMcp) {
     annotations: chiDoc,
   }, chay(cc.loHang))
 
+  server.registerTool('cong_no', {
+    title: 'Công nợ theo sao kê ngân hàng',
+    description: 'Từ sao kê ngân hàng đã nạp trên web app: phải thu (khách hàng) / phải trả (nhà cung cấp) theo đối tác, giao dịch chưa ghép được với hoá đơn, và hoá đơn mua từ 5 triệu (từ 01/07/2025) chưa thấy chuyển khoản — rủi ro bị loại thuế đầu vào.',
+    inputSchema: { mst, gioi_han: z.number().int().min(1).max(200).optional().describe('Số dòng tối đa mỗi danh sách (mặc định 30)') },
+    annotations: chiDoc,
+  }, chay(cc.congNo))
+
   server.registerTool('soi_rui_ro', {
     title: 'Soi DN rủi ro về hoá đơn',
     description: 'So MST mọi nhà cung cấp (mua vào) và khách hàng (bán ra) trên hoá đơn còn hiệu lực với DANH SÁCH DN RỦI RO VỀ HOÁ ĐƠN của cơ quan thuế (file "PHỤ LỤC QR HDRR" người dùng nạp ở app hoá đơn đỏ). Trả về đối tác dính danh sách, từng hoá đơn, quý, tiền thuế đầu vào có nguy cơ bị loại, DN đã chuyển công an, hoá đơn lập sau ngày DN ngừng hoạt động.',

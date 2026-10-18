@@ -86,7 +86,7 @@ describe('Máy chủ MCP khaithue', () => {
   it('khai báo đủ công cụ; chỉ xuat_xml_gtgt được ghi', async () => {
     const { tools } = await client.listTools()
     expect(tools.map((t) => t.name).sort()).toEqual([
-      'chung_tu_nop_tien', 'danh_sach_cong_ty', 'doi_soat', 'doi_tac', 'hoa_don_goc', 'lap_to_khai_gtgt', 'lo_hang', 'nap_ho_so', 'so_theo_doi_gtgt', 'soi_rui_ro', 'tong_quan', 'tra_hoa_don', 'xuat_xml_gtgt',
+      'chung_tu_nop_tien', 'cong_no', 'danh_sach_cong_ty', 'doi_soat', 'doi_tac', 'hoa_don_goc', 'lap_to_khai_gtgt', 'lo_hang', 'nap_ho_so', 'so_theo_doi_gtgt', 'soi_rui_ro', 'tong_quan', 'tra_hoa_don', 'xuat_xml_gtgt',
     ])
     expect(tools.filter((t) => !t.annotations?.readOnlyHint).map((t) => t.name)).toEqual(['xuat_xml_gtgt'])
   })
@@ -167,5 +167,11 @@ describe('Máy chủ MCP khaithue', () => {
     expect(kq).toMatchObject({ soLo: 0, laiGopCongDon: 0, soHoaDonChuaVaoLo: 3 })
     expect(kq.luyKeTheoNam).toEqual([{ nam: 2026, tanMua: 12.5, tanBan: 0, hoaDonThieuGoc: 2 }])
     expect(kq.goiYGhepLo).toEqual([])
+  })
+
+  it('công nợ: chưa có sao kê -> nói rõ, không bịa số', async () => {
+    const { kq } = await goi('cong_no')
+    expect(kq).toMatchObject({ daCoSaoKe: false })
+    expect(kq.huongDan).toContain('Chưa có sao kê')
   })
 })

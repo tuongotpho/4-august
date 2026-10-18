@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { signInAnonymously, signOut } from 'firebase/auth'
 import { auth } from '../src/may/firebase'
-import { datCoTraVe, luuChungTu, xoaCongTyTrenMay, xoaTaiLieu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, luuLoHang, taiLenGiayTo, xoaLoHang } from '../src/may/dongBo'
+import { datCoTraVe, luuChungTu, xoaCongTyTrenMay, xoaTaiLieu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, luuLoHang, taiLenGiayTo, xoaLoHang, luuSaoKe, luuGhepTay, xoaSaoKeMay } from '../src/may/dongBo'
 import { docTaiLieu } from '../src/core/taiLieu'
 import { tinhTongQuan } from '../src/core/tongQuan'
 import { docToKhai } from '../src/core/docToKhai'
@@ -107,5 +107,25 @@ describe('Đồng bộ hồ sơ lên mây (máy giả lập)', () => {
     may = await taiDuLieuMay(uid)
     expect(may.loHang).toEqual([])
     await expect(taiTep(g2.duongDan)).rejects.toThrow()
+  })
+
+  it('sao kê: lưu giao dịch + file, gán tay, nạp lại giữ gán tay; xoá', async () => {
+    await signOut(auth)
+    const { user } = await signInAnonymously(auth)
+    const uid = user.uid
+    const M = '0100000008'
+    await luuCongTy(uid, { hoSo: { mst: M, tenNNT: 'Cty Sao Kê' } as never, kyNguon: '', suaTay: false })
+    const sk = { id: 'abc123', tenFile: 'vcb.xlsx', nganHang: 'VIETCOMBANK', soTaiKhoan: '123', tuNgay: '01/08/2025', denNgay: '31/08/2025', giaoDich: [{ id: '4', ngay: '02/08/2025', vao: 0, ra: 54_000_000, noiDung: 'CK', doiUng: '', soDu: null }] }
+    const duongDan = await luuSaoKe(uid, M, sk, new TextEncoder().encode('file sao ke').buffer as ArrayBuffer)
+    await luuGhepTay(uid, M, sk.id, { '4': ['mua|0200000002|C25TKL|10'] })
+    let may = await taiDuLieuMay(uid)
+    expect(may.saoKe).toEqual([{ mst: M, sk: expect.objectContaining({ id: 'abc123', tenFile: 'vcb.xlsx', giaoDich: sk.giaoDich, ghepTay: { '4': ['mua|0200000002|C25TKL|10'] }, duongDan }) }])
+    expect(new TextDecoder().decode(await taiTep(duongDan!))).toBe('file sao ke')
+    const kho = gopTuMay(khoTrong(), may.congTy, may.toKhai, may.chungTu, [], may.loHang, may.saoKe)
+    expect(kho.saoKe![M].abc123.ghepTay).toEqual({ '4': ['mua|0200000002|C25TKL|10'] })
+    await xoaSaoKeMay(uid, M, sk.id, duongDan)
+    may = await taiDuLieuMay(uid)
+    expect(may.saoKe).toEqual([])
+    await expect(taiTep(duongDan!)).rejects.toThrow()
   })
 })

@@ -13,6 +13,7 @@ import { tinhDoiSoat, tinhDoiTac, tinhTongQuan } from '../src/core/tongQuan.js'
 import { soiRuiRo as soiRuiRoLoi, type DsRuiRo } from '../src/core/ruiRo.js'
 import { canhBaoGoc, tongHopGoc, TEN_NHOM, nhomHoaDon } from '../src/core/hoaDonGoc.js'
 import { goiYLo, tongHopLo, TEN_GIAY_TO } from '../src/core/loHang.js'
+import { tinhCongNo } from '../src/core/saoKe.js'
 import type { CanhBao, HoaDon, KyKeKhai } from '../src/core/types.js'
 import { tenFileXML, xmlGTGT } from '../src/core/xml.js'
 
@@ -378,5 +379,24 @@ export function loHang(d: DuLieu, a: { mst?: string; gioi_han?: number }) {
       mua: g.mua.map((m) => `${m.kh}-${m.so} ngày ${m.ng} (${m.ten}, ${m.tan ?? '?'} tấn)`),
       cuoc: g.cuoc.map((c) => `${c.kh}-${c.so} ngày ${c.ng} (${c.ten})`),
     })),
+  }
+}
+
+/** Công nợ từ sao kê ngân hàng đã nạp: phải thu / phải trả theo đối tác, giao dịch chưa ghép, HĐ mua ≥ 5 triệu chưa chuyển khoản */
+export function congNo(d: DuLieu, a: { mst?: string; gioi_han?: number }) {
+  const mst = chonMst(d.kho, a.mst)
+  const ds = Object.values(d.kho.saoKe?.[mst] ?? {})
+  const n = a.gioi_han ?? 30
+  if (!ds.length) return { mst, daCoSaoKe: false, huongDan: 'Chưa có sao kê ngân hàng. Nạp file Excel/CSV sao kê tài khoản công ty trên web app (tab Công nợ) — app tự ghép giao dịch với hoá đơn.' }
+  const k = tinhCongNo(d.kho, mst, ds)
+  return {
+    mst,
+    daCoSaoKe: true,
+    giaiThich: 'Ghép tự động theo số tiền thanh toán + MST/tên đối tác trong nội dung + ngày; người dùng gán tay trên web app được. conNo = tiền hoá đơn (gồm thuế) − đã ghép được.',
+    saoKe: ds.map((s) => ({ file: s.tenFile, nganHang: s.nganHang, soTaiKhoan: s.soTaiKhoan, tuNgay: s.tuNgay, denNgay: s.denNgay, soGiaoDich: s.giaoDich.length })),
+    soGiaoDich: k.soGiaoDich, daGhep: k.daGhep, phaiThu: k.phaiThu, phaiTra: k.phaiTra,
+    doiTacConNo: k.doiTac.filter((x) => x.conNo > 1).slice(0, n).map((x) => ({ chieu: x.l === 'ban' ? 'phải thu' : 'phải trả', mst: x.mst, ten: x.ten, tongHoaDon: x.tongHoaDon, daThanhToan: x.daThanhToan, conNo: x.conNo })),
+    muaTu5TrieuChuaChuyenKhoan: k.muaChuaChuyenKhoan.slice(0, n).map((h) => ({ so: `${h.kh}-${h.so}`, ngay: h.ng, ten: h.ten, tong: h.tong, daChuyen: h.daTra })),
+    giaoDichChuaGhep: k.chuaGhep.slice(0, n).map((x) => ({ file: x.saoKe, ngay: x.gd.ngay, vao: x.gd.vao, ra: x.gd.ra, noiDung: x.gd.noiDung })),
   }
 }
