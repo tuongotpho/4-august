@@ -1,10 +1,33 @@
 rules_version = '2';
 // Database "khaithue" (riêng của app kê khai thuế, không dùng chung app khác).
 // Mỗi tài khoản Google chỉ đọc/ghi được vùng nguoiDung/{uid của chính mình}. Mọi thứ khác: cấm.
+// Ngoại lệ DUY NHẤT: "người xem" (vd giám đốc) do chủ hồ sơ thêm email — CHỈ ĐỌC nhánh hồ sơ công ty
+// (nguoiDung/{uid}/congTy/...), không đọc phiên AI / nhật ký, không ghi được gì.
 service cloud.firestore {
   match /databases/{database}/documents {
+    function emailCuaToi() {
+      return request.auth.token.email.lower();
+    }
+    function daXacMinh() {
+      return request.auth != null && request.auth.token.email != null && request.auth.token.email_verified == true;
+    }
+    // Chủ hồ sơ uid đã thêm email của người đang đăng nhập vào danh sách người xem
+    function laNguoiXem(uid) {
+      return daXacMinh() && exists(/databases/$(database)/documents/nguoiDung/$(uid)/nguoiXem/$(emailCuaToi()));
+    }
+
     match /nguoiDung/{uid}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /nguoiDung/{uid}/congTy/{document=**} {
+      allow read: if laNguoiXem(uid);
+    }
+
+    // Lời mời xem: để người xem biết hồ sơ của ai được chia sẻ cho mình (chỉ chính email đó đọc; chỉ chủ ghi/xoá)
+    match /chiaSe/{email}/tu/{chuUid} {
+      allow read: if daXacMinh() && emailCuaToi() == email;
+      allow create, update: if request.auth != null && request.auth.uid == chuUid && request.resource.data.chuUid == chuUid;
+      allow delete: if request.auth != null && request.auth.uid == chuUid;
     }
   }
 }

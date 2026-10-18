@@ -15,6 +15,7 @@ import { tongHopLo, type LoHang } from './core/loHang'
 import { LoHangDN, type ThaoTacLo } from './ui/LoHang'
 import { docSaoKe, tinhCongNo, type SaoKe } from './core/saoKe'
 import { CongNoDN, type ThaoTacSaoKe } from './ui/CongNo'
+import { XemChiaSe } from './ui/XemChiaSe'
 import { moZip } from './core/nenZip'
 import { pdfThanhDong } from './may/pdfChu'
 import { taiDsRuiRo } from './may/ruiRoMay'
@@ -22,7 +23,7 @@ import { NapHangLoat, TongQuanDN } from './ui/TongQuan'
 import type { ToKhaiDaNop } from './core/docToKhai'
 import { coMay } from './may/firebase'
 import { dangNhap, dangXuat, useNguoiDung } from './may/useMay'
-import { boSungHoaDonTep, boSungPhuLuc, datCoTraVe, xoaCongTyTrenMay, xoaTaiLieu, type NhomTaiLieu, luuChungTu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, type DuLieuMay, luuLoHang, xoaLoHang, taiLenGiayTo, xoaGiayTo, luuSaoKe, luuGhepTay, xoaSaoKeMay, maBam } from './may/dongBo'
+import { boSungHoaDonTep, boSungPhuLuc, datCoTraVe, xoaCongTyTrenMay, xoaTaiLieu, type NhomTaiLieu, luuChungTu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, type DuLieuMay, luuLoHang, xoaLoHang, taiLenGiayTo, xoaGiayTo, luuSaoKe, luuGhepTay, xoaSaoKeMay, maBam, taiChiaSeChoToi, type ChiaSe } from './may/dongBo'
 import { KhoHoSo } from './ui/KhoHoSo'
 import { Logo, TaiKhoan } from './ui/DauTrang'
 import { NHAN_GTGT, NHAN_TNCN, tien } from './core/nhan'
@@ -61,6 +62,9 @@ export default function App() {
   const [congTyKhach, setCongTyKhach] = useState(0)
   /** Danh sách DN rủi ro dùng chung với app hoá đơn đỏ: undefined = chưa tải xong, null = chưa nạp bên đó */
   const [dsRuiRo, setDsRuiRo] = useState<{ ds?: DsRuiRo | null; loi?: string }>({})
+  /** Hồ sơ người khác chia sẻ cho mình (chỉ xem) và hồ sơ đang mở xem */
+  const [chiaSe, setChiaSe] = useState<ChiaSe[]>([])
+  const [dangXem, setDangXem] = useState<ChiaSe | null>(null)
   async function lamMoiMay(uid: string) {
     const du = await taiDuLieuMay(uid)
     setMay(du)
@@ -116,6 +120,8 @@ export default function App() {
     xoaHoaDon()
     setMay(null)
     setDsRuiRo({})
+    setChiaSe([])
+    setDangXem(null)
     setKhoState(docKho(chu))
     if (!chu) {
       setTrangThaiMay('')
@@ -124,6 +130,7 @@ export default function App() {
     }
     setCongTyKhach(Object.keys(docKho(null).congTy).length)
     setTrangThaiMay('Đang tải hồ sơ trên mây…')
+    if (user?.email) taiChiaSeChoToi(user.email).then((ds) => chuRef.current === chu && setChiaSe(ds)).catch(() => undefined)
     taiDsRuiRo(chu)
       .then((ds) => chuRef.current === chu && setDsRuiRo({ ds }))
       .catch((e) => chuRef.current === chu && setDsRuiRo({ loi: (e as Error).message }))
@@ -726,6 +733,14 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-5xl space-y-5 px-4 py-6">
+        {chiaSe.length > 0 && !dangXem && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm">
+            👔 Hồ sơ được chia sẻ cho anh (chỉ xem):
+            {chiaSe.map((c) => <button key={c.chuUid} className="rounded-full bg-sky-700 px-3 py-1 text-white" onClick={() => setDangXem(c)}>{c.chuTen || c.chuEmail}</button>)}
+          </div>
+        )}
+        {dangXem && <XemChiaSe cs={dangXem} onDong={() => setDangXem(null)} />}
+        {!dangXem && (<>
         <nav className="flex flex-wrap gap-2">
           {([['tongQuan', '📊 Tổng quan'], ['keKhai', '📝 Kê khai quý'], ['loHang', '📦 Lô hàng'], ['congNo', '💳 Công nợ'], ['kho', '🗂 Kho hồ sơ']] as const).map(([k, ten]) => (
             <button key={k} onClick={() => setTab(k)} className={`rounded-xl px-4 py-2 font-medium ${tab === k ? 'bg-emerald-700 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>
@@ -1025,6 +1040,7 @@ export default function App() {
         <p className="pb-6 text-center text-xs text-slate-400">
           {user ? 'Hồ sơ được lưu vào tài khoản Google đang đăng nhập — chỉ tài khoản này xem được.' : 'Chưa đăng nhập: mọi dữ liệu chỉ xử lý và lưu trên máy này, không gửi đi đâu.'}
         </p>
+        </>)}
       </main>
 
       <footer className="border-t border-slate-200 px-4 py-5 text-center text-xs text-slate-500">

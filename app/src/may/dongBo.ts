@@ -284,3 +284,38 @@ export async function xoaSaoKeMay(uid: string, mst: string, id: string, duongDan
   if (duongDan) await deleteObject(ref(luuTru, duongDan)).catch(() => undefined)
   await deleteDoc(doc(db, `${nhanhCongTy(uid, mst)}/saoKe/${id}`))
 }
+
+// ---------------- NGƯỜI XEM (giám đốc chỉ xem) ----------------
+//   nguoiDung/{uid}/nguoiXem/{email}     danh sách email được xem (luật phân quyền dựa vào đây)
+//   chiaSe/{email}/tu/{chuUid}            lời mời: để người xem biết hồ sơ của ai được chia sẻ cho mình
+
+export interface ChiaSe {
+  chuUid: string
+  chuEmail: string
+  chuTen: string
+}
+
+const chuanEmail = (e: string) => e.trim().toLowerCase()
+
+export async function taiNguoiXem(uid: string): Promise<string[]> {
+  return (await getDocs(collection(db, `nguoiDung/${uid}/nguoiXem`))).docs.map((d) => d.id).sort()
+}
+
+export async function themNguoiXem(uid: string, chu: { email: string; ten: string }, email: string) {
+  const e = chuanEmail(email)
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) throw new Error('Email không hợp lệ')
+  await setDoc(doc(db, `nguoiDung/${uid}/nguoiXem/${e}`), { themLuc: serverTimestamp() })
+  await setDoc(doc(db, `chiaSe/${e}/tu/${uid}`), { chuUid: uid, chuEmail: chu.email, chuTen: chu.ten, themLuc: serverTimestamp() })
+}
+
+export async function boNguoiXem(uid: string, email: string) {
+  const e = chuanEmail(email)
+  await deleteDoc(doc(db, `chiaSe/${e}/tu/${uid}`))
+  await deleteDoc(doc(db, `nguoiDung/${uid}/nguoiXem/${e}`))
+}
+
+/** Các hồ sơ người khác chia sẻ cho email của mình */
+export async function taiChiaSeChoToi(email: string): Promise<ChiaSe[]> {
+  const ds = await getDocs(collection(db, `chiaSe/${chuanEmail(email)}/tu`))
+  return ds.docs.map((d) => d.data() as ChiaSe)
+}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { User } from 'firebase/auth'
-import { taiNhatKyAI, taiPhienAI, thuHoiPhienAI, type DongNhatKyAI, type PhienAIMay } from '../may/dongBo'
+import { boNguoiXem, taiNguoiXem, taiNhatKyAI, taiPhienAI, themNguoiXem, thuHoiPhienAI, type DongNhatKyAI, type PhienAIMay } from '../may/dongBo'
 
 /** Logo app: tờ khai có dấu tích, nền trắng bo góc */
 export function Logo({ className = 'h-10 w-10' }: { className?: string }) {
@@ -67,6 +67,8 @@ export function TaiKhoan({ user, onDangXuat }: { user: User; onDangXuat: () => v
           <p className="truncate text-sm text-slate-500">{user.email}</p>
           <p className="mt-2 text-xs text-slate-500">☁️ Hồ sơ đang được lưu vào tài khoản này</p>
           <KetNoiAI uid={user.uid} />
+          <NhacHanTelegram user={user} />
+          <NguoiXem user={user} />
           <button
             className="mt-3 w-full rounded-full border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
             onClick={() => {
@@ -152,6 +154,97 @@ function KetNoiAI({ uid }: { uid: string }) {
           </ul>
         </>
       )}
+    </div>
+  )
+}
+
+/**
+ * Nhắc hạn nộp thuế qua Telegram. Mã bot nằm ở máy chủ (Vercel), KHÔNG ở trang web.
+ * B1: bật bot (máy chủ đăng ký webhook) · B2: nhắn Start cho bot để lấy mã Telegram · B3: tạo vé, dán vào Vercel.
+ */
+function NhacHanTelegram({ user }: { user: User }) {
+  const [bot, setBot] = useState('')
+  const [chat, setChat] = useState('')
+  const [ve, setVe] = useState('')
+  const [loi, setLoi] = useState('')
+  const [dang, setDang] = useState(false)
+  const goi = async (duong: string, than: Record<string, unknown>) => {
+    setDang(true)
+    setLoi('')
+    try {
+      const r = await fetch(duong, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ maLamMoi: user.refreshToken, ...than }) })
+      const j = (await r.json().catch(() => ({}))) as Record<string, string>
+      if (!r.ok) throw new Error(j.loi || `Máy chủ trả lỗi ${r.status}`)
+      return j
+    } catch (e) {
+      setLoi((e as Error).message)
+      return null
+    } finally {
+      setDang(false)
+    }
+  }
+  return (
+    <div className="mt-3 border-t border-slate-200 pt-3 text-left text-xs">
+      <p className="text-sm font-semibold">📨 Nhắc hạn qua Telegram</p>
+      <p className="mt-1 text-slate-500">Mỗi sáng 8 giờ máy chủ soát hạn nộp; trước hạn 10, 5, 3, 1 ngày (chưa có tờ khai) hoặc khi quá hạn sẽ nhắn anh. Nhắn bot bất kỳ lúc nào để xem tình hình.</p>
+      <button disabled={dang} className="mt-2 rounded-lg border border-emerald-600 px-2 py-1 text-emerald-700 disabled:opacity-50" onClick={async () => { const j = await goi('/telegram/bat', {}); if (j) setBot(j.bot) }}>
+        1. Bật bot
+      </button>
+      {bot && <p className="mt-1">2. Mở <a className="text-emerald-700 underline" href={`https://t.me/${bot}`} target="_blank" rel="noreferrer">@{bot}</a>, bấm Start — bot gửi lại mã Telegram của anh.</p>}
+      <div className="mt-2 flex gap-1">
+        <input className="min-w-0 flex-1 rounded border border-slate-300 px-2 py-1" placeholder="Mã Telegram (dãy số)" value={chat} onChange={(e) => setChat(e.target.value.trim())} />
+        <button disabled={dang || !/^\d{4,15}$/.test(chat)} className="rounded-lg bg-emerald-600 px-2 py-1 text-white disabled:bg-slate-300" onClick={async () => { const j = await goi('/telegram/ghep', { chat }); if (j) setVe(j.ve) }}>
+          3. Tạo vé
+        </button>
+      </div>
+      {ve && (
+        <div className="mt-2 space-y-1">
+          <p>4. Trên Vercel (dự án khaithue → Settings → Environment Variables) thêm biến <b>KHAITHUE_TELE_VE</b> = vé dưới đây (nhiều vé cách nhau dấu phẩy), rồi Redeploy:</p>
+          <button className="w-full break-all rounded bg-slate-100 px-2 py-1 text-left font-mono hover:bg-slate-200" title="Bấm để chép" onClick={() => void navigator.clipboard?.writeText(ve)}>{ve}</button>
+          <p className="text-slate-500">Vé chứa quyền đọc hồ sơ của anh — chỉ dán vào Vercel, không gửi cho ai. Thu hồi: bấm "Thu hồi" dòng "Bot Telegram nhắc hạn" ở mục Kết nối AI.</p>
+        </div>
+      )}
+      {loi && <p className="mt-1 text-red-700">⚠️ {loi}</p>}
+    </div>
+  )
+}
+
+/** Chủ hồ sơ thêm email người xem (vd giám đốc): người đó đăng nhập Google bằng email này sẽ XEM được, không sửa được */
+function NguoiXem({ user }: { user: User }) {
+  const [ds, setDs] = useState<string[] | null>(null)
+  const [email, setEmail] = useState('')
+  const [loi, setLoi] = useState('')
+  const tai = () => void taiNguoiXem(user.uid).then(setDs).catch((e) => setLoi((e as Error).message))
+  useEffect(tai, [user.uid])
+  const lam = async (f: () => Promise<void>) => {
+    setLoi('')
+    try {
+      await f()
+      tai()
+    } catch (e) {
+      setLoi((e as Error).message)
+    }
+  }
+  return (
+    <div className="mt-3 border-t border-slate-200 pt-3 text-left text-xs">
+      <p className="text-sm font-semibold">👔 Người xem (chỉ xem, không sửa)</p>
+      <p className="mt-1 text-slate-500">Người có email dưới đây đăng nhập app bằng Google sẽ xem được tổng quan, lô hàng, công nợ của anh. Không xem được file gốc, phiên AI.</p>
+      <ul className="mt-1 space-y-1">
+        {(ds ?? []).map((e) => (
+          <li key={e} className="flex items-center gap-2">
+            <span className="min-w-0 flex-1 truncate">{e}</span>
+            <button className="rounded-full border border-red-300 px-2 py-0.5 text-red-700" onClick={() => { if (confirm(`Bỏ quyền xem của ${e}?`)) void lam(() => boNguoiXem(user.uid, e)) }}>Bỏ</button>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-2 flex gap-1">
+        <input className="min-w-0 flex-1 rounded border border-slate-300 px-2 py-1" placeholder="email@congty.vn" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <button className="rounded-lg bg-emerald-600 px-2 py-1 text-white disabled:bg-slate-300" disabled={!email.includes('@')}
+          onClick={() => void lam(async () => { await themNguoiXem(user.uid, { email: user.email ?? '', ten: user.displayName ?? '' }, email); setEmail('') })}>
+          Thêm
+        </button>
+      </div>
+      {loi && <p className="mt-1 text-red-700">⚠️ {loi}</p>}
     </div>
   )
 }

@@ -7,7 +7,7 @@
 
 import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 
-export type LoaiVe = 'khach' | 'yeuCau' | 'ma' | 'truyCap' | 'lamMoi'
+export type LoaiVe = 'khach' | 'yeuCau' | 'ma' | 'truyCap' | 'lamMoi' | 'tele'
 
 export interface Ve {
   /** Loại vé: không cho dùng vé loại này thay loại khác */

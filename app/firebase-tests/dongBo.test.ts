@@ -1,8 +1,8 @@
 // Đi một vòng thật trên máy giả lập: đăng nhập -> lưu tờ khai + file Excel -> tải về -> dựng lại sổ
 import { describe, expect, it } from 'vitest'
-import { signInAnonymously, signOut } from 'firebase/auth'
+import { GoogleAuthProvider, signInAnonymously, signInWithCredential, signOut } from 'firebase/auth'
 import { auth } from '../src/may/firebase'
-import { datCoTraVe, luuChungTu, xoaCongTyTrenMay, xoaTaiLieu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, luuLoHang, taiLenGiayTo, xoaLoHang, luuSaoKe, luuGhepTay, xoaSaoKeMay } from '../src/may/dongBo'
+import { datCoTraVe, luuChungTu, xoaCongTyTrenMay, xoaTaiLieu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, luuLoHang, taiLenGiayTo, xoaLoHang, luuSaoKe, luuGhepTay, xoaSaoKeMay, themNguoiXem, boNguoiXem, taiNguoiXem, taiChiaSeChoToi } from '../src/may/dongBo'
 import { docTaiLieu } from '../src/core/taiLieu'
 import { tinhTongQuan } from '../src/core/tongQuan'
 import { docToKhai } from '../src/core/docToKhai'
@@ -127,5 +127,34 @@ describe('Đồng bộ hồ sơ lên mây (máy giả lập)', () => {
     may = await taiDuLieuMay(uid)
     expect(may.saoKe).toEqual([])
     await expect(taiTep(duongDan!)).rejects.toThrow()
+  })
+
+  it('giám đốc chỉ xem: chủ thêm email -> giám đốc thấy lời mời, đọc được hồ sơ, KHÔNG ghi được; chủ bỏ -> hết đọc', async () => {
+    const dangNhap = (email: string) => signInWithCredential(auth, GoogleAuthProvider.credential(JSON.stringify({ sub: email, email, email_verified: true })))
+    await signOut(auth)
+    const chu = (await dangNhap('chu@vidu.vn')).user
+    const M = '0100000007'
+    await luuCongTy(chu.uid, { hoSo: { mst: M, tenNNT: 'Cty Chủ' } as never, kyNguon: '', suaTay: false })
+    await luuLoHang(chu.uid, M, { id: 'lo-x', ten: 'Lô X', ngayTao: '2026-01-01', ghiChu: '', hoaDon: [], giayTo: [] })
+    await themNguoiXem(chu.uid, { email: 'chu@vidu.vn', ten: 'Anh Chủ' }, ' GiamDoc@ViDu.vn ')
+    expect(await taiNguoiXem(chu.uid)).toEqual(['giamdoc@vidu.vn'])
+
+    await signOut(auth)
+    await dangNhap('giamdoc@vidu.vn')
+    const loiMoi = await taiChiaSeChoToi('giamdoc@vidu.vn')
+    expect(loiMoi).toEqual([expect.objectContaining({ chuUid: chu.uid, chuEmail: 'chu@vidu.vn', chuTen: 'Anh Chủ' })])
+    const may = await taiDuLieuMay(chu.uid)
+    expect(may.congTy.map((c) => c.hoSo.tenNNT)).toEqual(['Cty Chủ'])
+    expect(may.loHang.map((x) => x.lo.ten)).toEqual(['Lô X'])
+    await expect(luuLoHang(chu.uid, M, { id: 'lo-y', ten: 'Giám đốc tự thêm', ngayTao: '', ghiChu: '', hoaDon: [], giayTo: [] })).rejects.toThrow()
+
+    await signOut(auth)
+    const lai = (await dangNhap('chu@vidu.vn')).user
+    expect(lai.uid).toBe(chu.uid)
+    await boNguoiXem(chu.uid, 'giamdoc@vidu.vn')
+    await signOut(auth)
+    await dangNhap('giamdoc@vidu.vn')
+    expect(await taiChiaSeChoToi('giamdoc@vidu.vn')).toEqual([])
+    await expect(taiDuLieuMay(chu.uid)).rejects.toThrow()
   })
 })
