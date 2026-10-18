@@ -5,6 +5,8 @@ import { gopTuMay, khoTrong, type Kho } from '../core/kho'
 import { canhBaoGoc, tongHopGoc } from '../core/hoaDonGoc'
 import { tongHopLo } from '../core/loHang'
 import { tinhCongNo } from '../core/saoKe'
+import { lapSoQuy, QUY_TRONG } from '../core/soQuy'
+import { SoQuyDN, type ThaoTacQuy } from './SoQuy'
 import { tinhDoiSoat, tinhDoiTac, tinhTongQuan } from '../core/tongQuan'
 import { taiDuLieuMay, type ChiaSe } from '../may/dongBo'
 import { TongQuanDN } from './TongQuan'
@@ -16,6 +18,7 @@ const KHONG_DUOC = () => {
 }
 const LO_CHI_XEM: ThaoTacLo = { luu: KHONG_DUOC, xoa: KHONG_DUOC, taiGiayTo: null, xoaGiayTo: KHONG_DUOC, moGiayTo: () => alert('Giấy tờ chỉ chủ hồ sơ mở được.') }
 const SK_CHI_XEM: ThaoTacSaoKe = { napFile: async () => 'Chế độ chỉ xem', xoa: KHONG_DUOC, ghepTay: KHONG_DUOC }
+const QUY_CHI_XEM: ThaoTacQuy = { luuPhieu: KHONG_DUOC, xoaPhieu: KHONG_DUOC, luuTonDau: KHONG_DUOC }
 
 export function XemChiaSe({ cs, onDong }: { cs: ChiaSe; onDong: () => void }) {
   const [kho, setKho] = useState<Kho | null>(null)
@@ -25,7 +28,7 @@ export function XemChiaSe({ cs, onDong }: { cs: ChiaSe; onDong: () => void }) {
   useEffect(() => {
     taiDuLieuMay(cs.chuUid)
       .then((du) => setKho(gopTuMay(khoTrong(), du.congTy, du.toKhai, du.chungTu,
-        Object.entries(du.tepHoaDon).flatMap(([mst, ds]) => ds.map((d) => ({ mst, hd: d.hd ?? [], phu: d.phu, goc: d.goc }))), du.loHang, du.saoKe)))
+        Object.entries(du.tepHoaDon).flatMap(([mst, ds]) => ds.map((d) => ({ mst, hd: d.hd ?? [], phu: d.phu, goc: d.goc }))), du.loHang, du.saoKe, du.soQuy)))
       .catch((e) => setLoi((e as Error).message))
   }, [cs.chuUid])
   const mst = chon ?? kho?.chon ?? null
@@ -40,7 +43,8 @@ export function XemChiaSe({ cs, onDong }: { cs: ChiaSe; onDong: () => void }) {
   const layDoiTac = useCallback((nam: number | null) => tinhDoiTac(kho ?? khoTrong(), mst ?? '', nam), [kho, mst])
   const loTong = useMemo(() => (kho && mst ? tongHopLo(kho, mst, Object.values(kho.loHang?.[mst] ?? {})) : null), [kho, mst])
   const dsSaoKe = useMemo(() => Object.values((kho && mst && kho.saoKe?.[mst]) || {}), [kho, mst])
-  const congNo = useMemo(() => (kho && mst ? tinhCongNo(kho, mst, dsSaoKe) : null), [kho, mst, dsSaoKe])
+  const quy = useMemo(() => (kho && mst && kho.soQuy?.[mst]) || QUY_TRONG(), [kho, mst])
+  const congNo = useMemo(() => (kho && mst ? tinhCongNo(kho, mst, dsSaoKe, 120, lapSoQuy(kho, mst, quy).daTraTheoHoaDon) : null), [kho, mst, dsSaoKe, quy])
 
   return (
     <section className="space-y-4 rounded-2xl border-2 border-sky-300 bg-white p-4 sm:p-6">
@@ -67,7 +71,7 @@ export function XemChiaSe({ cs, onDong }: { cs: ChiaSe; onDong: () => void }) {
             <>
               {tab === 'tongQuan' && <TongQuanDN tq={tq} tenCty={hoSo.tenNNT} onMoQuy={() => undefined} layDoiTac={layDoiTac} doiSoat={doiSoat} ruiRo={null} goc={goc} trangThaiRuiRo="loi:Mục soi DN rủi ro chỉ chủ hồ sơ xem được (danh sách nằm ở app hoá đơn của chủ)." />}
               {tab === 'loHang' && loTong && <fieldset disabled><LoHangDN t={loTong} tt={LO_CHI_XEM} dangNhap /></fieldset>}
-              {tab === 'congNo' && congNo && <fieldset disabled><CongNoDN k={congNo} dsSaoKe={dsSaoKe} tt={SK_CHI_XEM} /></fieldset>}
+              {tab === 'congNo' && congNo && mst && <fieldset disabled className="space-y-4"><CongNoDN k={congNo} dsSaoKe={dsSaoKe} tt={SK_CHI_XEM} /><h3 className="text-lg font-semibold">💵 Sổ quỹ tiền mặt</h3><SoQuyDN kho={kho} mst={mst} quy={quy} tt={QUY_CHI_XEM} /></fieldset>}
             </>
           )}
         </>

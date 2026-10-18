@@ -14,6 +14,7 @@ import { soiRuiRo as soiRuiRoLoi, type DsRuiRo } from '../src/core/ruiRo.js'
 import { canhBaoGoc, tongHopGoc, TEN_NHOM, nhomHoaDon } from '../src/core/hoaDonGoc.js'
 import { goiYLo, tongHopLo, TEN_GIAY_TO } from '../src/core/loHang.js'
 import { tinhCongNo } from '../src/core/saoKe.js'
+import { lapSoQuy, QUY_TRONG, TEN_NHOM_PHIEU } from '../src/core/soQuy.js'
 import type { CanhBao, HoaDon, KyKeKhai } from '../src/core/types.js'
 import { tenFileXML, xmlGTGT } from '../src/core/xml.js'
 
@@ -387,16 +388,33 @@ export function congNo(d: DuLieu, a: { mst?: string; gioi_han?: number }) {
   const mst = chonMst(d.kho, a.mst)
   const ds = Object.values(d.kho.saoKe?.[mst] ?? {})
   const n = a.gioi_han ?? 30
-  if (!ds.length) return { mst, daCoSaoKe: false, huongDan: 'Chưa có sao kê ngân hàng. Nạp file Excel/CSV sao kê tài khoản công ty trên web app (tab Công nợ) — app tự ghép giao dịch với hoá đơn.' }
-  const k = tinhCongNo(d.kho, mst, ds)
+  const quy = d.kho.soQuy?.[mst]
+  if (!ds.length && !quy) return { mst, daCoSaoKe: false, huongDan: 'Chưa có sao kê ngân hàng. Nạp file Excel/CSV sao kê tài khoản công ty trên web app (tab Công nợ) — app tự ghép giao dịch với hoá đơn.' }
+  const k = tinhCongNo(d.kho, mst, ds, 120, quy ? lapSoQuy(d.kho, mst, quy).daTraTheoHoaDon : {})
   return {
     mst,
-    daCoSaoKe: true,
+    daCoSaoKe: ds.length > 0,
     giaiThich: 'Ghép tự động theo số tiền thanh toán + MST/tên đối tác trong nội dung + ngày; người dùng gán tay trên web app được. conNo = tiền hoá đơn (gồm thuế) − đã ghép được.',
     saoKe: ds.map((s) => ({ file: s.tenFile, nganHang: s.nganHang, soTaiKhoan: s.soTaiKhoan, tuNgay: s.tuNgay, denNgay: s.denNgay, soGiaoDich: s.giaoDich.length })),
     soGiaoDich: k.soGiaoDich, daGhep: k.daGhep, phaiThu: k.phaiThu, phaiTra: k.phaiTra,
     doiTacConNo: k.doiTac.filter((x) => x.conNo > 1).slice(0, n).map((x) => ({ chieu: x.l === 'ban' ? 'phải thu' : 'phải trả', mst: x.mst, ten: x.ten, tongHoaDon: x.tongHoaDon, daThanhToan: x.daThanhToan, conNo: x.conNo })),
     muaTu5TrieuChuaChuyenKhoan: k.muaChuaChuyenKhoan.slice(0, n).map((h) => ({ so: `${h.kh}-${h.so}`, ngay: h.ng, ten: h.ten, tong: h.tong, daChuyen: h.daTra })),
     giaoDichChuaGhep: k.chuaGhep.slice(0, n).map((x) => ({ file: x.saoKe, ngay: x.gd.ngay, vao: x.gd.vao, ra: x.gd.ra, noiDung: x.gd.noiDung })),
+  }
+}
+
+/** Sổ quỹ tiền mặt: tồn đầu, phiếu thu/chi, tồn luỹ kế, cảnh báo quỹ âm và HĐ mua trả tiền mặt vượt ngưỡng */
+export function soQuy(d: DuLieu, a: { mst?: string; tu_ngay?: string; den_ngay?: string; gioi_han?: number }) {
+  const mst = chonMst(d.kho, a.mst)
+  const quy = d.kho.soQuy?.[mst] ?? QUY_TRONG()
+  const k = lapSoQuy(d.kho, mst, quy, a.tu_ngay ?? '', a.den_ngay ?? '')
+  const n = a.gioi_han ?? 100
+  return {
+    mst,
+    giaiThich: 'Sổ theo dõi quỹ tiền mặt (chưa phải sổ kế toán đầy đủ). Phiếu lập trên web app (tab Công nợ). Tiền mặt gắn hoá đơn được cộng vào công nợ.',
+    tonDauSo: quy.caiDat, tonDauKhoang: k.tonDau, tongThu: k.tongThu, tongChi: k.tongChi, tonCuoi: k.tonCuoi,
+    theoThang: k.theoThang,
+    canhBao: k.canhBao.map(chu),
+    phieu: k.dong.slice(-n).map((p) => ({ so: p.so, ngay: p.ngay, loai: p.loai === 'thu' ? 'thu' : 'chi', nhom: TEN_NHOM_PHIEU[p.nhom], soTien: p.soTien, noiDung: p.noiDung, doiTac: p.doiTac, hoaDon: p.hoaDon.map((x) => x.split('|').slice(2).join('-')), ton: p.ton })),
   }
 }

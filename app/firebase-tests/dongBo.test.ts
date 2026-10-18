@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { GoogleAuthProvider, signInAnonymously, signInWithCredential, signOut } from 'firebase/auth'
 import { auth } from '../src/may/firebase'
-import { datCoTraVe, luuChungTu, xoaCongTyTrenMay, xoaTaiLieu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, luuLoHang, taiLenGiayTo, xoaLoHang, luuSaoKe, luuGhepTay, xoaSaoKeMay, themNguoiXem, boNguoiXem, taiNguoiXem, taiChiaSeChoToi } from '../src/may/dongBo'
+import { datCoTraVe, luuChungTu, xoaCongTyTrenMay, xoaTaiLieu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, luuLoHang, taiLenGiayTo, xoaLoHang, luuSaoKe, luuGhepTay, xoaSaoKeMay, themNguoiXem, boNguoiXem, taiNguoiXem, taiChiaSeChoToi, luuPhieuQuy, xoaPhieuQuy, luuTonDauQuy } from '../src/may/dongBo'
 import { docTaiLieu } from '../src/core/taiLieu'
 import { tinhTongQuan } from '../src/core/tongQuan'
 import { docToKhai } from '../src/core/docToKhai'
@@ -156,5 +156,27 @@ describe('Đồng bộ hồ sơ lên mây (máy giả lập)', () => {
     await dangNhap('giamdoc@vidu.vn')
     expect(await taiChiaSeChoToi('giamdoc@vidu.vn')).toEqual([])
     await expect(taiDuLieuMay(chu.uid)).rejects.toThrow()
+  })
+
+  it('sổ quỹ: lưu tồn đầu + phiếu, tải về dựng lại sổ; xoá phiếu; xoá công ty xoá cả sổ quỹ', async () => {
+    await signOut(auth)
+    const { user } = await signInAnonymously(auth)
+    const uid = user.uid
+    const M = '0100000006'
+    await luuCongTy(uid, { hoSo: { mst: M, tenNNT: 'Cty Quỹ' } as never, kyNguon: '', suaTay: false })
+    await luuTonDauQuy(uid, M, { tonDau: 5_000_000, ngayTonDau: '01/01/2025' })
+    const p1 = { id: 'p1', loai: 'chi' as const, so: 'PC001', ngay: '02/01/2025', soTien: 1_000_000, nhom: 'khac' as const, noiDung: 'Mua văn phòng phẩm', doiTac: 'A', hoaDon: [] }
+    await luuPhieuQuy(uid, M, p1)
+    await luuPhieuQuy(uid, M, { ...p1, id: 'p2', so: 'PC002', soTien: 2_000_000 })
+    let may = await taiDuLieuMay(uid)
+    expect(may.soQuy).toEqual([{ mst: M, caiDat: expect.objectContaining({ tonDau: 5_000_000, ngayTonDau: '01/01/2025' }), phieu: expect.arrayContaining([expect.objectContaining({ id: 'p1', so: 'PC001' }), expect.objectContaining({ id: 'p2' })]) }])
+    const kho = gopTuMay(khoTrong(), may.congTy, may.toKhai, may.chungTu, [], may.loHang, may.saoKe, may.soQuy)
+    expect(Object.keys(kho.soQuy![M].phieu).sort()).toEqual(['p1', 'p2'])
+    await xoaPhieuQuy(uid, M, 'p2')
+    may = await taiDuLieuMay(uid)
+    expect(may.soQuy[0].phieu.map((p) => p.id)).toEqual(['p1'])
+    await xoaCongTyTrenMay(uid, M)
+    may = await taiDuLieuMay(uid)
+    expect(may.soQuy).toEqual([])
   })
 })

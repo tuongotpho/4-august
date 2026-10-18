@@ -6,7 +6,7 @@ import { tinhTNCN, NHAP_TNCN_TRONG, type NhapTNCN } from './core/tncn'
 import { docToKhai } from './core/docToKhai'
 import { tenFileXML, xmlGTGT, xmlTNCN } from './core/xml'
 import { denNgay, hanNop, ngayISO, quyCanKhai, tuNgay } from './core/ky'
-import { boCongTy, dauKy, datKhongChapNhan, ghiAppXuat, ghiPhuSong, gopTuMay, kyTruoc, datLo, datSaoKe, napGoc, napHoaDon, napTaiLieu, napToKhai, xoaLo, xoaSaoKe, rutGonHoaDon, suaHoSo, tncnGanNhat, type Kho } from './core/kho'
+import { boCongTy, dauKy, datKhongChapNhan, ghiAppXuat, ghiPhuSong, gopTuMay, kyTruoc, datLo, datPhieuQuy, datSaoKe, datTonDauQuy, napGoc, napHoaDon, napTaiLieu, napToKhai, xoaLo, xoaSaoKe, rutGonHoaDon, suaHoSo, tncnGanNhat, type Kho } from './core/kho'
 import { docTaiLieu, khoaChungTu } from './core/taiLieu'
 import { tinhDoiSoat, tinhDoiTac, tinhTongQuan } from './core/tongQuan'
 import { soiRuiRo, type DsRuiRo } from './core/ruiRo'
@@ -16,6 +16,10 @@ import { LoHangDN, type ThaoTacLo } from './ui/LoHang'
 import { docSaoKe, tinhCongNo, type SaoKe } from './core/saoKe'
 import { CongNoDN, type ThaoTacSaoKe } from './ui/CongNo'
 import { XemChiaSe } from './ui/XemChiaSe'
+import { lapSoQuy, QUY_TRONG } from './core/soQuy'
+import { SoQuyDN, type ThaoTacQuy } from './ui/SoQuy'
+import { xuatHoSo } from './may/xuatHoSo'
+import type { NguonXuat } from './core/xuatHoSo'
 import { moZip } from './core/nenZip'
 import { pdfThanhDong } from './may/pdfChu'
 import { taiDsRuiRo } from './may/ruiRoMay'
@@ -23,7 +27,7 @@ import { NapHangLoat, TongQuanDN } from './ui/TongQuan'
 import type { ToKhaiDaNop } from './core/docToKhai'
 import { coMay } from './may/firebase'
 import { dangNhap, dangXuat, useNguoiDung } from './may/useMay'
-import { boSungHoaDonTep, boSungPhuLuc, datCoTraVe, xoaCongTyTrenMay, xoaTaiLieu, type NhomTaiLieu, luuChungTu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, type DuLieuMay, luuLoHang, xoaLoHang, taiLenGiayTo, xoaGiayTo, luuSaoKe, luuGhepTay, xoaSaoKeMay, maBam, taiChiaSeChoToi, type ChiaSe } from './may/dongBo'
+import { boSungHoaDonTep, boSungPhuLuc, datCoTraVe, xoaCongTyTrenMay, xoaTaiLieu, type NhomTaiLieu, luuChungTu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, type DuLieuMay, luuLoHang, xoaLoHang, taiLenGiayTo, xoaGiayTo, luuSaoKe, luuGhepTay, xoaSaoKeMay, maBam, taiChiaSeChoToi, type ChiaSe, luuPhieuQuy, xoaPhieuQuy, luuTonDauQuy } from './may/dongBo'
 import { KhoHoSo } from './ui/KhoHoSo'
 import { Logo, TaiKhoan } from './ui/DauTrang'
 import { NHAN_GTGT, NHAN_TNCN, tien } from './core/nhan'
@@ -65,11 +69,12 @@ export default function App() {
   /** Hồ sơ người khác chia sẻ cho mình (chỉ xem) và hồ sơ đang mở xem */
   const [chiaSe, setChiaSe] = useState<ChiaSe[]>([])
   const [dangXem, setDangXem] = useState<ChiaSe | null>(null)
+  const [xuatGoi, setXuatGoi] = useState<{ dang: boolean; chu: string }>({ dang: false, chu: '' })
   async function lamMoiMay(uid: string) {
     const du = await taiDuLieuMay(uid)
     setMay(du)
     capNhatKho((k) =>
-      gopTuMay(k, du.congTy, du.toKhai, du.chungTu, Object.entries(du.tepHoaDon).flatMap(([mst, ds]) => ds.map((d) => ({ mst, hd: d.hd ?? [], phu: d.phu, goc: d.goc }))), du.loHang, du.saoKe),
+      gopTuMay(k, du.congTy, du.toKhai, du.chungTu, Object.entries(du.tepHoaDon).flatMap(([mst, ds]) => ds.map((d) => ({ mst, hd: d.hd ?? [], phu: d.phu, goc: d.goc }))), du.loHang, du.saoKe, du.soQuy),
     )
     void boSungFileCu(uid, du)
     return du
@@ -591,7 +596,25 @@ export default function App() {
   // Đối tác dính danh sách rủi ro đứng ĐẦU mục "Cần xử lý"
   const goc = useMemo(() => (mst ? tongHopGoc(kho, mst) : null), [kho, mst])
   const dsSaoKe = useMemo(() => Object.values((mst && kho.saoKe?.[mst]) || {}), [kho, mst])
-  const congNo = useMemo(() => (mst ? tinhCongNo(kho, mst, dsSaoKe) : null), [kho, mst, dsSaoKe])
+  const quy = useMemo(() => (mst && kho.soQuy?.[mst]) || QUY_TRONG(), [kho, mst])
+  const congNo = useMemo(() => (mst ? tinhCongNo(kho, mst, dsSaoKe, 120, lapSoQuy(kho, mst, quy).daTraTheoHoaDon) : null), [kho, mst, dsSaoKe, quy])
+  const thaoTacQuy: ThaoTacQuy = {
+    luuPhieu: async (p) => {
+      if (!mst) return
+      capNhatKho((k) => datPhieuQuy(k, mst, p.id, p))
+      if (user) await luuPhieuQuy(user.uid, mst, p)
+    },
+    xoaPhieu: async (p) => {
+      if (!mst) return
+      capNhatKho((k) => datPhieuQuy(k, mst, p.id, null))
+      if (user) await xoaPhieuQuy(user.uid, mst, p.id)
+    },
+    luuTonDau: async (cd) => {
+      if (!mst) return
+      capNhatKho((k) => datTonDauQuy(k, mst, cd))
+      if (user) await luuTonDauQuy(user.uid, mst, cd)
+    },
+  }
   const thaoTacSaoKe: ThaoTacSaoKe = {
     napFile: async (fs) => {
       if (!mst) return 'Chưa chọn công ty'
@@ -777,8 +800,14 @@ export default function App() {
 
         {tab === 'congNo' && (
           <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
-            <h2 className="text-xl font-semibold">💳 Sao kê & công nợ {hoSo && <span className="text-base font-normal text-slate-500">— {hoSo.tenNNT}</span>}</h2>
+            <h2 className="text-xl font-semibold">💳 Sao kê, công nợ & sổ quỹ {hoSo && <span className="text-base font-normal text-slate-500">— {hoSo.tenNNT}</span>}</h2>
             {congNo && mst ? <CongNoDN k={congNo} dsSaoKe={dsSaoKe} tt={thaoTacSaoKe} /> : <p className="text-slate-500">Nạp hồ sơ (tờ khai + danh sách hoá đơn) trước.</p>}
+            {mst && (
+              <div className="space-y-2 border-t border-slate-200 pt-4">
+                <h3 className="text-lg font-semibold">💵 Sổ quỹ tiền mặt</h3>
+                <SoQuyDN kho={kho} mst={mst} quy={quy} tt={thaoTacQuy} />
+              </div>
+            )}
           </section>
         )}
 
@@ -787,6 +816,26 @@ export default function App() {
             <h2 className="text-xl font-semibold">
               🗂 Kho hồ sơ {hoSo && <span className="text-base font-normal text-slate-500">— {hoSo.tenNNT} (MST {hoSo.mst})</span>}
             </h2>
+            {hoSo && mst && (
+              <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                <button disabled={xuatGoi.dang} className="rounded-lg bg-emerald-700 px-4 py-2 font-medium text-white disabled:bg-slate-300" onClick={async () => {
+                  setXuatGoi({ dang: true, chu: 'Đang chuẩn bị…' })
+                  try {
+                    const kq = await xuatHoSo(kho, mst, user && may ? (may as unknown as NguonXuat) : null, (x, t, dang) => setXuatGoi({ dang: true, chu: `Đang tải file gốc ${x}/${t}: ${dang}` }))
+                    const url = URL.createObjectURL(kq.blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = kq.ten
+                    a.click()
+                    setTimeout(() => URL.revokeObjectURL(url), 30_000)
+                    setXuatGoi({ dang: false, chu: `✅ Đã xuất ${kq.ten} (${(kq.blob.size / 1048576).toFixed(1)} MB, ${kq.soTep} file gốc${kq.soLoi ? `, ⚠️ ${kq.soLoi} file không tải được — xem 0-Loi-tai.txt trong gói` : ''}).` })
+                  } catch (e) {
+                    setXuatGoi({ dang: false, chu: `⚠️ Không xuất được: ${(e as Error).message}` })
+                  }
+                }}>⬇ Xuất toàn bộ hồ sơ (ZIP)</button>
+                <span className="text-slate-600">{xuatGoi.chu || 'Mọi file gốc (tờ khai, chứng từ, hoá đơn, giấy tờ lô, sao kê) + Excel tổng hợp + bản sao dữ liệu — để lưu trữ 10 năm ngoài app.'}</span>
+              </div>
+            )}
             {!hoSo ? (
               <p className="text-slate-500">Chưa có công ty. Nạp hồ sơ ở tab 📊 Tổng quan.</p>
             ) : (

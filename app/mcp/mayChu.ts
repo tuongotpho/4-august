@@ -158,6 +158,13 @@ export function taoMayChu(nguon: NguonMcp) {
     annotations: chiDoc,
   }, chay(cc.congNo))
 
+  server.registerTool('so_quy', {
+    title: 'Sổ quỹ tiền mặt',
+    description: 'Sổ quỹ tiền mặt: tồn đầu, phiếu thu/chi theo ngày, tồn luỹ kế, tổng theo tháng; cảnh báo quỹ âm và hoá đơn mua trả TIỀN MẶT vượt ngưỡng (từ 01/07/2025: 5 triệu; trước: 20 triệu) không được khấu trừ thuế GTGT.',
+    inputSchema: { mst, tu_ngay: z.string().optional().describe('dd/MM/yyyy'), den_ngay: z.string().optional().describe('dd/MM/yyyy'), gioi_han: z.number().int().min(1).max(500).optional().describe('Số phiếu gần nhất tối đa (mặc định 100)') },
+    annotations: chiDoc,
+  }, chay(cc.soQuy))
+
   server.registerTool('soi_rui_ro', {
     title: 'Soi DN rủi ro về hoá đơn',
     description: 'So MST mọi nhà cung cấp (mua vào) và khách hàng (bán ra) trên hoá đơn còn hiệu lực với DANH SÁCH DN RỦI RO VỀ HOÁ ĐƠN của cơ quan thuế (file "PHỤ LỤC QR HDRR" người dùng nạp ở app hoá đơn đỏ). Trả về đối tác dính danh sách, từng hoá đơn, quý, tiền thuế đầu vào có nguy cơ bị loại, DN đã chuyển công an, hoá đơn lập sau ngày DN ngừng hoạt động.',

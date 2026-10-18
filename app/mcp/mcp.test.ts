@@ -86,7 +86,7 @@ describe('Máy chủ MCP khaithue', () => {
   it('khai báo đủ công cụ; chỉ xuat_xml_gtgt được ghi', async () => {
     const { tools } = await client.listTools()
     expect(tools.map((t) => t.name).sort()).toEqual([
-      'chung_tu_nop_tien', 'cong_no', 'danh_sach_cong_ty', 'doi_soat', 'doi_tac', 'hoa_don_goc', 'lap_to_khai_gtgt', 'lo_hang', 'nap_ho_so', 'so_theo_doi_gtgt', 'soi_rui_ro', 'tong_quan', 'tra_hoa_don', 'xuat_xml_gtgt',
+      'chung_tu_nop_tien', 'cong_no', 'danh_sach_cong_ty', 'doi_soat', 'doi_tac', 'hoa_don_goc', 'lap_to_khai_gtgt', 'lo_hang', 'nap_ho_so', 'so_quy', 'so_theo_doi_gtgt', 'soi_rui_ro', 'tong_quan', 'tra_hoa_don', 'xuat_xml_gtgt',
     ])
     expect(tools.filter((t) => !t.annotations?.readOnlyHint).map((t) => t.name)).toEqual(['xuat_xml_gtgt'])
   })
@@ -173,5 +173,10 @@ describe('Máy chủ MCP khaithue', () => {
     const { kq } = await goi('cong_no')
     expect(kq).toMatchObject({ daCoSaoKe: false })
     expect(kq.huongDan).toContain('Chưa có sao kê')
+  })
+
+  it('sổ quỹ: chưa có phiếu -> tồn 0, không cảnh báo', async () => {
+    const { kq } = await goi('so_quy')
+    expect(kq).toMatchObject({ tongThu: 0, tongChi: 0, tonCuoi: 0, phieu: [], canhBao: [] })
   })
 })

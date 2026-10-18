@@ -10,6 +10,7 @@
 import { gocThanhHoaDon, khoaGoc, type HoaDonGoc } from './hoaDonGoc.js'
 import type { LoHang } from './loHang.js'
 import type { SaoKe } from './saoKe.js'
+import type { CaiDatQuy, PhieuQuy, SoQuy } from './soQuy.js'
 import type { HoaDon, HoSoDN, KyKeKhai } from './types.js'
 import type { ToKhaiDaNop } from './docToKhai.js'
 import { datChungTu, daXacNhan, type ChungTu, type TaiLieu } from './taiLieu.js'
@@ -92,6 +93,8 @@ export interface Kho {
   loHang?: Record<string, Record<string, LoHang>>
   /** Sao kê ngân hàng đã nạp (giao dịch + phần gán tay vào hoá đơn) theo công ty */
   saoKe?: Record<string, Record<string, SaoKe>>
+  /** Sổ quỹ tiền mặt (tồn đầu + phiếu thu/chi) theo công ty */
+  soQuy?: Record<string, SoQuy>
 }
 
 export const khoTrong = (): Kho => ({ phienBan: 1, chon: null, congTy: {}, gtgt: {}, tncn: {} })
@@ -288,6 +291,7 @@ export function gopTuMay(
   hoaDon: { mst: string; hd: HoaDonGon[]; phu?: { ban: string[]; mua: string[] }; goc?: HoaDonGoc }[] = [],
   loHang?: { mst: string; lo: LoHang }[],
   saoKe?: { mst: string; sk: SaoKe }[],
+  soQuy?: { mst: string; caiDat: CaiDatQuy | null; phieu: PhieuQuy[] }[],
 ): Kho {
   let kho = kho0
   for (const t of toKhai) {
@@ -337,6 +341,11 @@ export function gopTuMay(
     const theoCty: Record<string, Record<string, SaoKe>> = {}
     for (const { mst, sk } of saoKe) (theoCty[mst] ??= {})[sk.id] = sk
     kho.saoKe = theoCty
+  }
+  if (soQuy) {
+    const theoCty: Record<string, SoQuy> = {}
+    for (const q of soQuy) theoCty[q.mst] = { caiDat: q.caiDat ?? { tonDau: 0, ngayTonDau: '' }, phieu: Object.fromEntries(q.phieu.map((p) => [p.id, p])) }
+    kho.soQuy = theoCty
   }
   // Thông tin công ty trên mây là bản người dùng đã chốt -> ưu tiên
   for (const c of congTy) kho.congTy[c.hoSo.mst] = structuredClone(c)
@@ -479,5 +488,20 @@ export function datSaoKe(kho0: Kho, mst: string, sk: SaoKe): Kho {
 export function xoaSaoKe(kho0: Kho, mst: string, id: string): Kho {
   const kho: Kho = structuredClone(kho0)
   delete kho.saoKe?.[mst]?.[id]
+  return kho
+}
+
+/** Thêm / sửa phiếu thu-chi; null = xoá phiếu */
+export function datPhieuQuy(kho0: Kho, mst: string, id: string, p: PhieuQuy | null): Kho {
+  const kho: Kho = structuredClone(kho0)
+  const q = ((kho.soQuy ??= {})[mst] ??= { caiDat: { tonDau: 0, ngayTonDau: '' }, phieu: {} })
+  if (p) q.phieu[id] = structuredClone(p)
+  else delete q.phieu[id]
+  return kho
+}
+
+export function datTonDauQuy(kho0: Kho, mst: string, caiDat: CaiDatQuy): Kho {
+  const kho: Kho = structuredClone(kho0)
+  ;((kho.soQuy ??= {})[mst] ??= { caiDat, phieu: {} }).caiDat = { ...caiDat }
   return kho
 }

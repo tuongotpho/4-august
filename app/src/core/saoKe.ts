@@ -134,7 +134,8 @@ export interface HoaDonCongNo {
   mst: string // MST đối tác
   ten: string
   tong: number // tiền thanh toán (chưa thuế + thuế)
-  daTra: number // đã ghép được bao nhiêu tiền
+  daTra: number // đã thanh toán (chuyển khoản ghép được + tiền mặt theo sổ quỹ)
+  tienMat: number // phần trả / thu bằng tiền mặt (sổ quỹ)
   giaoDich: string[] // "idSaoKe#idGD"
 }
 
@@ -181,11 +182,19 @@ function nhacToi(gd: GiaoDich, h: HoaDonCongNo): number {
   return diem
 }
 
-export function tinhCongNo(kho: Kho, mst: string, dsSaoKe: SaoKe[], cuaSoNgay = 120): KetQuaCongNo {
+export function tinhCongNo(kho: Kho, mst: string, dsSaoKe: SaoKe[], cuaSoNgay = 120, tienMat: Record<string, number> = {}): KetQuaCongNo {
   const hoaDon: HoaDonCongNo[] = Object.entries(kho.hoaDon?.[mst] ?? {})
     .filter(([, g]) => conHieuLuc({ trangThai: g.tt ?? '' } as HoaDon))
-    .map(([khoa, g]) => ({ khoa, l: g.l, kh: g.kh, so: g.so, ng: g.ng, mst: (g.l === 'mua' ? g.mb : g.mm) ?? '', ten: g.ten, tong: g.v + g.t, daTra: 0, giaoDich: [] }))
+    .map(([khoa, g]) => ({ khoa, l: g.l, kh: g.kh, so: g.so, ng: g.ng, mst: (g.l === 'mua' ? g.mb : g.mm) ?? '', ten: g.ten, tong: g.v + g.t, daTra: 0, tienMat: 0, giaoDich: [] }))
   const theoKhoa = new Map(hoaDon.map((h) => [h.khoa, h]))
+  // Tiền mặt (sổ quỹ) trừ trước: phiếu thu/chi đã gắn đích danh hoá đơn
+  for (const [k, st] of Object.entries(tienMat)) {
+    const h = theoKhoa.get(k)
+    if (!h) continue
+    const lay = Math.min(st, h.tong - h.daTra)
+    h.daTra += lay
+    h.tienMat += lay
+  }
   const chuaGhep: KetQuaCongNo['chuaGhep'] = []
   let soGD = 0
   let daGhep = 0
@@ -253,10 +262,10 @@ export function tinhCongNo(kho: Kho, mst: string, dsSaoKe: SaoKe[], cuaSoNgay = 
   const coSaoKe = dsSaoKe.length > 0
   // chỉ xét hoá đơn nằm trong khoảng thời gian các sao kê đã nạp (ngoài khoảng thì chưa biết)
   const trongKhoang = (ng: string) => dsSaoKe.some((s) => ngayMs(ng) >= ngayMs(s.tuNgay) - cuaSoNgay * 86400000 && ngayMs(ng) <= ngayMs(s.denNgay))
-  const muaChuaChuyenKhoan = hoaDon.filter((h) => h.l === 'mua' && h.tong >= NGUONG_KHONG_TIEN_MAT && isoN(h.ng) >= '2025-07-01' && h.daTra < h.tong - 1 && coSaoKe && trongKhoang(h.ng))
+  const muaChuaChuyenKhoan = hoaDon.filter((h) => h.l === 'mua' && h.tong >= NGUONG_KHONG_TIEN_MAT && isoN(h.ng) >= '2025-07-01' && h.daTra - h.tienMat < h.tong - 1 && coSaoKe && trongKhoang(h.ng))
   const canhBao: CanhBao[] = []
   for (const h of muaChuaChuyenKhoan) {
-    canhBao.push({ muc: 'chu_y', noiDung: `HĐ mua ${h.kh}-${h.so} ngày ${h.ng} (${h.ten}) ${tien(h.tong)} đ: ${h.daTra ? `mới thấy chuyển khoản ${tien(h.daTra)} đ` : 'chưa thấy chuyển khoản'} trong sao kê — từ 5 triệu phải thanh toán không dùng tiền mặt mới được khấu trừ thuế` })
+    canhBao.push({ muc: 'chu_y', noiDung: `HĐ mua ${h.kh}-${h.so} ngày ${h.ng} (${h.ten}) ${tien(h.tong)} đ: ${h.daTra - h.tienMat ? `mới thấy chuyển khoản ${tien(h.daTra - h.tienMat)} đ` : 'chưa thấy chuyển khoản'}${h.tienMat ? ` (trả tiền mặt ${tien(h.tienMat)} đ)` : ''} trong sao kê — từ 5 triệu phải thanh toán không dùng tiền mặt mới được khấu trừ thuế` })
   }
   return {
     soGiaoDich: soGD, daGhep, chuaGhep, hoaDon, doiTac,
