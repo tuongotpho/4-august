@@ -251,8 +251,12 @@ export default function App() {
               <Overview />
             )}
           </div>
-          <footer className="mt-10 text-center text-xs text-slate-400">{COPYRIGHT}</footer>
         </main>
+
+        {/* Bản quyền cố định ở đáy màn hình (máy tính); điện thoại nằm trong menu dưới */}
+        <footer className="fixed right-0 bottom-0 left-64 z-20 hidden border-t border-slate-200/80 bg-white/90 py-1.5 text-center text-xs text-slate-400 backdrop-blur lg:block">
+          {COPYRIGHT}
+        </footer>
 
         {/* Menu dưới (điện thoại) */}
         <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
@@ -274,6 +278,7 @@ export default function App() {
               )
             })}
           </div>
+          <div className="pb-1 text-center text-[10px] leading-tight text-slate-400">{COPYRIGHT}</div>
         </nav>
       </div>
 
