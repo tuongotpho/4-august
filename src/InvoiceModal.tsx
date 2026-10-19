@@ -4,6 +4,9 @@ import { amountToPay, drawInvoice, drawPurchase, purchaseAmountToPay } from './i
 import { debtBefore, invoiceNo, money, oldDebtOrders, purchaseNo, supplierDebtBefore } from './logic'
 import { Btn, Modal, useApp } from './ui'
 
+const JPEG_Q = 0.92
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+
 /** Khung chung: vẽ ảnh, xem trước, gửi (chia sẻ sang Zalo/Messenger trên điện thoại) / chép / tải về */
 function AnhChiaSe({
   title,
@@ -23,6 +26,7 @@ function AnhChiaSe({
   const { toast } = useApp()
   const [url, setUrl] = useState<string | null>(null)
   const [blob, setBlob] = useState<Blob | null>(null)
+  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null)
   const [err, setErr] = useState(false)
 
   useEffect(() => {
@@ -31,8 +35,10 @@ function AnhChiaSe({
     draw()
       .then((c) => {
         if (!alive) return
-        setUrl(c.toDataURL('image/png'))
-        c.toBlob((b) => alive && b && setBlob(b), 'image/png')
+        // JPEG: iPhone lưu thẳng vào thư viện Ảnh được (PNG hay bị kẹt ở ứng dụng Tệp)
+        setCanvas(c)
+        setUrl(c.toDataURL('image/jpeg', JPEG_Q))
+        c.toBlob((b) => alive && b && setBlob(b), 'image/jpeg', JPEG_Q)
       })
       .catch((e) => {
         console.error(e)
@@ -43,11 +49,20 @@ function AnhChiaSe({
     }
   }, [draw])
 
-  const file = blob ? new File([blob], fileName, { type: 'image/png' }) : null
+  const file = blob ? new File([blob], fileName, { type: 'image/jpeg' }) : null
   const canShare = !!file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })
 
-  const download = () => {
+  const download = async () => {
     if (!url) return
+    // iPhone/iPad: thẻ <a download> chỉ lưu vào ứng dụng Tệp → mở bảng chia sẻ để chọn "Lưu hình ảnh"
+    if (isIOS() && canShare && file) {
+      try {
+        await navigator.share({ files: [file] })
+        return
+      } catch (e) {
+        if ((e as Error)?.name === 'AbortError') return
+      }
+    }
     const a = document.createElement('a')
     a.href = url
     a.download = fileName
@@ -61,16 +76,18 @@ function AnhChiaSe({
     try {
       await navigator.share({ files: [file], title })
     } catch (e) {
-      if ((e as Error)?.name !== 'AbortError') download()
+      if ((e as Error)?.name !== 'AbortError') void download()
     }
   }
   const copy = async () => {
-    if (!blob) return
+    if (!canvas) return
     try {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+      // bộ nhớ tạm chỉ nhận PNG
+      const png = new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error('png'))), 'image/png'))
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
       toast('Đã chép ảnh — mở Zalo, dán (Ctrl+V) để gửi')
     } catch {
-      download()
+      void download()
     }
   }
 
@@ -96,11 +113,11 @@ function AnhChiaSe({
           </Btn>
         )}
         <div className="grid grid-cols-2 gap-2">
-          <Btn kind="soft" onClick={copy} disabled={!blob}>
+          <Btn kind="soft" onClick={copy} disabled={!canvas}>
             <Icon name="copy" className="h-4 w-4" /> Chép ảnh
           </Btn>
-          <Btn kind="soft" onClick={download} disabled={!url}>
-            <Icon name="download" className="h-4 w-4" /> Tải về máy
+          <Btn kind="soft" onClick={() => void download()} disabled={!url}>
+            <Icon name="download" className="h-4 w-4" /> {isIOS() ? 'Lưu vào Ảnh' : 'Tải về máy'}
           </Btn>
         </div>
       </div>
@@ -125,7 +142,7 @@ function KemNoCu({ oldDebt, value, onChange, chu }: { oldDebt: number; value: bo
   )
 }
 
-const tenTep = (so: string, ten?: string) => `${so}-${(ten ?? 'khach').replace(/[^\p{L}\p{N}]+/gu, '-')}.png`
+const tenTep = (so: string, ten?: string) => `${so}-${(ten ?? 'khach').replace(/[^\p{L}\p{N}]+/gu, '-')}.jpg`
 
 /** Hoá đơn bán — QR là tài khoản của shop, khách quét trả tiền */
 export default function InvoiceModal({ orderId, onClose }: { orderId: string; onClose: () => void }) {
