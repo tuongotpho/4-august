@@ -16,6 +16,7 @@ import {
   lastMonths,
   monthStats,
   nextOrderNo,
+  oldDebtOrders,
   orderProfit,
   orderTotal,
   predict,
@@ -90,6 +91,20 @@ describe('công nợ', () => {
     const d = { orders: [o1, o2, o3], receipts: [r1] }
     expect(debtBefore(d, o2)).toBe(300000)
     expect(debtBefore(d, o1)).toBe(0)
+  })
+  it('các đợt cũ còn nợ: tiền thu trừ vào đơn cũ nhất trước, tổng khớp nợ cũ', () => {
+    const o1 = order({ date: '2026-10-01', paid: 0 }) // nợ 500k
+    const o2 = order({ date: '2026-10-03', paid: 100000 }) // nợ 400k
+    const r1 = receipt({ date: '2026-10-04', amount: 600000 }) // trả hết o1, 100k vào o2
+    const o3 = order({ date: '2026-10-05', paid: 0 })
+    const o4 = order({ date: '2026-10-09', paid: 0 })
+    const d = { orders: [o4, o3, o2, o1], receipts: [r1] }
+    const rows = oldDebtOrders(d, o4)
+    expect(rows.map((r) => [r.order.id, r.left])).toEqual([
+      [o2.id, 300000],
+      [o3.id, 500000],
+    ])
+    expect(rows.reduce((s, r) => s + r.left, 0)).toBe(debtBefore(d, o4))
   })
   it('khách khác không lẫn vào', () => {
     const orders = [order({ date: '2026-10-01' }), order({ date: '2026-10-01', customerId: 'c2', paid: 500000 })]

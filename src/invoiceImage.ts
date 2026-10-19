@@ -21,6 +21,29 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath()
 }
 
+/** Ngắt chữ thành nhiều dòng cho vừa chiều rộng (theo từ; từ quá dài thì cắt theo ký tự) */
+function wrap(ctx: CanvasRenderingContext2D, s: string, w: number): string[] {
+  const lines: string[] = []
+  let cur = ''
+  for (const word of s.split(/\s+/).filter(Boolean)) {
+    const next = cur ? cur + ' ' + word : word
+    if (ctx.measureText(next).width <= w) {
+      cur = next
+      continue
+    }
+    if (cur) lines.push(cur)
+    cur = word
+    while (ctx.measureText(cur).width > w && cur.length > 1) {
+      let k = cur.length - 1
+      while (k > 1 && ctx.measureText(cur.slice(0, k)).width > w) k--
+      lines.push(cur.slice(0, k))
+      cur = cur.slice(k)
+    }
+  }
+  if (cur) lines.push(cur)
+  return lines.length ? lines : ['']
+}
+
 /** Cắt chữ cho vừa chiều rộng, thêm … */
 function fit(ctx: CanvasRenderingContext2D, s: string, w: number): string {
   if (ctx.measureText(s).width <= w) return s
@@ -61,7 +84,42 @@ interface Giay {
   bank?: { bin: string; bankName: string; account: string; holder: string; title: string }
   qrNote: string
   footer: string
+  /** Bảng các đợt cũ còn nợ (chỉ khi in kèm nợ cũ) */
+  debtRows?: { date: string; no: string; items: { name: string; qty: number }[]; left: number }[]
 }
+
+// Khung chuyển khoản: QR bên trái, bên phải từng dòng "Nhãn: giá trị" — giá trị dài thì xuống dòng, không bị cắt
+const QR = 330
+const QR_X = 70 // PAD + 14
+const BANK_X = QR_X + QR + 36
+const BANK_LABEL_W = 178
+const BANK_LINE = 34
+const bankFont = (big?: boolean) => (big ? f(800, 30) : f(700, 24))
+
+function bankLines(g: Giay, W: number, PAD: number): { label: string; lines: string[]; big?: boolean }[] {
+  if (!g.bank) return []
+  const ctx = document.createElement('canvas').getContext('2d')!
+  const vw = W - PAD - BANK_X - BANK_LABEL_W
+  const rows: { label: string; value: string; big?: boolean }[] = [
+    { label: 'Ngân hàng', value: g.bank.bankName || 'MB Bank' },
+    { label: 'Số tài khoản', value: g.bank.account, big: true },
+    { label: 'Chủ tài khoản', value: g.bank.holder || '' },
+  ]
+  if (g.due > 0) {
+    rows.push({ label: 'Số tiền', value: money(g.due), big: true })
+    rows.push({ label: 'Nội dung', value: g.qrNote })
+  }
+  return rows.map((r) => {
+    ctx.font = bankFont(r.big)
+    return { label: r.label, lines: wrap(ctx, r.value, vw), big: r.big }
+  })
+}
+
+const rowLineH = (big?: boolean) => (big ? 40 : BANK_LINE)
+
+/** "Chai 1 lít" → "1 lít" cho gọn trong bảng nợ cũ */
+const tenNgan = (name: string) => name.replace(/^chai\s+/i, '')
+const DEBT_LINE = 34
 
 async function veGiay(g: Giay): Promise<HTMLCanvasElement> {
   try {
@@ -76,9 +134,13 @@ async function veGiay(g: Giay): Promise<HTMLCanvasElement> {
   const custH = 150
   const tableH = 70 + g.rows.length * 66
   const sumH = g.sums.length * 50 + 150
-  const bankH = g.bank ? 420 : 0
+  const debtH = g.debtRows?.length ? 30 + 60 + 56 + g.debtRows.reduce((h, r) => h + Math.max(1, r.items.length) * DEBT_LINE + 24, 0) + 20 : 0
+  const bl = bankLines(g, W, PAD)
+  const bankTextH = 40 + 20 + bl.reduce((h, r) => h + r.lines.length * rowLineH(r.big) + 12, 0)
+  const bankBoxH = g.bank ? Math.max(QR, bankTextH) + 60 : 0
+  const bankH = g.bank ? bankBoxH + 10 : 0
   const footH = 120
-  const H = headerH + custH + tableH + sumH + bankH + footH
+  const H = headerH + custH + tableH + sumH + debtH + bankH + footH
 
   const c = document.createElement('canvas')
   c.width = W
@@ -196,48 +258,101 @@ async function veGiay(g: Giay): Promise<HTMLCanvasElement> {
   ctx.fillText(g.due > 0 ? money(g.due) : '✓', W - PAD, y + 48)
   y += 72 + 30
 
+  // ---- Các đợt cũ còn nợ ----
+  if (g.debtRows?.length) {
+    y += 30
+    ctx.textAlign = 'left'
+    ctx.fillStyle = T.tableInk
+    ctx.font = f(800, 26)
+    ctx.fillText('CÁC ĐỢT CŨ CÒN NỢ', PAD, y + 30)
+    y += 60
+    const cNo = 300
+    const cItems = 470
+    const cLeft = W - PAD
+    roundRect(ctx, PAD - 16, y, W - PAD * 2 + 32, 56, 14)
+    ctx.fillStyle = T.tableBg
+    ctx.fill()
+    ctx.fillStyle = T.tableInk
+    ctx.font = f(700, 22)
+    ctx.fillText('Ngày lấy hàng', PAD, y + 37)
+    ctx.fillText('Hoá đơn', cNo, y + 37)
+    ctx.fillText('Số chai', cItems, y + 37)
+    ctx.textAlign = 'right'
+    ctx.fillText('Còn nợ', cLeft, y + 37)
+    y += 56
+    for (const r of g.debtRows) {
+      const top = y + 12
+      ctx.textAlign = 'left'
+      ctx.fillStyle = '#0f172a'
+      ctx.font = f(600, 26)
+      ctx.fillText(r.date, PAD, top + 26)
+      ctx.fillStyle = '#334155'
+      ctx.font = f(500, 24)
+      ctx.fillText(r.no, cNo, top + 26)
+      // mỗi loại chai một dòng: "8 chai 1 lít"
+      r.items.forEach((it, k) => {
+        ctx.fillStyle = '#0f172a'
+        ctx.font = f(700, 24)
+        const sl = num(it.qty) + ' chai '
+        ctx.fillText(sl, cItems, top + 26 + k * DEBT_LINE)
+        const nx = cItems + ctx.measureText(sl).width
+        ctx.fillStyle = '#475569'
+        ctx.font = f(500, 24)
+        ctx.fillText(fit(ctx, tenNgan(it.name), cLeft - 170 - nx), nx, top + 26 + k * DEBT_LINE)
+      })
+      ctx.textAlign = 'right'
+      ctx.fillStyle = T.accent
+      ctx.font = f(700, 26)
+      ctx.fillText(money(r.left), cLeft, top + 26)
+      y += Math.max(1, r.items.length) * DEBT_LINE + 24
+      ctx.strokeStyle = T.line
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(PAD, y)
+      ctx.lineTo(W - PAD, y)
+      ctx.stroke()
+    }
+    y += 20
+  }
+
   // ---- Chuyển khoản + QR ----
   if (g.bank) {
     const b = g.bank
     y += 10
-    const boxH = 390
-    roundRect(ctx, PAD - 16, y, W - PAD * 2 + 32, boxH, 28)
+    roundRect(ctx, PAD - 16, y, W - PAD * 2 + 32, bankBoxH, 28)
     ctx.fillStyle = '#ffffff'
     ctx.fill()
     ctx.strokeStyle = T.border
     ctx.lineWidth = 3
     ctx.stroke()
-    const qrSize = 330
-    const qrX = PAD + 14
-    const qrY = y + 30
     const qrCanvas = document.createElement('canvas')
     await QRCode.toCanvas(qrCanvas, vietQrPayload(b.bin, b.account, g.due, g.qrNote), {
-      width: qrSize,
+      width: QR,
       margin: 1,
       errorCorrectionLevel: 'M',
       color: { dark: '#111827', light: '#ffffff' },
     })
-    ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize)
-    const tx = qrX + qrSize + 40
-    const tw = W - PAD - tx
-    let ty = y + 70
+    ctx.drawImage(qrCanvas, QR_X, y + 30 + (bankBoxH - 60 - QR) / 2, QR, QR)
+    let ty = y + 30 + Math.max(0, (bankBoxH - 60 - bankTextH) / 2) + 34
     ctx.textAlign = 'left'
     ctx.fillStyle = T.accent
-    ctx.font = f(800, 28)
-    ctx.fillText(fit(ctx, b.title, tw), tx, ty)
-    const row = (label: string, value: string, big = false) => {
-      ty += big ? 62 : 54
+    ctx.font = f(800, 26)
+    ctx.fillText(fit(ctx, b.title, W - PAD - BANK_X), BANK_X, ty)
+    ty += 20
+    const vx = BANK_X + BANK_LABEL_W
+    for (const r of bl) {
+      const lh = rowLineH(r.big)
       ctx.fillStyle = '#64748b'
-      ctx.font = f(500, 20)
-      ctx.fillText(label, tx, ty - (big ? 30 : 26))
-      ctx.fillStyle = '#0f172a'
-      ctx.font = f(big ? 800 : 700, big ? 36 : 26)
-      ctx.fillText(fit(ctx, value, tw), tx, ty + 6)
+      ctx.font = f(500, 22)
+      ctx.fillText(r.label + ':', BANK_X, ty + lh - 8)
+      ctx.fillStyle = r.big ? T.accent : '#0f172a'
+      ctx.font = bankFont(r.big)
+      for (const line of r.lines) {
+        ty += lh
+        ctx.fillText(line, vx, ty - 8)
+      }
+      ty += 12
     }
-    row('Ngân hàng', b.bankName || 'MB Bank')
-    row('Số tài khoản', b.account, true)
-    row('Chủ tài khoản', b.holder)
-    if (g.due > 0) row('Số tiền · Nội dung', `${money(g.due)} · ${g.qrNote}`)
   }
 
   // ---- Chân ----
@@ -260,6 +375,8 @@ export interface InvoiceParams {
   oldDebt: number
   /** In dòng nợ cũ lên hoá đơn và cộng vào số phải trả */
   showDebt: boolean
+  /** Các đơn cũ còn nợ (oldDebtOrders) — in thành bảng khi kèm nợ cũ */
+  oldOrders?: { order: Order; left: number }[]
 }
 
 /** Số khách phải trả theo hoá đơn này */
@@ -267,11 +384,14 @@ export function amountToPay(p: Pick<InvoiceParams, 'order' | 'oldDebt' | 'showDe
   return Math.max(0, orderTotal(p.order) - (p.order.paid || 0) + (p.showDebt ? p.oldDebt : 0))
 }
 
-/** Nội dung CK: ngày mua (ddmmyyyy) - tên khách CK Tuong ot. Tên dài thì cắt bớt để vừa 50 ký tự ngân hàng cho phép. */
+/**
+ * Nội dung CK: ngày mua (ddmmyyyy) + tên khách + "CK tương ớt", VD "19092026 Nguyễn Văn A CK tương ớt".
+ * Mã QR tự bỏ dấu; tên dài thì cắt bớt để vừa 50 ký tự ngân hàng cho phép.
+ */
 export const transferNote = (order: Order, customer?: Customer) => {
   const [y, m, d] = order.date.split('-')
-  const name = (customer?.name ?? '').trim().slice(0, 27).trim()
-  return `${d}${m}${y} - ${name ? name + ' ' : ''}CK Tuong ot`
+  const name = (customer?.name ?? '').trim().slice(0, 28).trim()
+  return `${d}${m}${y} ${name ? name + ' ' : ''}CK tương ớt`
 }
 
 export function drawInvoice(p: InvoiceParams): Promise<HTMLCanvasElement> {
@@ -303,6 +423,10 @@ export function drawInvoice(p: InvoiceParams): Promise<HTMLCanvasElement> {
     bank: s.bankBin && s.bankAccount ? { bin: s.bankBin, bankName: s.bankName, account: s.bankAccount, holder: s.accountName, title: 'QUÉT MÃ ĐỂ CHUYỂN KHOẢN' } : undefined,
     qrNote: transferNote(order, customer),
     footer: s.invoiceNote,
+    debtRows:
+      showDebt && oldDebt > 0
+        ? p.oldOrders?.map((x) => ({ date: fmtDate(x.order.date), no: invoiceNo(x.order.no), items: x.order.items.filter((i) => i.qty > 0).map((i) => ({ name: i.name, qty: i.qty })), left: x.left }))
+        : undefined,
   })
 }
 
@@ -339,7 +463,8 @@ export function drawPurchase(p: PurchaseParams): Promise<HTMLCanvasElement> {
     soVaNgay: `${purchaseNo(pu.no)}  ·  ${fmtDate(pu.date)}`,
     benLabel: 'Người bán',
     benName: nb?.name ?? '(chưa ghi người bán)',
-    benLine: [nb?.phone && '☎ ' + nb.phone, nb && `${nb.bankName} ${nb.bankAccount}`].filter(Boolean).join('   ·   '),
+    // có khung chuyển khoản thì ngân hàng ghi đủ ở dưới, đầu phiếu chỉ cần SĐT
+    benLine: [nb?.phone && '☎ ' + nb.phone, nb && !nb.bankBin && `${nb.bankName} ${nb.bankAccount}`].filter(Boolean).join('   ·   '),
     colPrice: 'Giá nhập',
     rows: pu.items.filter((i) => i.qty > 0).map((i) => ({ name: i.name, qty: i.qty, price: i.unitCost })),
     sums,

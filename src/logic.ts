@@ -107,6 +107,30 @@ export function debtBefore(d: Pick<AppData, 'orders' | 'receipts'>, order: Order
   return s
 }
 
+/**
+ * Các đơn cũ còn nợ tạo nên nợ cũ trước `order` — tiền khách đã thu (phiếu thu, trả dư) trừ vào đơn cũ nhất trước.
+ * Dùng in bảng "các đợt còn nợ" trên hoá đơn kèm nợ cũ cho khách dễ nhớ.
+ */
+export function oldDebtOrders(d: Pick<AppData, 'orders' | 'receipts'>, order: Order): { order: Order; left: number }[] {
+  const before = (x: { date: string; createdAt: number }) =>
+    x.date < order.date || (x.date === order.date && x.createdAt < order.createdAt)
+  const olds = d.orders
+    .filter((o) => o.customerId === order.customerId && o.id !== order.id && before(o))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt)
+  let credit = 0
+  for (const r of d.receipts) if (r.customerId === order.customerId && before(r)) credit += r.amount
+  for (const o of olds) if (orderDue(o) < 0) credit -= orderDue(o)
+  const out: { order: Order; left: number }[] = []
+  for (const o of olds) {
+    const due = orderDue(o)
+    if (due <= 0) continue
+    const used = Math.min(credit, due)
+    credit -= used
+    if (due - used > 0) out.push({ order: o, left: due - used })
+  }
+  return out
+}
+
 // ---------- Kho ----------
 
 export interface StockRow {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Icon } from './icons'
 import { amountToPay, drawInvoice, drawPurchase, purchaseAmountToPay } from './invoiceImage'
-import { debtBefore, invoiceNo, money, purchaseNo, supplierDebtBefore } from './logic'
+import { debtBefore, invoiceNo, money, oldDebtOrders, purchaseNo, supplierDebtBefore } from './logic'
 import { Btn, Modal, useApp } from './ui'
 
 /** Khung chung: vẽ ảnh, xem trước, gửi (chia sẻ sang Zalo/Messenger trên điện thoại) / chép / tải về */
@@ -133,8 +133,12 @@ export default function InvoiceModal({ orderId, onClose }: { orderId: string; on
   const order = data.orders.find((o) => o.id === orderId)
   const customer = order ? customerById.get(order.customerId) : undefined
   const oldDebt = useMemo(() => (order ? debtBefore(data, order) : 0), [data, order])
+  const oldOrders = useMemo(() => (order ? oldDebtOrders(data, order) : []), [data, order])
   const [showDebt, setShowDebt] = useState(true)
-  const draw = useCallback(() => drawInvoice({ order: order!, customer, settings: data.settings, oldDebt, showDebt }), [order, customer, data.settings, oldDebt, showDebt])
+  const draw = useCallback(
+    () => drawInvoice({ order: order!, customer, settings: data.settings, oldDebt, showDebt, oldOrders }),
+    [order, customer, data.settings, oldDebt, showDebt, oldOrders],
+  )
   if (!order) return null
   return (
     <AnhChiaSe
