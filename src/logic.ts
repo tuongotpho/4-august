@@ -107,21 +107,10 @@ export function debtBefore(d: Pick<AppData, 'orders' | 'receipts'>, order: Order
   return s
 }
 
-/**
- * Các đơn cũ còn nợ tạo nên nợ cũ trước `order` — tiền khách đã thu (phiếu thu, trả dư) trừ vào đơn cũ nhất trước.
- * Dùng in bảng "các đợt còn nợ" trên hoá đơn kèm nợ cũ cho khách dễ nhớ.
- */
-export function oldDebtOrders(d: Pick<AppData, 'orders' | 'receipts'>, order: Order): { order: Order; left: number }[] {
-  const before = (x: { date: string; createdAt: number }) =>
-    x.date < order.date || (x.date === order.date && x.createdAt < order.createdAt)
-  const olds = d.orders
-    .filter((o) => o.customerId === order.customerId && o.id !== order.id && before(o))
-    .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt)
-  let credit = 0
-  for (const r of d.receipts) if (r.customerId === order.customerId && before(r)) credit += r.amount
-  for (const o of olds) if (orderDue(o) < 0) credit -= orderDue(o)
+/** Trừ `credit` (tiền đã thu, trả dư) vào các đơn cũ nhất trước; trả về đơn còn nợ và số còn lại */
+function allocate(orders: Order[], credit: number): { order: Order; left: number }[] {
   const out: { order: Order; left: number }[] = []
-  for (const o of olds) {
+  for (const o of [...orders].sort(byDateAsc)) {
     const due = orderDue(o)
     if (due <= 0) continue
     const used = Math.min(credit, due)
@@ -129,6 +118,34 @@ export function oldDebtOrders(d: Pick<AppData, 'orders' | 'receipts'>, order: Or
     if (due - used > 0) out.push({ order: o, left: due - used })
   }
   return out
+}
+const overpaid = (orders: Order[]) => orders.reduce((s, o) => s + Math.max(0, -orderDue(o)), 0)
+
+/**
+ * Các đơn cũ còn nợ tạo nên nợ cũ trước `order` — tiền khách đã thu (phiếu thu, trả dư) trừ vào đơn cũ nhất trước.
+ * Dùng in bảng "các đợt còn nợ" trên hoá đơn kèm nợ cũ cho khách dễ nhớ.
+ */
+export function oldDebtOrders(d: Pick<AppData, 'orders' | 'receipts'>, order: Order): { order: Order; left: number }[] {
+  const before = (x: { date: string; createdAt: number }) =>
+    x.date < order.date || (x.date === order.date && x.createdAt < order.createdAt)
+  const olds = d.orders.filter((o) => o.customerId === order.customerId && o.id !== order.id && before(o))
+  let credit = overpaid(olds)
+  for (const r of d.receipts) if (r.customerId === order.customerId && before(r)) credit += r.amount
+  return allocate(olds, credit)
+}
+
+/**
+ * Số tiền CÒN NỢ thật của từng đơn (id → còn nợ) — mọi khoản thu nợ, trả dư của khách trừ vào đơn cũ nhất trước.
+ * Đơn không có trong bảng = đã trả đủ. Dùng tô nổi các đơn còn nợ.
+ */
+export function openOrderDebts(d: Pick<AppData, 'orders' | 'receipts'>): Map<string, number> {
+  const byCust = new Map<string, Order[]>()
+  for (const o of d.orders) byCust.set(o.customerId, [...(byCust.get(o.customerId) ?? []), o])
+  const paid = new Map<string, number>()
+  for (const r of d.receipts) paid.set(r.customerId, (paid.get(r.customerId) ?? 0) + r.amount)
+  const m = new Map<string, number>()
+  for (const [c, os] of byCust) for (const x of allocate(os, overpaid(os) + (paid.get(c) ?? 0))) m.set(x.order.id, x.left)
+  return m
 }
 
 // ---------- Kho ----------
@@ -156,6 +173,19 @@ export function stockRows(d: Pick<AppData, 'products' | 'orders' | 'stockIns'> &
       return { product: p, inQty, soldQty, stock, low: stock <= p.lowStock }
     })
 }
+
+/** Tồn sổ sách từng loại hàng tính đến hết ngày `date` (nhập − bán, gồm cả ngày đó) */
+export function stockAsOf(d: Pick<AppData, 'orders' | 'stockIns'> & { purchases?: Purchase[] }, date: string): Map<string, number> {
+  const m = new Map<string, number>()
+  const add = (pid: string, q: number) => m.set(pid, (m.get(pid) ?? 0) + q)
+  for (const s of d.stockIns) if (s.date <= date) add(s.productId, s.qty)
+  for (const p of d.purchases ?? []) if (p.date <= date) for (const i of p.items) add(i.productId, i.qty)
+  for (const o of d.orders) if (o.date <= date) for (const i of o.items) add(i.productId, -i.qty)
+  return m
+}
+
+/** Ghi chú đánh dấu các đơn / phiếu do chốt sổ cuối năm tạo ra */
+export const closingNote = (year: number) => `Chốt sổ ${year}`
 
 // ---------- Phiếu nhập / người bán ----------
 
@@ -201,6 +231,35 @@ export interface MonthStat {
   profit: number
   qty: number
   orders: number
+}
+
+export interface YearStat {
+  year: string
+  revenue: number
+  profit: number
+  qty: number
+  orders: number
+}
+
+/** Các năm có đơn, từ năm đầu tiên tới năm `last` (gồm năm trống ở giữa), cũ → mới */
+export function yearsOf(orders: Order[], last: string): string[] {
+  const first = orders.reduce((m, o) => (o.date.slice(0, 4) < m ? o.date.slice(0, 4) : m), last)
+  const out: string[] = []
+  for (let y = +first; y <= +last; y++) out.push(String(y))
+  return out
+}
+
+export function yearStats(orders: Order[], years: string[]): YearStat[] {
+  const map = new Map(years.map((y) => [y, { year: y, revenue: 0, profit: 0, qty: 0, orders: 0 }]))
+  for (const o of orders) {
+    const s = map.get(o.date.slice(0, 4))
+    if (!s) continue
+    s.revenue += orderTotal(o)
+    s.profit += orderProfit(o)
+    s.qty += orderQty(o)
+    s.orders++
+  }
+  return years.map((y) => map.get(y)!)
 }
 
 export function monthStats(orders: Order[], months: string[]): MonthStat[] {

@@ -412,10 +412,12 @@ html.dark body .keep-colors {
   :where(html.dark) .ring-black\/5 { --tw-ring-color: rgb(255 255 255 / 0.08); }
   :where(html.dark) .active\:bg-red-800:active { background-color: var(--k-red-800); }
   :where(html.dark) .bg-emerald-500 { background-color: var(--k-emerald-500); }
+  :where(html.dark) .bg-red-600 { background-color: var(--k-red-600); }
   :where(html.dark) .bg-red-700 { background-color: var(--k-red-700); }
   :where(html.dark) .bg-red-800 { background-color: var(--k-red-800); }
   :where(html.dark) .bg-slate-900 { background-color: var(--k-slate-900); }
   :where(html.dark) .bg-slate-900\/60 { background-color: color-mix(in oklab, var(--k-slate-900) 60%, transparent); }
   :where(html.dark) .bg-slate-900\/95 { background-color: color-mix(in oklab, var(--k-slate-900) 95%, transparent); }
+  :where(html.dark) .bg-teal-700 { background-color: var(--k-teal-700); }
   :where(html.dark) .hover\:bg-red-800:hover:not(:disabled) { background-color: var(--k-red-800); }
 }

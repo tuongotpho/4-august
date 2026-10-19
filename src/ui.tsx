@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from './icons'
-import type { StockRow } from './logic'
+import { openOrderDebts, type StockRow } from './logic'
 import type { AppData, Customer, Product } from './types'
 
 export interface Ctx {
@@ -21,6 +21,18 @@ export interface Ctx {
 }
 
 export const AppCtx = createContext<Ctx>(null as unknown as Ctx)
+
+// Nợ còn lại từng đơn — tính một lần cho cả danh sách, nhớ theo bộ dữ liệu hiện tại
+const noDonCache = new WeakMap<object, { receipts: object; m: Map<string, number> }>()
+/** id đơn → số còn nợ thật (đã trừ các lần thu nợ, đơn cũ nhất trước). Không có = đã trả đủ. */
+export function useOrderDebts(): Map<string, number> {
+  const { data } = useApp()
+  const c = noDonCache.get(data.orders)
+  if (c && c.receipts === data.receipts) return c.m
+  const m = openOrderDebts(data)
+  noDonCache.set(data.orders, { receipts: data.receipts, m })
+  return m
+}
 export const useApp = () => useContext(AppCtx)
 
 export const custName = (ctx: Ctx, id: string) => ctx.customerById.get(id)?.name ?? '(đã xoá)'

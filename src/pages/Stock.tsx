@@ -4,6 +4,7 @@ import { byDateAsc, fmtDate, latestCost, money, num, purchaseDue, purchaseNo, pu
 import { newId, store } from '../store'
 import { DEFAULT_PRODUCTS, type Product, type Purchase, type StockIn } from '../types'
 import { PurchaseActions, PurchaseForm, PurchaseModal, SupplierCard } from './Purchases'
+import { YearCloseCard } from './YearClose'
 import { Btn, Card, Empty, Field, Modal, MoneyInput, QtyStepper, inputCls, useApp } from '../ui'
 
 export default function Stock() {
@@ -81,13 +82,21 @@ export default function Stock() {
 
       <SupplierCard />
 
+      <YearCloseCard />
+
       <Card title="Lịch sử nhập hàng" subtitle="Bấm phiếu để xem ảnh có mã QR trả tiền người bán">
         {lichSu.length === 0 ? (
           <Empty>Chưa nhập lần nào. Bấm "Nhập hàng" để ghi số chai có trong kho.</Empty>
         ) : (
           lichSu.map((h) =>
             h.k === 'pn' ? (
-              <button key={h.p.id} onClick={() => setThaoTac(h.p)} className="flex w-full cursor-pointer items-center gap-3 border-b border-slate-100 py-2.5 text-left last:border-0">
+              <button
+                key={h.p.id}
+                onClick={() => setThaoTac(h.p)}
+                className={`flex w-full cursor-pointer items-center gap-3 text-left ${
+                  purchaseDue(h.p) > 0 ? 'my-1 rounded-xl border-l-4 border-teal-600 bg-teal-50 py-2 pr-2 pl-2.5' : 'border-b border-slate-100 py-2.5 last:border-0'
+                }`}
+              >
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-semibold text-slate-900">
                     {purchaseNo(h.p.no)} · {tenNb(h.p.supplierId) ?? 'không ghi người bán'}
@@ -98,7 +107,9 @@ export default function Stock() {
                 </div>
                 <div className="shrink-0 text-right">
                   <div className="font-bold tabular-nums text-slate-700">{money(purchaseTotal(h.p))}</div>
-                  {purchaseDue(h.p) > 0 ? <div className="text-[11px] font-semibold text-teal-700">nợ {money(purchaseDue(h.p))}</div> : <div className="text-[11px] text-emerald-700">đã trả</div>}
+                  {purchaseDue(h.p) > 0 ? (
+                    <div className="mt-0.5 inline-block rounded-full bg-teal-700 px-2 py-0.5 text-[11px] font-bold text-white">nợ {money(purchaseDue(h.p))}</div>
+                  ) : <div className="text-[11px] text-emerald-700">đã trả</div>}
                 </div>
               </button>
             ) : (

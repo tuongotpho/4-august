@@ -1,19 +1,25 @@
 import { useMemo, useState } from 'react'
 import { Icon } from '../icons'
-import { fmtDate, fmtMonth, invoiceNo, monthOf, money, orderDue, orderQty, orderTotal, today } from '../logic'
+import { fmtDate, fmtMonth, invoiceNo, monthOf, money, orderQty, orderTotal, today } from '../logic'
 import { store } from '../store'
 import type { Order } from '../types'
-import { Avatar, Btn, Card, Empty, Modal, custName, fold, inputCls, useApp } from '../ui'
+import { Avatar, Btn, Card, Empty, Modal, custName, fold, inputCls, useApp, useOrderDebts } from '../ui'
 
 /** Một dòng đơn — bấm để mở thao tác (xem hoá đơn / sửa / xoá) */
 export function OrderRow({ order, hideCustomer }: { order: Order; hideCustomer?: boolean }) {
   const ctx = useApp()
   const [menu, setMenu] = useState(false)
   const name = custName(ctx, order.customerId)
-  const due = orderDue(order)
+  // nợ thật của đơn: đã trừ các lần khách trả nợ sau đó
+  const due = useOrderDebts().get(order.id) ?? 0
   return (
     <>
-      <button onClick={() => setMenu(true)} className="flex w-full cursor-pointer items-center gap-3 border-b border-slate-100 py-2.5 text-left last:border-0">
+      <button
+        onClick={() => setMenu(true)}
+        className={`flex w-full cursor-pointer items-center gap-3 text-left ${
+          due > 0 ? 'my-1 rounded-xl border-l-4 border-red-600 bg-red-50 py-2 pr-2 pl-2.5' : 'border-b border-slate-100 py-2.5 last:border-0'
+        }`}
+      >
         {!hideCustomer && <Avatar name={name} className="h-9 w-9 text-xs" />}
         <div className="min-w-0 flex-1">
           <div className="truncate font-semibold text-slate-900">{hideCustomer ? fmtDate(order.date) : name}</div>
@@ -25,7 +31,7 @@ export function OrderRow({ order, hideCustomer }: { order: Order; hideCustomer?:
         <div className="shrink-0 text-right">
           <div className="font-bold tabular-nums">{money(orderTotal(order))}</div>
           {due > 0 ? (
-            <div className="text-[11px] font-semibold text-red-700">nợ {money(due)}</div>
+            <div className="mt-0.5 inline-block rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white">nợ {money(due)}</div>
           ) : (
             <div className="text-[11px] text-emerald-700">đã trả</div>
           )}
@@ -110,10 +116,11 @@ export default function Orders() {
   const [month, setMonth] = useState(months[0])
   const [q, setQ] = useState('')
   const [onlyDebt, setOnlyDebt] = useState(false)
+  const debts = useOrderDebts()
 
   const list = data.orders
     .filter((o) => (q ? true : monthOf(o.date) === month))
-    .filter((o) => !onlyDebt || orderDue(o) > 0)
+    .filter((o) => !onlyDebt || debts.has(o.id))
     .filter((o) => !q || fold(custName(ctx, o.customerId) + ' ' + invoiceNo(o.no)).includes(fold(q)))
     .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt)
 

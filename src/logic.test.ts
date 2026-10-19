@@ -17,6 +17,10 @@ import {
   monthStats,
   nextOrderNo,
   oldDebtOrders,
+  openOrderDebts,
+  stockAsOf,
+  yearStats,
+  yearsOf,
   orderProfit,
   orderTotal,
   predict,
@@ -230,5 +234,31 @@ describe('phiếu nhập & nợ người bán', () => {
     expect(latestCost({ stockIns, purchases }, 'p1')).toBe(33000)
     expect(latestCost({ stockIns, purchases: purchases.slice(0, 1) }, 'p1')).toBe(31000)
     expect(latestCost({ stockIns: [], purchases: [] }, 'p1')).toBeUndefined()
+  })
+})
+
+describe('chốt sổ & thống kê năm', () => {
+  it('nợ còn lại từng đơn: thu nợ trừ đơn cũ nhất trước, khách khác không lẫn', () => {
+    const a = order({ date: '2026-01-05', paid: 0 }) // 500k
+    const b = order({ date: '2026-02-05', paid: 0 }) // 500k
+    const c = order({ date: '2026-02-06', customerId: 'c2', paid: 0 })
+    const r = receipt({ date: '2026-03-01', amount: 700000 })
+    const m = openOrderDebts({ orders: [b, c, a], receipts: [r] })
+    expect(m.has(a.id)).toBe(false)
+    expect(m.get(b.id)).toBe(300000)
+    expect(m.get(c.id)).toBe(500000)
+  })
+  it('tồn sổ sách tại một ngày chỉ tính nhập/bán tới hết ngày đó', () => {
+    const stockIns: StockIn[] = [{ id: 's', productId: 'p1', date: '2026-01-01', qty: 50, unitCost: 30000, createdAt: 1 }]
+    const orders = [order({ date: '2026-12-31' }), order({ date: '2027-01-02' })] // mỗi đơn 10 chai p1
+    expect(stockAsOf({ orders, stockIns }, '2026-12-31').get('p1')).toBe(40)
+  })
+  it('thống kê theo năm, năm trống giữa vẫn có dòng', () => {
+    const orders = [order({ date: '2024-05-01' }), order({ date: '2026-03-01' }), order({ date: '2026-09-01' })]
+    const ys = yearsOf(orders, '2026')
+    expect(ys).toEqual(['2024', '2025', '2026'])
+    const st = yearStats(orders, ys)
+    expect(st.map((x) => x.orders)).toEqual([1, 0, 2])
+    expect(st[2].revenue).toBe(1000000)
   })
 })
