@@ -228,7 +228,7 @@ export default function App() {
           <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-900 lg:px-10">Không tải được dữ liệu: {loadError}</div>
         )}
 
-        <main className="px-4 pt-4 pb-28 sm:px-6 lg:px-10 lg:pt-8 lg:pb-12">
+        <main className="px-4 pt-4 pb-24 sm:px-6 lg:px-10 lg:pt-8 lg:pb-12">
           <div className="mb-6 hidden items-end justify-between lg:flex">
             <div>
               <p className="text-xs font-semibold tracking-widest text-red-700 uppercase">{shop}</p>
@@ -253,13 +253,13 @@ export default function App() {
           </div>
         </main>
 
-        {/* Bản quyền cố định ở đáy màn hình (máy tính); điện thoại nằm trong menu dưới */}
+        {/* Bản quyền cố định ở đáy màn hình (máy tính); điện thoại chỉ ghi trong Cài đặt */}
         <footer className="fixed right-0 bottom-0 left-64 z-20 hidden border-t border-slate-200/80 bg-white/90 py-1.5 text-center text-xs text-slate-400 backdrop-blur lg:block">
           {COPYRIGHT}
         </footer>
 
         {/* Menu dưới (điện thoại) */}
-        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pb-[max(0.125rem,calc(env(safe-area-inset-bottom)-0.75rem))] backdrop-blur lg:hidden">
           <div className="grid grid-cols-5 px-1">
             {TABS.map((t) => {
               const on = tab === t.id
@@ -268,7 +268,7 @@ export default function App() {
                   key={t.id}
                   onClick={() => go(t.id)}
                   aria-current={on ? 'page' : undefined}
-                  className={`flex cursor-pointer flex-col items-center gap-1 pt-2 pb-1.5 text-[11px] transition ${on ? 'font-semibold text-red-800' : 'text-slate-500'}`}
+                  className={`flex cursor-pointer flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] transition ${on ? 'font-semibold text-red-800' : 'text-slate-500'}`}
                 >
                   <span className={`grid h-7 w-12 place-items-center rounded-full transition ${on ? 'bg-red-100' : ''}`}>
                     <Icon name={t.icon} className="h-5 w-5" strokeWidth={on ? 2.1 : 1.8} />
@@ -278,7 +278,6 @@ export default function App() {
               )
             })}
           </div>
-          <div className="pb-1 text-center text-[10px] leading-tight text-slate-400">{COPYRIGHT}</div>
         </nav>
       </div>
 

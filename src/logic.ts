@@ -276,13 +276,13 @@ export function crc16(s: string): string {
 
 const tlv = (id: string, v: string) => id + pad(v.length) + v
 
-/** Bỏ dấu tiếng Việt, chỉ giữ chữ/số/khoảng trắng — app ngân hàng đọc nội dung CK ổn định hơn */
+/** Bỏ dấu tiếng Việt, chỉ giữ chữ/số/khoảng trắng/gạch ngang — app ngân hàng đọc nội dung CK ổn định hơn */
 export function asciiNote(s: string): string {
   return s
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .replace(/[đĐ]/g, (c) => (c === 'đ' ? 'd' : 'D'))
-    .replace(/[^A-Za-z0-9 ]/g, ' ')
+    .replace(/[^A-Za-z0-9 -]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 50)

@@ -267,7 +267,12 @@ export function amountToPay(p: Pick<InvoiceParams, 'order' | 'oldDebt' | 'showDe
   return Math.max(0, orderTotal(p.order) - (p.order.paid || 0) + (p.showDebt ? p.oldDebt : 0))
 }
 
-export const transferNote = (order: Order, customer?: Customer) => `${invoiceNo(order.no)} ${customer?.name ?? ''}`.trim()
+/** Nội dung CK: ngày mua (ddmmyyyy) - tên khách CK Tuong ot. Tên dài thì cắt bớt để vừa 50 ký tự ngân hàng cho phép. */
+export const transferNote = (order: Order, customer?: Customer) => {
+  const [y, m, d] = order.date.split('-')
+  const name = (customer?.name ?? '').trim().slice(0, 27).trim()
+  return `${d}${m}${y} - ${name ? name + ' ' : ''}CK Tuong ot`
+}
 
 export function drawInvoice(p: InvoiceParams): Promise<HTMLCanvasElement> {
   const { order, customer, settings: s, oldDebt, showDebt } = p

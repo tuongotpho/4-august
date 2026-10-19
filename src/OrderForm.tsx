@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Icon } from './icons'
-import { debtBefore, invoiceNo, money, nextOrderNo, orderTotal, today } from './logic'
+import { debtBefore, fmtDate, invoiceNo, money, nextOrderNo, orderTotal, today } from './logic'
 import { newId, store } from './store'
 import type { Customer, Order, OrderItem } from './types'
 import { Avatar, Btn, Field, Modal, MoneyInput, QtyStepper, fold, inputCls, useApp } from './ui'
@@ -150,10 +150,22 @@ export default function OrderForm({
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Ngày bán">
-            <input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value || today())} className={inputCls} />
+            {/* Hiện dd/mm/yyyy cho gọn; ô chọn ngày của máy nằm trong suốt phía trên, chạm vào là mở lịch */}
+            <div className={`${inputCls} relative flex h-11 items-center tabular-nums`}>
+              {fmtDate(date)}
+              <input
+                type="date"
+                value={date}
+                max={today()}
+                onChange={(e) => setDate(e.target.value || today())}
+                onClick={(e) => e.currentTarget.showPicker?.()}
+                aria-label="Ngày bán"
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              />
+            </div>
           </Field>
           <Field label="Giảm giá">
-            <MoneyInput value={discount} onChange={setDiscount} />
+            <MoneyInput value={discount} onChange={setDiscount} className="h-11" />
           </Field>
         </div>
 
@@ -167,9 +179,17 @@ export default function OrderForm({
             <MoneyInput value={paid} onChange={setPaid} />
           </Field>
           <div className="flex flex-wrap gap-1.5">
-            <Chip onClick={() => setPaid(total)}>Trả đủ đơn</Chip>
-            {oldDebt > 0 && <Chip onClick={() => setPaid(total + oldDebt)}>Trả hết cả nợ cũ</Chip>}
-            <Chip onClick={() => setPaid(0)}>Chưa trả (ghi nợ)</Chip>
+            <Chip on={total > 0 && paid === total} onClick={() => setPaid(total)}>
+              Trả đủ đơn
+            </Chip>
+            {oldDebt > 0 && (
+              <Chip on={paid === total + oldDebt} onClick={() => setPaid(total + oldDebt)}>
+                Trả hết cả nợ cũ
+              </Chip>
+            )}
+            <Chip on={paid === 0} onClick={() => setPaid(0)}>
+              Chưa trả (ghi nợ)
+            </Chip>
           </div>
           <div className="flex items-baseline justify-between border-t border-slate-200 pt-2 text-sm">
             <span className="text-slate-600">Sau đơn này khách {after > 0 ? 'còn nợ' : after < 0 ? 'trả dư' : 'hết nợ'}</span>
@@ -189,9 +209,14 @@ export default function OrderForm({
   )
 }
 
-function Chip({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+function Chip({ children, onClick, on }: { children: React.ReactNode; onClick: () => void; on?: boolean }) {
   return (
-    <button type="button" onClick={onClick} className="cursor-pointer rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 active:bg-slate-100">
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={on}
+      className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${on ? 'bg-red-700 text-white ring-red-700' : 'bg-white text-slate-700 ring-slate-200 active:bg-slate-100'}`}
+    >
       {children}
     </button>
   )

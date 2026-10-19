@@ -156,7 +156,7 @@ describe('mã QR VietQR', () => {
     expect(crc16('123456789')).toBe('29B1')
   })
   it('bỏ dấu nội dung chuyển khoản', () => {
-    expect(asciiNote('Thanh toán HĐ0012 - Bà Hoa')).toBe('Thanh toan HD0012 Ba Hoa')
+    expect(asciiNote('Thanh toán HĐ0012 - Bà Hoa')).toBe('Thanh toan HD0012 - Ba Hoa')
   })
   it('chuỗi QR MB 938118 có số tiền', () => {
     const s = vietQrPayload('970422', '938118', 1250000, 'HD0012')

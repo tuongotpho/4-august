@@ -29,13 +29,15 @@ export function BarChart({
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  const H = height
-  const top = 22
-  const bottom = 26
-  const plotH = H - top - bottom
-  const max = Math.max(1, ...data.map((d) => d.value))
   const n = data.length
   const slot = W / Math.max(1, n)
+  // Cột hẹp (VD 12 tháng trên điện thoại): nhãn "T10/26" tách làm 2 dòng "T10" / "26" cho khỏi đè nhau
+  const twoLine = data.some((d) => d.label.includes('/') && d.label.length * 7 > slot - 4)
+  const H = height + (twoLine ? 14 : 0)
+  const top = 22
+  const bottom = twoLine ? 40 : 26
+  const plotH = H - top - bottom
+  const max = Math.max(1, ...data.map((d) => d.value))
   const bw = Math.min(32, slot * 0.55)
   const maxIdx = data.reduce((m, d, i) => (d.value > data[m].value ? i : m), 0)
   const y = (v: number) => top + plotH - (v / max) * plotH
@@ -69,8 +71,17 @@ export function BarChart({
                   {format(d.value)}
                 </text>
               )}
-              <text x={cx} y={H - 8} textAnchor="middle" fontSize="12" fill="var(--color-slate-500)">
-                {d.label}
+              <text x={cx} y={twoLine ? H - 22 : H - 8} textAnchor="middle" fontSize="12" fill="var(--color-slate-500)">
+                {twoLine ? (
+                  <>
+                    <tspan x={cx}>{d.label.split('/')[0]}</tspan>
+                    <tspan x={cx} dy={14} fill="var(--color-slate-400)">
+                      {d.label.split('/').slice(1).join('/')}
+                    </tspan>
+                  </>
+                ) : (
+                  d.label
+                )}
               </text>
               {/* vùng chạm rộng hơn cột */}
               <rect
