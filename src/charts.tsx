@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 /**
  * Biểu đồ cột một chuỗi số (VD doanh thu theo tháng).
  * Cột mảnh bo đầu, lưới mờ, chạm/rê vào cột hiện số chính xác; chỉ ghi số trên cột cao nhất & cột cuối.
+ * Vẽ đúng theo bề rộng thật của khung (đo bằng ResizeObserver) để chữ luôn 12px — không phóng to theo khung
+ * như khi dùng viewBox cố định (máy tính thẻ rộng 800px từng làm chữ to 25px).
  */
 export function BarChart({
   data,
@@ -18,7 +20,15 @@ export function BarChart({
   unit?: string
 }) {
   const [hover, setHover] = useState<number | null>(null)
-  const W = 360
+  const khung = useRef<HTMLDivElement>(null)
+  const [W, setW] = useState(340)
+  useEffect(() => {
+    const el = khung.current
+    if (!el) return
+    const ro = new ResizeObserver(([e]) => setW(Math.max(200, Math.round(e.contentRect.width))))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const H = height
   const top = 22
   const bottom = 26
@@ -26,14 +36,14 @@ export function BarChart({
   const max = Math.max(1, ...data.map((d) => d.value))
   const n = data.length
   const slot = W / Math.max(1, n)
-  const bw = Math.min(28, slot * 0.6)
+  const bw = Math.min(32, slot * 0.55)
   const maxIdx = data.reduce((m, d, i) => (d.value > data[m].value ? i : m), 0)
   const y = (v: number) => top + plotH - (v / max) * plotH
 
   const h = hover ?? -1
   return (
-    <div className="relative select-none">
-      <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img" aria-label={data.map((d) => `${d.label}: ${format(d.value)}`).join(', ')}>
+    <div ref={khung} className="relative select-none">
+      <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="block w-full" role="img" aria-label={data.map((d) => `${d.label}: ${format(d.value)}`).join(', ')}>
         {[0.5, 1].map((t) => (
           <line key={t} x1={0} x2={W} y1={y(max * t)} y2={y(max * t)} stroke="var(--color-slate-200)" strokeDasharray="3 4" />
         ))}
@@ -55,11 +65,11 @@ export function BarChart({
                 />
               )}
               {showLabel && (
-                <text x={cx} y={y0 - 6} textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--color-slate-700)">
+                <text x={cx} y={y0 - 6} textAnchor="middle" fontSize="12" fontWeight="600" fill="var(--color-slate-700)">
                   {format(d.value)}
                 </text>
               )}
-              <text x={cx} y={H - 8} textAnchor="middle" fontSize="11" fill="var(--color-slate-500)">
+              <text x={cx} y={H - 8} textAnchor="middle" fontSize="12" fill="var(--color-slate-500)">
                 {d.label}
               </text>
               {/* vùng chạm rộng hơn cột */}
