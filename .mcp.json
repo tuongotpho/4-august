@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "tuongot-si": { "type": "http", "url": "https://tuongot-si.vercel.app/mcp" }
+  }
+}

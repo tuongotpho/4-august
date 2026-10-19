@@ -1,0 +1,8 @@
+{
+  "firestore": [
+    {
+      "database": "tuongot-sale",
+      "rules": "firestore.rules"
+    }
+  ]
+}
