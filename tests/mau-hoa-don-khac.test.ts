@@ -22,6 +22,14 @@ describe('các mẫu hóa đơn khác', () => {
       'Thuế suất 8% (VAT rate 8%) : 4.284.000 342.720 4.626.720', 'Tổng cộng (Total) : 4.284.000 342.720 4.626.720'])
     expect(r).toMatchObject({ soHd: '1163', tienTruocThue: 4284000, tienThue: 342720, tongTien: 4626720 })
   })
+  it('MISA bán hàng có chiết khấu: "Tổng tiền: 0 4.800.000" -> số CUỐI là tổng', () => {
+    const r = parseInvoiceText([
+      'HỘ KINH DOANH THỬ', 'Mã số thuế : 001000000002', 'HÓA ĐƠN BÁN HÀNG Ký hiệu : 2C26MTT', 'Ngày 01 tháng 10 năm 2026 Số : 00000901',
+      'Họ và tên người mua hàng :', '1 Món thử Đĩa 3,00 220.000 660.000', 'Tổng tiền: 0 4.800.000',
+      'Đã giảm 0 đồng, tương ứng 20% mức tỷ lệ % để tính thuế giá trị gia tăng theo Nghị quyết số 204/2025/QH15.',
+    ])
+    expect(r).toMatchObject({ soHd: '901', tienTruocThue: 4800000, tienThue: 0, tongTien: 4800000 })
+  })
 })
 
 describe('rượu/bia: món ăn nấu với rượu/bia không tính', () => {

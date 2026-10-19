@@ -137,6 +137,12 @@ export function parseInvoiceText(lines: string[]): Partial<ParsedInvoice> & { fo
     r.tienTruocThue = congHang || cuoiDong('(?:Tổng )?Cộng tiền (?:bán )?hàng')
     r.tienThue = money(ch?.[2]) || tienThueRieng || cuoiDong('Tiền thuế (?:GTGT|giá trị gia tăng)')
     r.tongTien = money(tt?.[1]) || cuoiDong('Tổng (?:cộng )?(?:số )?tiền thanh toán') || r.tienTruocThue + r.tienThue
+    if (!r.tongTien) {
+      // MISA hóa đơn bán hàng (có cột chiết khấu): "Tổng tiền: 0 4.800.000" — số đầu là chiết khấu, số CUỐI là tổng
+      const tongTrong = /^[ \t]*Tổng tiền[ \t]*(?:\([^)]*\))?[ \t]*:[ \t]*(?:[\d.,]+[ \t]+)*([\d.,]+)[ \t]*$/im.exec(all)
+      r.tongTien = money(tongTrong?.[1])
+      if (!r.tienTruocThue && !r.tienThue) r.tienTruocThue = r.tongTien
+    }
   }
   r.tienBangChu = first(all, /(?:(?:Số tiền|Tổng tiền)[^:\n]*bằng chữ|^[ \t]*Bằng chữ)[^:\n]*:[ \t]*(.+)/im)
   if (!r.tienBangChu) {
