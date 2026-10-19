@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url'
 
 const goc = join(dirname(fileURLToPath(import.meta.url)), '..')
 const ra = join(goc, '.vercel', 'output')
-const ham = join(ra, 'functions', 'index.func')
+const ham = join(ra, 'functions', 'may-chu-ai.func')
 
 if (!existsSync(join(goc, 'dist', 'index.html'))) throw new Error('Chưa có dist/ — chạy npm run build trước')
 
@@ -52,7 +52,7 @@ await writeFile(
     {
       version: 3,
       routes: [
-        { src: '^/(mcp|oauth/.*|\\.well-known/.*|gioi-thieu-mcp)/?$', dest: '/index?duong=/$1' },
+        { src: '^/(mcp|oauth/.*|\\.well-known/.*|gioi-thieu-mcp)/?$', dest: '/may-chu-ai?duong=/$1' },
         { src: '^/assets/(.*)$', headers: { 'Cache-Control': 'public, max-age=31536000, immutable', ...BAO_MAT }, continue: true },
         { src: '^/(.*)$', headers: BAO_MAT, continue: true },
         { handle: 'filesystem' },
@@ -65,4 +65,4 @@ await writeFile(
 )
 
 const kb = Math.round(Object.values(kq.metafile.outputs)[0].bytes / 1024)
-console.log(`Đã đóng gói: web (dist/) + máy chủ MCP .vercel/output/functions/index.func/index.mjs (${kb} KB)`)
+console.log(`Đã đóng gói: web (dist/) + máy chủ MCP .vercel/output/functions/may-chu-ai.func/index.mjs (${kb} KB)`)
