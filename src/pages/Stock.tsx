@@ -1,21 +1,32 @@
 import { useState } from 'react'
 import { Icon } from '../icons'
-import { byDateAsc, fmtDate, money, num, today } from '../logic'
+import { byDateAsc, fmtDate, latestCost, money, num, purchaseDue, purchaseNo, purchaseQty, purchaseTotal, today } from '../logic'
 import { newId, store } from '../store'
-import { DEFAULT_PRODUCTS, type Product, type StockIn } from '../types'
+import { DEFAULT_PRODUCTS, type Product, type Purchase, type StockIn } from '../types'
+import { PurchaseActions, PurchaseForm, PurchaseModal, SupplierCard } from './Purchases'
 import { Btn, Card, Empty, Field, Modal, MoneyInput, QtyStepper, inputCls, useApp } from '../ui'
 
 export default function Stock() {
   const { data, stock, canEdit, productById } = useApp()
-  const [importing, setImporting] = useState<StockIn | 'new' | null>(null)
+  const [importing, setImporting] = useState<StockIn | null>(null)
+  const [phieu, setPhieu] = useState<Purchase | 'new' | null>(null)
+  const [thaoTac, setThaoTac] = useState<Purchase | null>(null)
+  const [anh, setAnh] = useState<string | null>(null)
   const [editProd, setEditProd] = useState<Product | 'new' | null>(null)
-  const ins = [...data.stockIns].sort(byDateAsc).reverse()
+  // Lịch sử: phiếu nhập + các lần nhập lẻ kiểu cũ, mới nhất trước
+  const lichSu = [
+    ...data.purchases.map((p) => ({ k: 'pn' as const, date: p.date, createdAt: p.createdAt, p })),
+    ...data.stockIns.map((x) => ({ k: 'le' as const, date: x.date, createdAt: x.createdAt, x })),
+  ]
+    .sort(byDateAsc)
+    .reverse()
+  const tenNb = (id?: string) => data.suppliers.find((s) => s.id === id)?.name
   const value = stock.reduce((s, r) => s + Math.max(0, r.stock) * r.product.cost, 0)
 
   return (
     <div className="space-y-4">
       {canEdit && (
-        <Btn onClick={() => setImporting('new')} className="w-full py-3.5 text-base">
+        <Btn onClick={() => setPhieu('new')} className="w-full py-3.5 text-base">
           <Icon name="box" className="h-5 w-5" /> Nhập hàng
         </Btn>
       )}
@@ -68,33 +79,71 @@ export default function Stock() {
         )}
       </Card>
 
-      <Card title="Lịch sử nhập hàng">
-        {ins.length === 0 ? (
+      <SupplierCard />
+
+      <Card title="Lịch sử nhập hàng" subtitle="Bấm phiếu để xem ảnh có mã QR trả tiền người bán">
+        {lichSu.length === 0 ? (
           <Empty>Chưa nhập lần nào. Bấm "Nhập hàng" để ghi số chai có trong kho.</Empty>
         ) : (
-          ins.map((s) => (
-            <button key={s.id} onClick={() => canEdit && setImporting(s)} className="flex w-full cursor-pointer items-center gap-3 border-b border-slate-100 py-2.5 text-left last:border-0">
-              <div className="min-w-0 flex-1">
-                <div className="font-semibold text-slate-900">
-                  {productById.get(s.productId)?.name ?? '(đã xoá)'} · +{num(s.qty)}
+          lichSu.map((h) =>
+            h.k === 'pn' ? (
+              <button key={h.p.id} onClick={() => setThaoTac(h.p)} className="flex w-full cursor-pointer items-center gap-3 border-b border-slate-100 py-2.5 text-left last:border-0">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-semibold text-slate-900">
+                    {purchaseNo(h.p.no)} · {tenNb(h.p.supplierId) ?? 'không ghi người bán'}
+                  </div>
+                  <div className="truncate text-xs text-slate-500">
+                    {fmtDate(h.p.date)} · {purchaseQty(h.p)} chai · {h.p.items.map((i) => `${i.qty} ${i.name.replace(/^Chai\s*/i, '')}`).join(', ')}
+                  </div>
                 </div>
-                <div className="truncate text-xs text-slate-500">
-                  {fmtDate(s.date)} · vốn {money(s.unitCost)}/chai{s.note ? ' · ' + s.note : ''}
+                <div className="shrink-0 text-right">
+                  <div className="font-bold tabular-nums text-slate-700">{money(purchaseTotal(h.p))}</div>
+                  {purchaseDue(h.p) > 0 ? <div className="text-[11px] font-semibold text-teal-700">nợ {money(purchaseDue(h.p))}</div> : <div className="text-[11px] text-emerald-700">đã trả</div>}
                 </div>
-              </div>
-              <div className="font-bold tabular-nums text-slate-700">{money(s.qty * s.unitCost)}</div>
-            </button>
-          ))
+              </button>
+            ) : (
+              <button key={h.x.id} onClick={() => canEdit && setImporting(h.x)} className="flex w-full cursor-pointer items-center gap-3 border-b border-slate-100 py-2.5 text-left last:border-0">
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-slate-900">
+                    {productById.get(h.x.productId)?.name ?? '(đã xoá)'} · +{num(h.x.qty)}
+                  </div>
+                  <div className="truncate text-xs text-slate-500">
+                    {fmtDate(h.x.date)} · vốn {money(h.x.unitCost)}/chai{h.x.note ? ' · ' + h.x.note : ''}
+                  </div>
+                </div>
+                <div className="font-bold tabular-nums text-slate-700">{money(h.x.qty * h.x.unitCost)}</div>
+              </button>
+            ),
+          )
         )}
       </Card>
 
-      {importing && <StockInForm entry={importing === 'new' ? undefined : importing} onClose={() => setImporting(null)} />}
+      {phieu && (
+        <PurchaseForm
+          purchase={phieu === 'new' ? undefined : phieu}
+          onClose={() => setPhieu(null)}
+          onSaved={(id) => {
+            setPhieu(null)
+            setAnh(id)
+          }}
+        />
+      )}
+      {thaoTac && (
+        <PurchaseActions
+          purchase={thaoTac}
+          onClose={() => setThaoTac(null)}
+          onEdit={() => (setPhieu(thaoTac), setThaoTac(null))}
+          onImage={() => (setAnh(thaoTac.id), setThaoTac(null))}
+        />
+      )}
+      {anh && <PurchaseModal purchaseId={anh} onClose={() => setAnh(null)} />}
+      {importing && <StockInForm entry={importing} onClose={() => setImporting(null)} />}
       {editProd && <ProductForm product={editProd === 'new' ? undefined : editProd} onClose={() => setEditProd(null)} />}
     </div>
   )
 }
 
-/** Nhập hàng: chọn loại chai, số lượng, giá vốn mỗi chai. Giá vốn mới cập nhật vào loại hàng để tính lãi các đơn sau. */
+/** Sửa / xoá một lần nhập lẻ kiểu cũ (trước khi có phiếu nhập). Nhập mới dùng PurchaseForm. Nhập hàng: chọn loại chai, số lượng, giá vốn mỗi chai. Giá vốn mới cập nhật vào loại hàng để tính lãi các đơn sau. */
 function StockInForm({ entry, onClose }: { entry?: StockIn; onClose: () => void }) {
   const { data, toast } = useApp()
   const products = data.products.filter((p) => !p.inactive || p.id === entry?.productId).sort((a, b) => a.order - b.order)
@@ -113,8 +162,8 @@ function StockInForm({ entry, onClose }: { entry?: StockIn; onClose: () => void 
       const s: StockIn = { id: entry?.id ?? newId(), productId: p.id, date, qty: r.qty, unitCost: r.cost, note: note.trim() || undefined, createdAt: entry?.createdAt ?? Date.now() }
       await store.put('stockIns', s.id, s)
       // lần nhập mới nhất quyết định giá vốn hiện tại
-      const latest = [...data.stockIns.filter((x) => x.productId === p.id && x.id !== s.id), s].sort(byDateAsc).pop()!
-      if (latest.unitCost !== p.cost) await store.put('products', p.id, { ...p, cost: latest.unitCost })
+      const c = latestCost({ ...data, stockIns: [...data.stockIns.filter((x) => x.id !== s.id), s] }, p.id)
+      if (c !== undefined && c !== p.cost) await store.put('products', p.id, { ...p, cost: c })
     }
     toast(entry ? 'Đã sửa lần nhập' : `Đã nhập ${filled.map((p) => `${rows[p.id].qty} ${p.name}`).join(', ')}`)
     onClose()

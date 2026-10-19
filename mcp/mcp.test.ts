@@ -25,6 +25,8 @@ function khoGia() {
     ],
     receipts: [{ id: 'r1', customerId: 'c1', date: '2026-10-10', amount: 150000, createdAt: 3 }],
     stockIns: [{ id: 's1', productId: 'p1000', date: '2026-09-01', qty: 100, unitCost: 32000, createdAt: 0 }],
+    suppliers: [{ id: 'nb1', name: 'Kiều Thị Nga', bankBin: '970422', bankName: 'MB Bank', bankAccount: '0977929466', accountName: 'KIEU THI NGA', createdAt: 0 }],
+    purchases: [],
     settings: DEFAULT_SETTINGS,
   }
   const daGhi: { coll: Coll; id: string; du: Record<string, unknown> }[] = []
@@ -112,8 +114,11 @@ describe('công cụ ghi', () => {
     const g = khoGia()
     const { goi } = await noiMay(g.kho)
     expect((await goi('thu_no', { khach: 'c1', so_tien: 400000 })).j).toMatchObject({ no_truoc: 400000, no_con_lai: 0 })
-    expect((await goi('nhap_hang', { loai: 'Chai 1 lít', so_luong: 50, gia_von: 33000 })).j).toMatchObject({ ton_moi: 130, gia_von: 33000 })
+    const n = (await goi('nhap_hang', { hang: [{ loai: 'Chai 1 lít', so_luong: 50, gia_mua: 33000 }], da_tra: 650000 })).j
+    // người bán duy nhất được chọn tự động; 50 × 33.000 = 1.650.000, trả 650.000 → nợ 1.000.000
+    expect(n).toMatchObject({ da_tao: 'PN0001', nguoi_ban: 'Kiều Thị Nga', tong_tien: 1650000, con_no_phieu_nay: 1000000, tong_no_nguoi_ban: 1000000, ton_moi: { 'Chai 1 lít': 130 } })
     expect(g.daGhi.find((x) => x.coll === 'products')?.du).toMatchObject({ cost: 33000 })
+    expect(g.nhatKy.at(-1)).toBe('nhap_hang: PN0001 · Kiều Thị Nga')
   })
 
   it('them_khach chặn trùng tên', async () => {

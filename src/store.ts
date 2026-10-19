@@ -19,8 +19,8 @@ import {
 } from 'firebase/firestore'
 import { DEFAULT_SETTINGS, type AppData, type Settings } from './types'
 
-export type Coll = 'customers' | 'products' | 'orders' | 'receipts' | 'stockIns'
-export const COLLS: Coll[] = ['customers', 'products', 'orders', 'receipts', 'stockIns']
+export type Coll = 'customers' | 'products' | 'orders' | 'receipts' | 'stockIns' | 'suppliers' | 'purchases'
+export const COLLS: Coll[] = ['customers', 'products', 'orders', 'receipts', 'stockIns', 'suppliers', 'purchases']
 
 const env = import.meta.env
 const fbConfig = {
@@ -45,6 +45,8 @@ export const emptyData = (): AppData => ({
   orders: [],
   receipts: [],
   stockIns: [],
+  suppliers: [],
+  purchases: [],
   settings: { ...DEFAULT_SETTINGS },
 })
 
@@ -73,6 +75,8 @@ function createLocalStore(): Store {
     orders: {},
     receipts: {},
     stockIns: {},
+    suppliers: {},
+    purchases: {},
     settings: { ...DEFAULT_SETTINGS },
   })
   const load = (): LocalShape => {

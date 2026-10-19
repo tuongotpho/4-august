@@ -6,6 +6,13 @@ import {
   daysBetween,
   debtBefore,
   debtByCustomer,
+  debtBySupplier,
+  latestCost,
+  nextPurchaseNo,
+  purchaseDue,
+  purchaseNo,
+  purchaseTotal,
+  supplierDebtBefore,
   lastMonths,
   monthStats,
   nextOrderNo,
@@ -15,7 +22,7 @@ import {
   stockRows,
   vietQrPayload,
 } from './logic'
-import type { Customer, Order, Product, Receipt, StockIn } from './types'
+import type { Customer, Order, Product, Purchase, Receipt, StockIn } from './types'
 
 const P1: Product = { id: 'p1', name: 'Chai 1 lít', price: 50000, cost: 30000, lowStock: 10, order: 1 }
 const P5: Product = { id: 'p5', name: 'Chai 500ml', price: 30000, cost: 18000, lowStock: 10, order: 2 }
@@ -172,5 +179,41 @@ describe('mã QR VietQR', () => {
     const s = vietQrPayload('970422', '938118', 0, '')
     expect(s.startsWith('000201010211')).toBe(true)
     expect(s).not.toContain('5407')
+  })
+})
+
+describe('phiếu nhập & nợ người bán', () => {
+  const pn = (x: Partial<Purchase> & { date: string }): Purchase => ({
+    id: 'p' + ++t,
+    no: t,
+    supplierId: 'nb1',
+    items: [{ productId: 'p1', name: 'Chai 1 lít', qty: 100, unitCost: 30000 }],
+    paid: 0,
+    createdAt: t,
+    ...x,
+  })
+  it('tổng, còn nợ, số phiếu', () => {
+    const a = pn({ date: '2026-10-01', paid: 1000000, items: [{ productId: 'p1', name: '', qty: 100, unitCost: 30000 }, { productId: 'p5', name: '', qty: 50, unitCost: 18000 }] })
+    expect(purchaseTotal(a)).toBe(3900000)
+    expect(purchaseDue(a)).toBe(2900000)
+    expect(purchaseNo(7)).toBe('PN0007')
+    expect(nextPurchaseNo([a, pn({ date: '2026-10-02', no: 41 })])).toBe(42)
+  })
+  it('nợ người bán cộng dồn, nợ cũ trước một phiếu', () => {
+    const a = pn({ date: '2026-10-01', paid: 0 }) // 3tr
+    const b = pn({ date: '2026-10-05', paid: 3000000 }) // trả đủ
+    const c = pn({ date: '2026-10-09', paid: 1000000 }) // nợ 2tr
+    const khac = pn({ date: '2026-10-02', supplierId: 'nb2' })
+    expect(debtBySupplier([a, b, c, khac]).get('nb1')).toBe(5000000)
+    expect(supplierDebtBefore([a, b, c, khac], c)).toBe(3000000)
+    expect(supplierDebtBefore([a, b, c], a)).toBe(0)
+  })
+  it('tồn kho cộng cả phiếu nhập; giá vốn mới nhất lấy lần nhập sau cùng', () => {
+    const stockIns: StockIn[] = [{ id: 's1', productId: 'p1', date: '2026-10-03', qty: 10, unitCost: 31000, createdAt: 1 }]
+    const purchases = [pn({ date: '2026-10-01' }), pn({ date: '2026-10-08', items: [{ productId: 'p1', name: '', qty: 20, unitCost: 33000 }] })]
+    expect(stockRows({ products: [P1], orders: [], stockIns, purchases })[0].stock).toBe(130)
+    expect(latestCost({ stockIns, purchases }, 'p1')).toBe(33000)
+    expect(latestCost({ stockIns, purchases: purchases.slice(0, 1) }, 'p1')).toBe(31000)
+    expect(latestCost({ stockIns: [], purchases: [] }, 'p1')).toBeUndefined()
   })
 })

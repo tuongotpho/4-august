@@ -2,7 +2,7 @@
  * Phần tính toán thuần (không đụng giao diện / Firebase) — có test ở logic.test.ts.
  * Mọi số tiền là đồng, số nguyên.
  */
-import type { AppData, Customer, Order, Product } from './types'
+import type { AppData, Customer, Order, Product, Purchase } from './types'
 
 // ---------- Định dạng ----------
 
@@ -117,10 +117,11 @@ export interface StockRow {
   low: boolean
 }
 
-export function stockRows(d: Pick<AppData, 'products' | 'orders' | 'stockIns'>): StockRow[] {
+export function stockRows(d: Pick<AppData, 'products' | 'orders' | 'stockIns'> & { purchases?: Purchase[] }): StockRow[] {
   const inQ = new Map<string, number>()
   const sold = new Map<string, number>()
   for (const s of d.stockIns) inQ.set(s.productId, (inQ.get(s.productId) ?? 0) + s.qty)
+  for (const p of d.purchases ?? []) for (const i of p.items) inQ.set(i.productId, (inQ.get(i.productId) ?? 0) + i.qty)
   for (const o of d.orders) for (const i of o.items) sold.set(i.productId, (sold.get(i.productId) ?? 0) + i.qty)
   return [...d.products]
     .sort((a, b) => a.order - b.order)
@@ -130,6 +131,42 @@ export function stockRows(d: Pick<AppData, 'products' | 'orders' | 'stockIns'>):
       const stock = inQty - soldQty
       return { product: p, inQty, soldQty, stock, low: stock <= p.lowStock }
     })
+}
+
+// ---------- Phiếu nhập / người bán ----------
+
+export const purchaseNo = (no: number) => 'PN' + pad(no, 4)
+export const purchaseQty = (p: Purchase) => p.items.reduce((s, i) => s + i.qty, 0)
+export const purchaseTotal = (p: Purchase) => p.items.reduce((s, i) => s + i.qty * i.unitCost, 0)
+/** Mình còn nợ người bán của riêng phiếu này */
+export const purchaseDue = (p: Purchase) => purchaseTotal(p) - (p.paid || 0)
+export const nextPurchaseNo = (ps: Purchase[]) => ps.reduce((m, p) => Math.max(m, p.no || 0), 0) + 1
+
+/** Mình đang nợ từng người bán (dương = còn phải trả) */
+export function debtBySupplier(ps: Purchase[]): Map<string, number> {
+  const m = new Map<string, number>()
+  for (const p of ps) if (p.supplierId) m.set(p.supplierId, (m.get(p.supplierId) ?? 0) + purchaseDue(p))
+  return m
+}
+
+/** Nợ người bán TRƯỚC một phiếu (in lên phiếu nhập) */
+export function supplierDebtBefore(ps: Purchase[], p: Purchase): number {
+  if (!p.supplierId) return 0
+  let s = 0
+  for (const x of ps)
+    if (x.supplierId === p.supplierId && x.id !== p.id && (x.date < p.date || (x.date === p.date && x.createdAt < p.createdAt))) s += purchaseDue(x)
+  return s
+}
+
+/** Giá vốn mới nhất của một loại hàng theo lần nhập gần nhất (lần nhập lẻ cũ hoặc phiếu nhập); không có thì undefined */
+export function latestCost(d: Pick<AppData, 'stockIns'> & { purchases?: Purchase[] }, productId: string): number | undefined {
+  let best: { date: string; createdAt: number; cost: number } | undefined
+  const xet = (date: string, createdAt: number, cost: number) => {
+    if (!best || date > best.date || (date === best.date && createdAt > best.createdAt)) best = { date, createdAt, cost }
+  }
+  for (const s of d.stockIns) if (s.productId === productId) xet(s.date, s.createdAt, s.unitCost)
+  for (const p of d.purchases ?? []) for (const i of p.items) if (i.productId === productId) xet(p.date, p.createdAt, i.unitCost)
+  return best?.cost
 }
 
 // ---------- Thống kê ----------

@@ -33,7 +33,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
       const d = JSON.parse(await f.text()) as AppData
       if (!Array.isArray(d.orders) || !Array.isArray(d.customers)) throw new Error('File không đúng định dạng sao lưu')
       if (!confirm(`Nạp ${d.customers.length} khách, ${d.orders.length} đơn từ file?\nDữ liệu hiện tại sẽ bị THAY THẾ hoàn toàn.`)) return
-      await store.replaceAll({ ...d, products: d.products ?? [], receipts: d.receipts ?? [], stockIns: d.stockIns ?? [] })
+      await store.replaceAll({ ...d, products: d.products ?? [], receipts: d.receipts ?? [], stockIns: d.stockIns ?? [], suppliers: d.suppliers ?? [], purchases: d.purchases ?? [] })
       toast('Đã khôi phục dữ liệu')
       onClose()
     } catch (e) {

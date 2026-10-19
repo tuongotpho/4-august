@@ -72,6 +72,49 @@ export interface StockIn {
   createdAt: number
 }
 
+/** Người bán hàng cho shop (nơi mình nhập hàng) — có tài khoản để mình chuyển tiền */
+export interface Supplier {
+  id: string
+  name: string
+  phone?: string
+  /** Mã ngân hàng VietQR (MB = 970422) */
+  bankBin: string
+  bankName: string
+  bankAccount: string
+  accountName: string
+  createdAt: number
+}
+
+export interface PurchaseItem {
+  productId: string
+  name: string
+  qty: number
+  /** Giá vốn (giá mua) mỗi chai */
+  unitCost: number
+}
+
+/** Phiếu nhập hàng — một lần lấy hàng của người bán, nhiều loại chai */
+export interface Purchase {
+  id: string
+  /** Số phiếu tăng dần: PN0001… */
+  no: number
+  supplierId?: string
+  date: string
+  items: PurchaseItem[]
+  /** Mình đã trả người bán bao nhiêu */
+  paid: number
+  note?: string
+  createdAt: number
+}
+
+export const DEFAULT_SUPPLIER: Omit<Supplier, 'id' | 'createdAt'> = {
+  name: 'Kiều Thị Nga',
+  bankBin: '970422',
+  bankName: 'MB Bank',
+  bankAccount: '0977929466',
+  accountName: 'KIEU THI NGA',
+}
+
 export interface Settings {
   shopName: string
   shopPhone: string
@@ -108,5 +151,7 @@ export interface AppData {
   orders: Order[]
   receipts: Receipt[]
   stockIns: StockIn[]
+  suppliers: Supplier[]
+  purchases: Purchase[]
   settings: Settings
 }

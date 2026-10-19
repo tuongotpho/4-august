@@ -12,16 +12,18 @@ export function taoKho(fb: FirebaseNguoiDung, phien: { ma: string; tenMay: strin
     tai() {
       // chỉ tải một lần trong cùng một yêu cầu
       daTai ??= (async () => {
-        const [customers, products, orders, receipts, stockIns, cfg] = await Promise.all([
+        const [customers, products, orders, receipts, stockIns, suppliers, purchases, cfg] = await Promise.all([
           fb.docBoSuuTap('customers'),
           fb.docBoSuuTap('products'),
           fb.docBoSuuTap('orders'),
           fb.docBoSuuTap('receipts'),
           fb.docBoSuuTap('stockIns'),
+          fb.docBoSuuTap('suppliers'),
+          fb.docBoSuuTap('purchases'),
           fb.docTaiLieu<Partial<Settings>>('config/settings'),
         ])
         const { id: _id, ...s } = cfg ?? { id: '' }
-        return { customers, products, orders, receipts, stockIns, settings: { ...DEFAULT_SETTINGS, ...s } } as unknown as AppData
+        return { customers, products, orders, receipts, stockIns, suppliers, purchases, settings: { ...DEFAULT_SETTINGS, ...s } } as unknown as AppData
       })()
       return daTai
     },

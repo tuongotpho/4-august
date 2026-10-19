@@ -8,6 +8,12 @@ import {
   byDateAsc,
   debtBefore,
   debtByCustomer,
+  debtBySupplier,
+  latestCost,
+  nextPurchaseNo,
+  purchaseDue,
+  purchaseNo,
+  purchaseTotal,
   fold,
   invoiceNo,
   lastMonths,
@@ -25,9 +31,9 @@ import {
   today,
   type Prediction,
 } from '../src/logic.ts'
-import type { AppData, Customer, Order, OrderItem, Product, Receipt, StockIn } from '../src/types.ts'
+import type { AppData, Customer, Order, OrderItem, Product, Purchase, PurchaseItem, Receipt } from '../src/types.ts'
 
-export type Coll = 'customers' | 'products' | 'orders' | 'receipts' | 'stockIns'
+export type Coll = 'customers' | 'products' | 'orders' | 'receipts' | 'stockIns' | 'suppliers' | 'purchases'
 
 /** Nơi đọc/ghi dữ liệu — trên Vercel là Firestore (nguon.ts), trong bài kiểm là bộ nhớ */
 export interface Kho {
@@ -216,11 +222,13 @@ export function taoMayChu(kho: Kho, bayGio: () => string = today) {
     })
   })
 
-  server.registerTool('ton_kho', { title: 'Tồn kho', description: 'Tồn từng loại chai (nhập − bán), giá bán, giá vốn, cảnh báo sắp hết, 20 lần nhập gần nhất.', inputSchema: {} }, async () => {
+  server.registerTool('ton_kho', { title: 'Tồn kho', description: 'Tồn từng loại chai (nhập − bán), giá bán, giá vốn, cảnh báo sắp hết, 20 phiếu nhập gần nhất, mình còn nợ người bán bao nhiêu.', inputSchema: {} }, async () => {
     const d = await kho.tai()
     return json({
       ton: stockRows(d).map((r) => ({ ten: r.product.name, ma: r.product.id, da_nhap: r.inQty, da_ban: r.soldQty, ton: r.stock, bao_het_khi_con: r.product.lowStock, sap_het: r.low, gia_ban: r.product.price, gia_von: r.product.cost })),
-      lan_nhap_gan_nhat: [...d.stockIns].sort(byDateAsc).reverse().slice(0, 20).map((s) => ({ ngay: s.date, loai: d.products.find((p) => p.id === s.productId)?.name, so_luong: s.qty, gia_von: s.unitCost, ghi_chu: s.note })),
+      phieu_nhap_gan_nhat: [...d.purchases].sort(byDateAsc).reverse().slice(0, 20).map((p) => ({ so: purchaseNo(p.no), ngay: p.date, nguoi_ban: d.suppliers.find((x) => x.id === p.supplierId)?.name ?? null, hang: p.items.map((i) => `${i.name} × ${i.qty} @ ${i.unitCost}`), tong: purchaseTotal(p), da_tra: p.paid, con_no: purchaseDue(p) })),
+      lan_nhap_le_cu: [...d.stockIns].sort(byDateAsc).reverse().slice(0, 20).map((s) => ({ ngay: s.date, loai: d.products.find((p) => p.id === s.productId)?.name, so_luong: s.qty, gia_von: s.unitCost, ghi_chu: s.note })),
+      no_nguoi_ban: [...debtBySupplier(d.purchases)].filter(([, x]) => x !== 0).map(([id, x]) => ({ nguoi_ban: d.suppliers.find((s) => s.id === id)?.name ?? id, con_phai_tra: x })),
     })
   })
 
@@ -320,18 +328,52 @@ export function taoMayChu(kho: Kho, bayGio: () => string = today) {
 
   server.registerTool(
     'nhap_hang',
-    { title: 'Nhập hàng', description: 'Ghi một lần nhập / làm thêm hàng: loại, số chai, giá vốn mỗi chai (bỏ trống = giá vốn hiện tại). Lần nhập mới nhất cập nhật giá vốn của loại hàng. Chỉ gọi khi người dùng yêu cầu rõ.', inputSchema: { loai: z.string(), so_luong: z.number().int().min(1), gia_von: z.number().int().min(0).optional(), ngay: ngay.optional(), ghi_chu: z.string().max(200).optional() } },
+    {
+      title: 'Nhập hàng (tạo phiếu nhập)',
+      description:
+        'Tạo phiếu nhập hàng PN…: người bán (bỏ trống = người bán duy nhất nếu chỉ có một), các loại chai + số lượng + giá mua mỗi chai (bỏ trống = giá vốn hiện tại), đã trả người bán bao nhiêu. Giá mua mới cập nhật giá vốn của loại hàng. Ảnh phiếu có mã QR chuyển khoản cho người bán xuất trên web app (Kho → bấm phiếu). Chỉ gọi khi người dùng yêu cầu rõ.',
+      inputSchema: {
+        hang: z.array(z.object({ loai: z.string(), so_luong: z.number().int().min(1), gia_mua: z.number().int().min(0).optional() })).min(1),
+        nguoi_ban: z.string().optional().describe('Tên hoặc mã người bán'),
+        da_tra: z.number().int().min(0).optional().describe('Mình đã trả người bán bao nhiêu (mặc định 0 = nợ cả phiếu)'),
+        ngay: ngay.optional(),
+        ghi_chu: z.string().max(200).optional(),
+      },
+    },
     async (a) => {
       const d = await kho.tai()
-      const p = timLoai(d, a.loai)
-      if (typeof p === 'string') return loi(p)
-      const s: StockIn = { id: newId(), productId: p.id, date: a.ngay ?? bayGio(), qty: a.so_luong, unitCost: a.gia_von ?? p.cost, note: a.ghi_chu?.trim() || undefined, createdAt: Date.now() }
-      await kho.ghi('stockIns', s.id, { ...s })
-      const moiNhat = [...d.stockIns.filter((x) => x.productId === p.id), s].sort(byDateAsc).pop()!
-      if (moiNhat.unitCost !== p.cost) await kho.ghi('products', p.id, { ...p, cost: moiNhat.unitCost })
-      await kho.nhatKy({ congCu: 'nhap_hang', doiTuong: `stockIns/${s.id}`, tenDoiTuong: p.name, tomTat: `+${s.qty} chai, vốn ${s.unitCost}đ/chai` })
-      const ton = stockRows({ ...d, stockIns: [...d.stockIns, s] }).find((r) => r.product.id === p.id)!
-      return json({ loai: p.name, da_nhap: s.qty, gia_von: s.unitCost, ton_moi: ton.stock })
+      let supplierId: string | undefined
+      if (a.nguoi_ban) {
+        const f = fold(a.nguoi_ban)
+        const ds = d.suppliers.filter((x) => x.id === a.nguoi_ban || fold(x.name).includes(f))
+        if (ds.length !== 1) return loi(`Không xác định được người bán "${a.nguoi_ban}". Danh sách: ${d.suppliers.map((x) => `${x.name} (${x.id})`).join('; ') || '(chưa có — thêm trên web app, tab Kho)'}`)
+        supplierId = ds[0].id
+      } else if (d.suppliers.length === 1) supplierId = d.suppliers[0].id
+      const items: PurchaseItem[] = []
+      for (const h of a.hang) {
+        const p = timLoai(d, h.loai)
+        if (typeof p === 'string') return loi(p)
+        items.push({ productId: p.id, name: p.name, qty: h.so_luong, unitCost: h.gia_mua ?? p.cost })
+      }
+      const pu: Purchase = { id: newId(), no: nextPurchaseNo(d.purchases), supplierId, date: a.ngay ?? bayGio(), items, paid: a.da_tra ?? 0, note: a.ghi_chu?.trim() || undefined, createdAt: Date.now() }
+      await kho.ghi('purchases', pu.id, { ...pu })
+      const sau = { ...d, purchases: [...d.purchases, pu] }
+      for (const i of items) {
+        const p = d.products.find((x) => x.id === i.productId)!
+        const c = latestCost(sau, p.id)
+        if (c !== undefined && c !== p.cost) await kho.ghi('products', p.id, { ...p, cost: c })
+      }
+      const ban = d.suppliers.find((x) => x.id === supplierId)
+      await kho.nhatKy({ congCu: 'nhap_hang', doiTuong: `purchases/${pu.id}`, tenDoiTuong: `${purchaseNo(pu.no)}${ban ? ' · ' + ban.name : ''}`, tomTat: `${items.map((i) => `+${i.qty} ${i.name} @${i.unitCost}`).join(', ')}; trả ${pu.paid}đ` })
+      return json({
+        da_tao: purchaseNo(pu.no),
+        nguoi_ban: ban?.name ?? null,
+        tong_tien: purchaseTotal(pu),
+        da_tra: pu.paid,
+        con_no_phieu_nay: purchaseDue(pu),
+        tong_no_nguoi_ban: ban ? (debtBySupplier(sau.purchases).get(ban.id) ?? 0) : null,
+        ton_moi: Object.fromEntries(stockRows(sau).filter((r) => items.some((i) => i.productId === r.product.id)).map((r) => [r.product.name, r.stock])),
+      })
     },
   )
 

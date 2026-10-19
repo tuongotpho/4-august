@@ -15,7 +15,7 @@ service cloud.firestore {
     }
 
     function known(coll) {
-      return coll in ['customers', 'products', 'orders', 'receipts', 'stockIns', 'config'];
+      return coll in ['customers', 'products', 'orders', 'receipts', 'stockIns', 'suppliers', 'purchases', 'config'];
     }
 
     match /{coll}/{docId} {
