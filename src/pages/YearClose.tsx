@@ -5,7 +5,7 @@
 
 import { useMemo, useState } from 'react'
 import { Icon } from '../icons'
-import { closingNote, fmtDate, fold, invoiceNo, latestCost, money, nextOrderNo, nextPurchaseNo, num, purchaseNo, stockAsOf, today } from '../logic'
+import { closingNote, costAt, fmtDate, fold, invoiceNo, latestCost, money, nextOrderNo, nextPurchaseNo, num, purchaseNo, stockAsOf, today } from '../logic'
 import { newId, store } from '../store'
 import type { Customer, Order, Purchase } from '../types'
 import { Btn, Card, Modal, MoneyInput, inputCls, useApp } from '../ui'
@@ -26,7 +26,7 @@ export function YearCloseCard() {
   )
 }
 
-function YearCloseForm({ onClose }: { onClose: () => void }) {
+export function YearCloseForm({ onClose }: { onClose: () => void }) {
   const { data, toast } = useApp()
   const now = today()
   // tháng 12 thì chốt năm nay, còn lại (đầu năm sau mới chốt) thì năm trước
@@ -74,7 +74,7 @@ function YearCloseForm({ onClose }: { onClose: () => void }) {
           no: nextOrderNo(data.orders),
           customerId: kh.id,
           date,
-          items: sell.map((r) => ({ productId: r.p.id, name: r.p.name, qty: r.qty, price: r.price, cost: latestCost(data, r.p.id) ?? r.p.cost })),
+          items: sell.map((r) => ({ productId: r.p.id, name: r.p.name, qty: r.qty, price: r.price, cost: costAt(data, r.p.id, date) ?? r.p.cost })),
           discount: 0,
           paid: sellTotal,
           note: `${tag}: hàng bán lẻ không ghi đơn (đối chiếu kho thực)`,

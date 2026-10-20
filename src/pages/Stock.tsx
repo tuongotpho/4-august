@@ -4,7 +4,8 @@ import { byDateAsc, fmtDate, latestCost, money, num, purchaseDue, purchaseNo, pu
 import { newId, store } from '../store'
 import { DEFAULT_PRODUCTS, type Product, type Purchase, type StockIn } from '../types'
 import { PurchaseActions, PurchaseForm, PurchaseModal, SupplierCard } from './Purchases'
-import { YearCloseCard } from './YearClose'
+import { YearCloseCard, YearCloseForm } from './YearClose'
+import { CostFixCard } from './CostFix'
 import { Btn, Card, Empty, Field, Modal, MoneyInput, QtyStepper, inputCls, useApp } from '../ui'
 
 export default function Stock() {
@@ -14,6 +15,8 @@ export default function Stock() {
   const [thaoTac, setThaoTac] = useState<Purchase | null>(null)
   const [anh, setAnh] = useState<string | null>(null)
   const [editProd, setEditProd] = useState<Product | 'new' | null>(null)
+  const [chotSo, setChotSo] = useState(false)
+  const am = stock.filter((r) => r.stock < 0)
   // Lịch sử: phiếu nhập + các lần nhập lẻ kiểu cũ, mới nhất trước
   const lichSu = [
     ...data.purchases.map((p) => ({ k: 'pn' as const, date: p.date, createdAt: p.createdAt, p })),
@@ -44,6 +47,24 @@ export default function Stock() {
             Tạo 3 loại chai
           </Btn>
         </Card>
+      )}
+
+      {am.length > 0 && (
+        <div className="rounded-2xl bg-red-50 p-3 text-sm text-red-900 ring-1 ring-red-300">
+          <div className="font-bold">Tồn kho bị âm — sổ ghi bán nhiều hơn nhập</div>
+          <div className="mt-0.5">{am.map((r) => `${r.product.name}: âm ${num(-r.stock)} chai`).join(' · ')}</div>
+          <p className="mt-1 text-xs text-red-800">Thường do thiếu phiếu nhập (hoặc hàng tồn từ trước chưa ghi). Ghi phiếu nhập còn thiếu, hoặc đếm kho thực rồi chốt sổ.</p>
+          {canEdit && (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Btn kind="soft" onClick={() => setPhieu('new')}>
+                <Icon name="box" className="h-4 w-4" /> Ghi phiếu nhập
+              </Btn>
+              <Btn kind="soft" onClick={() => setChotSo(true)}>
+                <Icon name="check" className="h-4 w-4" /> Chốt sổ
+              </Btn>
+            </div>
+          )}
+        </div>
       )}
 
       <Card title="Tồn kho" subtitle={`Tồn = đã nhập − đã bán · vốn đang nằm trong kho ≈ ${money(value)}`}>
@@ -83,6 +104,8 @@ export default function Stock() {
       <SupplierCard />
 
       <YearCloseCard />
+
+      <CostFixCard />
 
       <Card title="Lịch sử nhập hàng" subtitle="Bấm phiếu để xem ảnh có mã QR trả tiền người bán">
         {lichSu.length === 0 ? (
@@ -148,6 +171,7 @@ export default function Stock() {
         />
       )}
       {anh && <PurchaseModal purchaseId={anh} onClose={() => setAnh(null)} />}
+      {chotSo && <YearCloseForm onClose={() => setChotSo(false)} />}
       {importing && <StockInForm entry={importing} onClose={() => setImporting(null)} />}
       {editProd && <ProductForm product={editProd === 'new' ? undefined : editProd} onClose={() => setEditProd(null)} />}
     </div>

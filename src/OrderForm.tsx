@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Icon } from './icons'
-import { debtBefore, fmtDate, invoiceNo, money, nextOrderNo, orderTotal, today } from './logic'
+import { costAt, debtBefore, fmtDate, invoiceNo, money, nextOrderNo, orderTotal, priceWarnings, today } from './logic'
 import { newId, store } from './store'
 import type { Customer, Order, OrderItem } from './types'
 import { Avatar, Btn, Field, Modal, MoneyInput, QtyStepper, fold, inputCls, useApp } from './ui'
@@ -41,8 +41,8 @@ export default function OrderForm({
     .filter((p) => lines[p.id]?.qty > 0)
     .map((p) => {
       const old = editing?.items.find((i) => i.productId === p.id)
-      // giữ giá vốn cũ khi sửa đơn, đơn mới lấy giá vốn hiện tại
-      return { productId: p.id, name: p.name, qty: lines[p.id].qty, price: lines[p.id].price, cost: old?.cost ?? p.cost }
+      // giữ giá vốn cũ khi sửa đơn; đơn mới lấy giá vốn TẠI NGÀY BÁN (đơn ghi lùi ngày không bị lấy giá phiếu nhập mới hơn)
+      return { productId: p.id, name: p.name, qty: lines[p.id].qty, price: lines[p.id].price, cost: old?.cost ?? costAt(data, p.id, date) ?? p.cost }
     })
   const draft: Order = {
     id: editing?.id ?? '__draft',
@@ -65,9 +65,16 @@ export default function OrderForm({
     return (r?.stock ?? 0) + mine // khi sửa đơn: số đã trừ của chính đơn này được cộng lại
   }
 
+  // Chốt chặn trước khi lưu: giá bất thường, bán quá số tồn (tránh tồn âm)
+  const warnings = [
+    ...priceWarnings(items),
+    ...items.filter((i) => i.qty > stockOf(i.productId)).map((i) => `${i.name}: bán ${i.qty} chai nhưng kho chỉ còn ${stockOf(i.productId)} — chưa ghi phiếu nhập?`),
+  ]
+
   const save = async () => {
     if (!customerId) return toast('Chọn khách hàng trước')
     if (!items.length) return toast('Chưa nhập số lượng chai nào')
+    if (warnings.length && !confirm(`Kiểm tra lại trước khi lưu:\n\n• ${warnings.join('\n• ')}\n\nVẫn lưu đơn?`)) return
     setSaving(true)
     try {
       const id = editing?.id ?? newId()
@@ -200,6 +207,17 @@ export default function OrderForm({
         <Field label="Ghi chú (không bắt buộc)">
           <input value={note} onChange={(e) => setNote(e.target.value)} className={inputCls} placeholder="VD: giao tận nơi, hẹn trả cuối tháng…" />
         </Field>
+
+        {warnings.length > 0 && (
+          <div className="rounded-2xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-300">
+            <div className="font-bold">Kiểm tra lại</div>
+            <ul className="mt-1 list-disc space-y-0.5 pl-5">
+              {warnings.map((w) => (
+                <li key={w}>{w}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <Btn onClick={save} disabled={saving || !customerId || !items.length} className="w-full py-3 text-base">
           <Icon name="receipt" className="h-5 w-5" /> {saving ? 'Đang lưu…' : editing ? 'Lưu & xem hoá đơn' : 'Lưu đơn & xuất hoá đơn'}

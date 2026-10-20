@@ -2,7 +2,7 @@
  * Phần tính toán thuần (không đụng giao diện / Firebase) — có test ở logic.test.ts.
  * Mọi số tiền là đồng, số nguyên.
  */
-import type { AppData, Customer, Order, Product, Purchase } from './types'
+import type { AppData, Customer, Order, OrderItem, Product, Purchase } from './types'
 
 // ---------- Định dạng ----------
 
@@ -221,6 +221,50 @@ export function latestCost(d: Pick<AppData, 'stockIns'> & { purchases?: Purchase
   for (const s of d.stockIns) if (s.productId === productId) xet(s.date, s.createdAt, s.unitCost)
   for (const p of d.purchases ?? []) for (const i of p.items) if (i.productId === productId) xet(p.date, p.createdAt, i.unitCost)
   return best?.cost
+}
+
+/**
+ * Giá vốn của một loại hàng TẠI NGÀY BÁN: lấy lần nhập gần nhất trước/đúng ngày đó.
+ * Bán trước cả lần nhập đầu tiên (thiếu phiếu tồn đầu kỳ) thì lấy lần nhập sớm nhất. Chưa nhập lần nào → undefined.
+ * Nhờ vậy đơn ghi lùi ngày không bị lấy giá vốn của phiếu nhập mới hơn.
+ */
+export function costAt(d: Pick<AppData, 'stockIns'> & { purchases?: Purchase[] }, productId: string, date: string): number | undefined {
+  const lan: { date: string; createdAt: number; cost: number }[] = []
+  for (const s of d.stockIns) if (s.productId === productId) lan.push({ date: s.date, createdAt: s.createdAt, cost: s.unitCost })
+  for (const p of d.purchases ?? []) for (const i of p.items) if (i.productId === productId) lan.push({ date: p.date, createdAt: p.createdAt, cost: i.unitCost })
+  if (!lan.length) return undefined
+  lan.sort(byDateAsc)
+  const truoc = lan.filter((x) => x.date <= date)
+  return (truoc.length ? truoc[truoc.length - 1] : lan[0]).cost
+}
+
+/** Cảnh báo giá bán bất thường trước khi lưu đơn (gõ thiếu số 0, bán dưới giá vốn) */
+export function priceWarnings(items: Pick<OrderItem, 'name' | 'qty' | 'price' | 'cost'>[]): string[] {
+  const out: string[] = []
+  for (const i of items) {
+    if (i.qty <= 0) continue
+    if (i.price < 1000) out.push(`${i.name}: giá ${i.price.toLocaleString('vi-VN')}đ/chai — gõ thiếu số 0?`)
+    else if (i.cost > 0 && i.price < i.cost) out.push(`${i.name}: bán ${i.price.toLocaleString('vi-VN')}đ thấp hơn giá vốn ${i.cost.toLocaleString('vi-VN')}đ`)
+  }
+  return out
+}
+
+/** Các đơn có giá vốn khác với giá vốn tại ngày bán (do nhập đơn lùi ngày) — kèm lãi cũ / lãi mới để tính lại */
+export function costFixes(d: Pick<AppData, 'orders' | 'stockIns'> & { purchases?: Purchase[] }): { order: Order; fixed: Order; before: number; after: number }[] {
+  const out: { order: Order; fixed: Order; before: number; after: number }[] = []
+  for (const o of d.orders) {
+    let doi = false
+    const items = o.items.map((i) => {
+      const c = costAt(d, i.productId, o.date)
+      if (c === undefined || c === i.cost) return i
+      doi = true
+      return { ...i, cost: c }
+    })
+    if (!doi) continue
+    const fixed = { ...o, items }
+    out.push({ order: o, fixed, before: orderProfit(o), after: orderProfit(fixed) })
+  }
+  return out.sort((a, b) => byDateAsc(a.order, b.order))
 }
 
 // ---------- Thống kê ----------

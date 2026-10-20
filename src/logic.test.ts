@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   addDays,
+  costAt,
+  costFixes,
+  priceWarnings,
   asciiNote,
   crc16,
   daysBetween,
@@ -260,5 +263,34 @@ describe('chốt sổ & thống kê năm', () => {
     const st = yearStats(orders, ys)
     expect(st.map((x) => x.orders)).toEqual([1, 0, 2])
     expect(st[2].revenue).toBe(1000000)
+  })
+})
+
+describe('chốt chặn nhập liệu', () => {
+  const pn = (id: string, date: string, unitCost: number): Purchase => ({ id, no: 1, date, items: [{ productId: 'p3', name: 'Chai 330ml', qty: 20, unitCost }], paid: 0, createdAt: 1 })
+  const purchases = [pn('a', '2026-09-01', 13000), pn('b', '2026-10-20', 20000)]
+  it('giá vốn theo ngày bán: lấy lần nhập gần nhất trước ngày bán; bán trước lần nhập đầu thì lấy lần sớm nhất', () => {
+    expect(costAt({ stockIns: [], purchases }, 'p3', '2026-09-04')).toBe(13000)
+    expect(costAt({ stockIns: [], purchases }, 'p3', '2026-10-20')).toBe(20000)
+    expect(costAt({ stockIns: [], purchases }, 'p3', '2026-01-28')).toBe(13000)
+    expect(costAt({ stockIns: [], purchases }, 'p1', '2026-01-28')).toBeUndefined()
+  })
+  it('cảnh báo giá gõ thiếu số 0 và bán dưới giá vốn', () => {
+    const w = priceWarnings([
+      { name: 'Chai 330ml', qty: 40, price: 26, cost: 13000 },
+      { name: 'Chai 500ml', qty: 10, price: 15000, cost: 20000 },
+      { name: 'Chai 1 lít', qty: 5, price: 60000, cost: 40000 },
+    ])
+    expect(w).toHaveLength(2)
+    expect(w[0]).toContain('thiếu số 0')
+    expect(w[1]).toContain('thấp hơn giá vốn')
+  })
+  it('tính lại giá vốn đơn ghi lùi ngày', () => {
+    const o = order({ date: '2026-09-04', items: [{ productId: 'p3', name: 'Chai 330ml', qty: 15, price: 20000, cost: 20000 }] })
+    const ok = order({ date: '2026-10-21', items: [{ productId: 'p3', name: 'Chai 330ml', qty: 5, price: 20000, cost: 20000 }] })
+    const f = costFixes({ orders: [o, ok], stockIns: [], purchases })
+    expect(f).toHaveLength(1)
+    expect(f[0].fixed.items[0].cost).toBe(13000)
+    expect([f[0].before, f[0].after]).toEqual([0, 105000])
   })
 })

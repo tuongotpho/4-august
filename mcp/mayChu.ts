@@ -24,6 +24,8 @@ import {
   orderProfit,
   orderQty,
   orderTotal,
+  costAt,
+  priceWarnings,
   predict,
   predictAll,
   qtyByProduct,
@@ -278,6 +280,7 @@ export function taoMayChu(kho: Kho, bayGio: () => string = today) {
         giam_gia: z.number().int().min(0).optional(),
         khach_tra: z.number().int().min(0).optional().describe('Khách trả ngay bao nhiêu (mặc định 0 = ghi nợ cả đơn)'),
         ghi_chu: z.string().max(200).optional(),
+        bo_qua_canh_bao: z.boolean().optional().describe('true = người dùng đã xác nhận giá bất thường (giá < 1.000đ hoặc dưới giá vốn) là đúng'),
       },
     },
     async (a) => {
@@ -285,14 +288,18 @@ export function taoMayChu(kho: Kho, bayGio: () => string = today) {
       const c = timKhach(d, a.khach)
       if (typeof c === 'string') return loi(c)
       const items: OrderItem[] = []
+      const ngayBan = a.ngay ?? bayGio()
       for (const h of a.hang) {
         const p = timLoai(d, h.loai)
         if (typeof p === 'string') return loi(p)
         const gia = h.don_gia ?? p.price
         if (!gia) return loi(`Loại "${p.name}" chưa đặt giá bán — hỏi người dùng đơn giá hoặc dùng sua_gia trước.`)
-        items.push({ productId: p.id, name: p.name, qty: h.so_luong, price: gia, cost: p.cost })
+        items.push({ productId: p.id, name: p.name, qty: h.so_luong, price: gia, cost: costAt(d, p.id, ngayBan) ?? p.cost })
       }
-      const o: Order = { id: newId(), no: nextOrderNo(d.orders), customerId: c.id, date: a.ngay ?? bayGio(), items, discount: a.giam_gia ?? 0, paid: a.khach_tra ?? 0, note: a.ghi_chu?.trim() || undefined, createdAt: Date.now() }
+      const canhBao = priceWarnings(items)
+      if (canhBao.length && !a.bo_qua_canh_bao)
+        return loi(`Giá bất thường, CHƯA ghi đơn: ${canhBao.join('; ')}. Hỏi lại người dùng; đúng là giá đó thì gửi lại với bo_qua_canh_bao=true.`)
+      const o: Order = { id: newId(), no: nextOrderNo(d.orders), customerId: c.id, date: ngayBan, items, discount: a.giam_gia ?? 0, paid: a.khach_tra ?? 0, note: a.ghi_chu?.trim() || undefined, createdAt: Date.now() }
       const noCu = debtBefore(d, o)
       await kho.ghi('orders', o.id, { ...o })
       const tom = `${items.map((i) => `${i.qty} ${i.name}`).join(', ')} = ${orderTotal(o)}đ, trả ${o.paid}đ`

@@ -31,7 +31,8 @@ export default function Overview() {
   const debtors = [...debts.values()].filter((d) => d > 0).length
   const preds = useMemo(() => predictAll(data, now), [data, now])
   const due = preds.filter((p) => p.status === 'overdue' || p.status === 'soon')
-  const low = stock.filter((s) => s.low && !s.product.inactive)
+  const low = stock.filter((s) => s.low && s.stock >= 0 && !s.product.inactive)
+  const am = stock.filter((s) => s.stock < 0)
   const recent = [...data.orders].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt).slice(0, 5)
 
   const pct = prev.revenue ? Math.round(((cur.revenue - prev.revenue) / prev.revenue) * 100) : null
@@ -52,6 +53,17 @@ export default function Overview() {
         <Stat label="Số chai đã bán" value={num(cur.qty)} sub="tháng này" />
         <Stat label="Khách còn nợ" value={short(totalDebt)} tone={totalDebt > 0 ? 'red' : 'slate'} sub={`${debtors} khách`} />
       </div>
+
+      {am.length > 0 && (
+        <button onClick={() => go('stock')} className="flex w-full cursor-pointer items-center gap-3 rounded-2xl bg-red-50 p-3 text-left ring-1 ring-red-300">
+          <Icon name="box" className="h-6 w-6 shrink-0 text-red-700" />
+          <div className="min-w-0 flex-1 text-sm">
+            <div className="font-bold text-red-900">Tồn kho bị âm — thiếu phiếu nhập?</div>
+            <div className="text-red-800">{am.map((s) => `${s.product.name}: âm ${num(-s.stock)} chai`).join(' · ')}</div>
+          </div>
+          <Icon name="chevron" className="h-4 w-4 text-red-700" />
+        </button>
+      )}
 
       {low.length > 0 && (
         <button onClick={() => go('stock')} className="flex w-full cursor-pointer items-center gap-3 rounded-2xl bg-amber-50 p-3 text-left ring-1 ring-amber-200">
