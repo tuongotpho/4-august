@@ -51,7 +51,7 @@ button.chinh { background: var(--chinh); border-color: var(--chinh); color: #fff
 button.nguy { color: var(--chi); border-color: var(--chi); }
 code { font-size: 12px; }
 
-.trang { max-width: 1200px; margin: 0 auto; padding: 16px; }
+.trang { max-width: 1200px; margin: 0 auto; padding: 16px; padding-top: calc(16px + env(safe-area-inset-top)); }
 header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 h1 { font-size: 20px; margin: 0; }
 .tai-khoan, .tai-khoan .menu { display: flex; gap: 8px; align-items: center; }
@@ -122,7 +122,7 @@ h1 { font-size: 20px; margin: 0; }
 .thanh-ngang .thanh { height: 10px; border-radius: 3px; opacity: .8; }
 
 @media (max-width: 700px) {
-  .trang { padding: 12px; }
+  .trang { padding: 12px; padding-top: calc(12px + env(safe-area-inset-top)); }
   .tong-hop { grid-template-columns: 1fr 1fr; gap: 8px; }
   .tong-hop .o-so:first-child { grid-column: 1 / -1; }
   .o-so { padding: 8px 12px; }
