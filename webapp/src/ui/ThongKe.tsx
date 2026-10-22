@@ -65,8 +65,10 @@ export function ThongKe({ ds }: { ds: GiaoDich[] }) {
                 <th>Tháng</th>
                 <th className="so">Thu</th>
                 <th className="so">Chi</th>
-                <th className="so">Chênh lệch</th>
-                <th className="so">Tồn cuối tháng</th>
+                <th className="so an-dt">Chênh lệch</th>
+                <th className="so">
+                  Tồn<span className="an-dt"> cuối tháng</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -75,7 +77,7 @@ export function ThongKe({ ds }: { ds: GiaoDich[] }) {
                   <td>{`${t.thang.slice(5)}/${t.thang.slice(0, 4)}`}</td>
                   <td className="so thu">{dinhDangTien(t.thu)}</td>
                   <td className="so chi">{dinhDangTien(t.chi)}</td>
-                  <td className={`so ${t.thu - t.chi < 0 ? 'am' : ''}`}>{dinhDangTien(t.thu - t.chi)}</td>
+                  <td className={`so an-dt ${t.thu - t.chi < 0 ? 'am' : ''}`}>{dinhDangTien(t.thu - t.chi)}</td>
                   <td className={`so ${t.ton < 0 ? 'am' : ''}`}>{dinhDangTien(t.ton)}</td>
                 </tr>
               ))}

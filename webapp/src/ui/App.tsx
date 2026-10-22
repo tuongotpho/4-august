@@ -61,6 +61,9 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
   const [form, setForm] = useState<{ ban?: GiaoDich; mau?: MauNhap | null; macDinh?: GiaoDich; tieuDe?: string } | null>(null);
   const [moChonMau, setMoChonMau] = useState(false);
   const [moAI, setMoAI] = useState(false);
+  /** Điện thoại: menu ⋯ ở đầu trang và phần lọc thêm (nhóm, năm, tháng…) mặc định gập. */
+  const [moMenu, setMoMenu] = useState(false);
+  const [moLoc, setMoLoc] = useState(false);
   const [mauRieng, setMauRieng] = useState<MauNhap[] | null>(null);
   const dsMau = mauRieng ?? MAU_MAC_DINH;
   const fileRef = useRef<HTMLInputElement>(null);
@@ -79,6 +82,7 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
   const tongHet = tong(so);
   const tongLoc = tong(daLoc);
   const coLoc = Object.values(boLoc).some(Boolean);
+  const soLocThem = (['loai', 'nhom', 'nam', 'thang', 'chiCanKiemTra'] as const).filter((k) => boLoc[k]).length;
   const soCanKT = so.filter((g) => g.canhBao.length).length;
   const khoanUng = useMemo(() => congNo(ds ?? [], ngayTruoc(0)), [ds]);
   const nam = cacNam(so);
@@ -113,18 +117,27 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
     <div className="trang">
       <header>
         <h1>Quỹ phòng KTAT</h1>
-        <div className="tai-khoan">
-          {user ? (
-            <>
-              {store.ai && <button onClick={() => setMoAI(true)}>Kết nối AI</button>}
-              <span className="nho an-dt">{user.email}</span>
-              <button onClick={onDangXuat}>Đăng xuất</button>
-            </>
-          ) : (
-            <span className="nho" title="Chưa cấu hình Firebase — dữ liệu chỉ nằm trong trình duyệt này">
-              Lưu trên máy này
-            </span>
-          )}
+        <div className={moMenu ? 'tai-khoan mo' : 'tai-khoan'}>
+          <button className="nut-menu" aria-label="Menu" aria-expanded={moMenu} onClick={() => setMoMenu(!moMenu)}>
+            ⋯
+          </button>
+          {moMenu && <div className="nen-menu" onClick={() => setMoMenu(false)} />}
+          {/* Máy tính: các nút nằm ngang. Điện thoại: thành danh sách thả xuống từ nút ⋯ */}
+          <div className="menu" onClick={() => setMoMenu(false)}>
+            {user ? (
+              <span className="nho email">{user.email}</span>
+            ) : (
+              <span className="nho email" title="Chưa cấu hình Firebase — dữ liệu chỉ nằm trong trình duyệt này">
+                Lưu trên máy này
+              </span>
+            )}
+            {user && store.ai && <button onClick={() => setMoAI(true)}>Kết nối AI</button>}
+            <button onClick={() => fileRef.current?.click()}>Nhập JSON</button>
+            <button onClick={xuat} disabled={!daLoc.length}>
+              Xuất Excel (CSV)
+            </button>
+            {user && <button onClick={onDangXuat}>Đăng xuất</button>}
+          </div>
         </div>
       </header>
 
@@ -153,11 +166,7 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
         <button className={tab === 'cong-no' ? 'chon' : ''} onClick={() => setTab('cong-no')}>
           Công nợ ứng
         </button>
-        <span style={{ flex: 1 }} />
-        <button onClick={() => fileRef.current?.click()}>Nhập JSON</button>
-        <button onClick={xuat} disabled={!daLoc.length}>
-          Xuất Excel (CSV)
-        </button>
+        <span style={{ flex: 1 }} className="an-dt" />
         <button className="chinh an-dt" onClick={() => setMoChonMau(true)}>
           + Thêm
         </button>
@@ -195,36 +204,41 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
               value={boLoc.tuKhoa ?? ''}
               onChange={(e) => datLoc({ tuKhoa: e.target.value })}
             />
-            <select value={boLoc.loai ?? ''} onChange={(e) => datLoc({ loai: e.target.value as BoLoc['loai'], nhom: '' })}>
-              <option value="">Thu + Chi</option>
-              <option value="thu">Thu</option>
-              <option value="chi">Chi</option>
-            </select>
-            <select value={boLoc.nhom ?? ''} onChange={(e) => datLoc({ nhom: e.target.value })}>
-              <option value="">Mọi nhóm</option>
-              {dsNhom.map((n) => (
-                <option key={n}>{n}</option>
-              ))}
-            </select>
-            <select value={boLoc.nam ?? ''} onChange={(e) => datLoc({ nam: e.target.value })}>
-              <option value="">Mọi năm</option>
-              {nam.map((n) => (
-                <option key={n}>{n}</option>
-              ))}
-            </select>
-            <select value={boLoc.thang ?? ''} onChange={(e) => datLoc({ thang: e.target.value })}>
-              <option value="">Mọi tháng</option>
-              {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((t) => (
-                <option key={t} value={t}>
-                  Tháng {+t}
-                </option>
-              ))}
-            </select>
-            <label className="o-chon">
-              <input type="checkbox" checked={!!boLoc.chiCanKiemTra} onChange={(e) => datLoc({ chiCanKiemTra: e.target.checked })} />
-              Cần kiểm tra ({soCanKT})
-            </label>
-            {coLoc && <button onClick={() => setBoLoc({})}>Bỏ lọc</button>}
+            <button className={soLocThem ? 'nut-loc chon' : 'nut-loc'} aria-expanded={moLoc} onClick={() => setMoLoc(!moLoc)}>
+              Lọc{soLocThem ? ` (${soLocThem})` : ''} {moLoc ? '▴' : '▾'}
+            </button>
+            <div className={moLoc ? 'loc-them mo' : 'loc-them'}>
+              <select value={boLoc.loai ?? ''} onChange={(e) => datLoc({ loai: e.target.value as BoLoc['loai'], nhom: '' })}>
+                <option value="">Thu + Chi</option>
+                <option value="thu">Thu</option>
+                <option value="chi">Chi</option>
+              </select>
+              <select value={boLoc.nhom ?? ''} onChange={(e) => datLoc({ nhom: e.target.value })}>
+                <option value="">Mọi nhóm</option>
+                {dsNhom.map((n) => (
+                  <option key={n}>{n}</option>
+                ))}
+              </select>
+              <select value={boLoc.nam ?? ''} onChange={(e) => datLoc({ nam: e.target.value })}>
+                <option value="">Mọi năm</option>
+                {nam.map((n) => (
+                  <option key={n}>{n}</option>
+                ))}
+              </select>
+              <select value={boLoc.thang ?? ''} onChange={(e) => datLoc({ thang: e.target.value })}>
+                <option value="">Mọi tháng</option>
+                {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((t) => (
+                  <option key={t} value={t}>
+                    Tháng {+t}
+                  </option>
+                ))}
+              </select>
+              <label className="o-chon">
+                <input type="checkbox" checked={!!boLoc.chiCanKiemTra} onChange={(e) => datLoc({ chiCanKiemTra: e.target.checked })} />
+                Cần kiểm tra ({soCanKT})
+              </label>
+              {coLoc && <button onClick={() => setBoLoc({})}>Bỏ lọc</button>}
+            </div>
           </div>
 
           {tab === 'cong-no' ? (
@@ -286,7 +300,7 @@ function BangSo({ ds, onChon }: { ds: ReturnType<typeof soQuy>; onChon: (g: Giao
   return (
     <div className="cuon">
       <p className="nho">{ds.length} giao dịch — bấm vào một dòng để sửa</p>
-      <table className="bang so-quy">
+      <table className="bang so-quy the-dt">
         <thead>
           <tr>
             <th>Ngày</th>
@@ -304,19 +318,22 @@ function BangSo({ ds, onChon }: { ds: ReturnType<typeof soQuy>; onChon: (g: Giao
             const v = g.canhBao;
             return (
               <tr key={g.id} onClick={() => onChon(g)}>
-                <td className="ngay">{dinhDangNgay(g.ngay)}</td>
-                <td>
+                <td className="ngay">
+                  {dinhDangNgay(g.ngay)}
+                  <span className="chi-dt"> · {g.nhom}</span>
+                </td>
+                <td className="noi-dung">
                   {g.noiDung}
                   {(g.doiTuong || g.ghiChu) && (
                     <div className="nho">{[g.doiTuong, g.ghiChu].filter(Boolean).join(' · ')}</div>
                   )}
                 </td>
                 <td className="nho an-dt">{g.nhom}</td>
-                <td className="so thu">{g.loai === 'thu' ? dinhDangTien(g.soTien) : ''}</td>
-                <td className="so chi">{g.loai === 'chi' ? dinhDangTien(g.soTien) : ''}</td>
-                <td className={`so ${g.ton < 0 ? 'am' : ''}`}>{dinhDangTien(g.ton)}</td>
+                <td className="so thu tien">{g.loai === 'thu' ? dinhDangTien(g.soTien) : ''}</td>
+                <td className="so chi tien">{g.loai === 'chi' ? dinhDangTien(g.soTien) : ''}</td>
+                <td className={`so ton ${g.ton < 0 ? 'am' : ''}`}>{dinhDangTien(g.ton)}</td>
                 <td className="nho an-dt">{g.hinhThuc}</td>
-                <td>
+                <td className="nhan">{g.hinhThuc && <span className="nhan-tag chi-dt">{g.hinhThuc}</span>}
                   {g.daHoan && <span className="nhan-tag hoan">Đã hoàn</span>}
                   {v.length > 0 && (
                     <span className="nhan-tag canh-bao" title={v.join('\n')}>

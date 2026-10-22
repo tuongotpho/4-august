@@ -79,7 +79,7 @@ function BangUng({
       {ds.length === 0 ? (
         <p className="nho">Không có khoản nào.</p>
       ) : (
-        <table className="bang so-quy">
+        <table className="bang so-quy the-dt ung">
           <thead>
             <tr>
               <th>Ngày</th>
@@ -94,8 +94,11 @@ function BangUng({
           <tbody>
             {ds.map((k) => (
               <tr key={k.g.id} onClick={() => onChon(k.g)}>
-                <td className="ngay">{dinhDangNgay(k.g.ngay)}</td>
-                <td>
+                <td className="ngay">
+                  {dinhDangNgay(k.g.ngay)}
+                  {k.conLai > 0 && <span className="chi-dt"> · {k.soNgay} ngày</span>}
+                </td>
+                <td className="noi-dung">
                   {k.g.noiDung}
                   {k.g.doiTuong && <div className="nho">{k.g.doiTuong}</div>}
                   {k.cacLanTra.map((x) => (
@@ -111,13 +114,13 @@ function BangUng({
                     </div>
                   ))}
                 </td>
-                <td className="so">{dinhDangTien(k.g.soTien)}</td>
+                <td className="so goc">{dinhDangTien(k.g.soTien)}</td>
                 <td className="so an-dt">{k.daTra ? dinhDangTien(k.daTra) : ''}</td>
-                <td className="so">
+                <td className="so tien">
                   {k.conLai ? <b>{dinhDangTien(k.conLai)}</b> : <span className="nhan-tag hoan">Xong</span>}
                 </td>
                 <td className={`so an-dt ${k.conLai && (k.soNgay ?? 0) > SO_NGAY_QUA_HAN ? 'am' : ''}`}>{k.conLai ? k.soNgay : ''}</td>
-                <td>
+                <td className="nut">
                   {k.conLai > 0 && (
                     <button
                       onClick={(e) => {
