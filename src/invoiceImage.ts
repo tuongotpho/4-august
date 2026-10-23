@@ -446,8 +446,14 @@ export function purchaseAmountToPay(p: Pick<PurchaseParams, 'purchase' | 'oldDeb
   return Math.max(0, purchaseTotal(p.purchase) - (p.purchase.paid || 0) + (p.showDebt ? p.oldDebt : 0))
 }
 
-/** Nội dung chuyển khoản cho người bán: số phiếu + tên shop (để họ biết ai trả) */
-export const purchaseTransferNote = (pu: Purchase, s: Settings) => `${purchaseNo(pu.no)} ${s.shopName}`.trim()
+/**
+ * Nội dung CK trả người bán, cùng kiểu phiếu xuất: ngày nhập (ddmmyyyy) + "thanh toán Tương ớt",
+ * VD "23102026 thanh toán Tương ớt" (mã QR tự bỏ dấu thành "23102026 thanh toan Tuong ot").
+ */
+export const purchaseTransferNote = (pu: Purchase) => {
+  const [y, m, d] = pu.date.split('-')
+  return `${d}${m}${y} thanh toán Tương ớt`
+}
 
 export function drawPurchase(p: PurchaseParams): Promise<HTMLCanvasElement> {
   const { purchase: pu, supplier: nb, settings: s, oldDebt, showDebt } = p
@@ -472,7 +478,7 @@ export function drawPurchase(p: PurchaseParams): Promise<HTMLCanvasElement> {
     dueLabel: 'CÒN PHẢI TRẢ',
     doneLabel: 'ĐÃ TRẢ ĐỦ',
     bank: nb?.bankBin && nb.bankAccount ? { bin: nb.bankBin, bankName: nb.bankName, account: nb.bankAccount, holder: nb.accountName, title: 'QUÉT MÃ ĐỂ TRẢ NGƯỜI BÁN' } : undefined,
-    qrNote: purchaseTransferNote(pu, s),
+    qrNote: purchaseTransferNote(pu),
     footer: pu.note ? 'Ghi chú: ' + pu.note : '',
   })
 }
