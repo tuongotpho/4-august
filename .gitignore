@@ -8,3 +8,6 @@ dist/
 .claude/
 *.tsbuildinfo
 *.log
+
+# Báo cáo: có số liệu thật (mã số thuế, doanh thu, tồn quỹ) — chỉ để trên máy, KHÔNG đưa lên GitHub
+bao-cao/

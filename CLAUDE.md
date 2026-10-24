@@ -1,6 +1,8 @@
 # 4.August — app chung gom 5 app cá nhân
 
-> Đọc hết file này trước khi làm. Phương án đã CHỐT ngày 24/10/2026 (lý do và bằng chứng: `F:\AI\01-BAO-CAO-WEB-TONG-QUAN-LY.md`, `F:\AI\02-BAO-CAO-CHOT-GOM-5-APP.md`). Đừng bàn lại từ đầu, cứ làm tiếp theo mục "Tiến độ".
+> Đọc hết file này trước khi làm. Phương án đã CHỐT ngày 24/10/2026 (lý do và bằng chứng: `F:\AI\4.August\bao-cao\01-BAO-CAO-WEB-TONG-QUAN-LY.md`, `F:\AI\4.August\bao-cao\02-BAO-CAO-CHOT-GOM-5-APP.md`). Đừng bàn lại từ đầu, cứ làm tiếp theo mục "Tiến độ".
+>
+> **Báo cáo của dự án** nằm ở `F:\AI\4.August\bao-cao\` (đánh số `NN-BAO-CAO-…md`, mục lục `00-MUC-LUC-BAO-CAO.md`). Thư mục này bị `.gitignore` chặn — có số liệu thật (mã số thuế, doanh thu, tồn quỹ), không đưa lên GitHub.
 
 ## Mục tiêu
 Gom **dần dần** 5 app cá nhân thành **một app chung** (một giao diện, một lần đăng nhập Google). Không gấp: mỗi đợt chuyển một app. **Địa chỉ web cũ, kết nối AI (MCP) cũ, bot Telegram cũ vẫn phải chạy suốt quá trình.**
@@ -47,13 +49,13 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
 
 ## Tiến độ (cập nhật cuối mỗi đợt, mới nhất ở trên)
 
-- 24/10/2026 — **Trang chủ là nơi vào duy nhất** (người dùng chốt; chi tiết `F:\AI\10-BAO-CAO-TRANG-CHU-DANG-NHAP-CAI-DAT.md`).
+- 24/10/2026 — **Trang chủ là nơi vào duy nhất** (người dùng chốt; chi tiết `F:\AI\4.August\bao-cao\10-BAO-CAO-TRANG-CHU-DANG-NHAP-CAI-DAT.md`).
   - `apps/cong` giờ là app Vite + React + Tailwind + Firebase Auth (chỉ đăng nhập). Chưa đăng nhập: nút "Đăng nhập bằng Google", 5 ô app khoá. Đăng nhập: tab **Ứng dụng** / **Cài đặt** (`#cai-dat`). Cài đặt = Tài khoản + Đăng xuất (cả 5 app) + mỗi app một mục: địa chỉ Kết nối AI (chép) + nút "Mở cài đặt riêng →" = `/<app>/?cai-dat`. Danh sách app ở `apps/cong/src/dsApp.ts`; test `dsApp.test.ts` bắt buộc mỗi app có đủ redirect + 2 rewrite trong `vercel.json`.
   - Mỗi app có file `cong.ts` (`QUA_CONG` = đường dẫn bắt đầu bằng `/<app>/`, `MO_CAI_DAT`, `TRANG_CHU='../'`). Qua cổng: chưa đăng nhập → `location.replace('../')`; bỏ Đăng xuất + nút/tab Cài đặt, thêm "← Trang chủ"; `?cai-dat` mở thẳng phần cài đặt riêng (QP: hộp Kết nối AI; LG: tab Cài đặt, ẩn mục Tài khoản; TƠ: hộp Cài đặt; HĐ: tab Cài đặt & sao lưu; KT: hộp tài khoản mở sẵn, không nút Đăng xuất). Ở địa chỉ gốc: không đổi gì (đã đo tuongot-si).
   - Đo trên mạng (phiên người dùng): trang chủ 2 tab, 5 link; Cài đặt có tài khoản + 5 mục + 5 địa chỉ MCP đúng gốc; 5/5 app qua cổng đúng như trên ở cả mở thường lẫn `?cai-dat`. Trên máy (chưa đăng nhập): 5 ô khoá; `/lich-giang/` `/hoa-don/` `/khai-thue/` tự về trang chủ. Test: QP 17, LG 19, TƠ 38, HĐ 120, KT 119, cổng 2 — đạt.
   - **Chưa đo:** Quỹ phòng + Tương ớt tự về trang chủ khi chưa đăng nhập (bản build trên máy không có cấu hình Firebase nên chạy chế độ thử) — cần người dùng: Cài đặt → Đăng xuất → mở `/quy-phong/`, `/tuong-ot/`.
 
-- 24/10/2026 — **Giai đoạn A xong: một địa chỉ chung `https://app-by-lethanh.vercel.app`, đăng nhập một lần** (chi tiết: `F:\AI\09-BAO-CAO-GIAI-DOAN-A-CONG-CHUNG.md`; phương án + đo giao diện: `F:\AI\08-…`).
+- 24/10/2026 — **Giai đoạn A xong: một địa chỉ chung `https://app-by-lethanh.vercel.app`, đăng nhập một lần** (chi tiết: `F:\AI\4.August\bao-cao\09-BAO-CAO-GIAI-DOAN-A-CONG-CHUNG.md`; phương án + đo giao diện: `F:\AI\4.August\bao-cao\08-…`).
   - **Đã chốt với người dùng:** tên miền `app-by-lethanh.vercel.app`; **mỗi app một màu nhận diện** (giữ màu đang dùng: QP `#1f4e78`, LG teal-700 `#0f766e`, TƠ red-700 `#b91c1c`, HĐ blue-600 `#2563eb`, KT emerald-700 `#047857`), mọi thứ khác giống nhau; **chế độ tối cho cả 5, làm sau cùng**.
   - Trang cổng `apps/cong` (HTML tĩnh + `vercel.json`), project Vercel **`cong-4august`** (`prj_IvxBxX3hztdxOHM5jVOOUeXDxypN`), domain `app-by-lethanh.vercel.app`. Chuyển tiếp ngầm: `/quy-phong/` `/lich-giang/` `/tuong-ot/` `/hoa-don/` `/khai-thue/` → địa chỉ gốc từng app. Phải có cả quy tắc `/<app>/` riêng — `:path*` không khớp đường dẫn trống.
   - 5 app build `base: './'` (đường dẫn tương đối) → cùng bản build chạy ở địa chỉ gốc lẫn dưới cổng. Manifest: `start_url`/`scope` `./`, icon tương đối (giữ `"id": "/"` của Quỹ phòng để app đã cài không bị coi là app khác). Gọi máy chủ Telegram/AI bằng đường dẫn tương đối. Hiển thị địa chỉ MCP + link Google Calendar (Lịch giảng): nếu `location.hostname === 'app-by-lethanh.vercel.app'` thì dùng địa chỉ gốc của app.
@@ -61,7 +63,7 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
   - **Lỗi Claude gây ra rồi đã sửa:** `vercel link --project app-by-lethanh` gắn vào **project v0 cũ có sẵn** của người dùng (`prj_My3we…`, trang `v0-app-by-lethanh.vercel.app`, Next.js) và sửa 3 thiết lập. Đã trả về đúng gốc (framework `nextjs`, rootDirectory trống, không Ignored Build Step — tra từ bản deploy cũ), trang v0 vẫn 200, không deploy gì vào đó. **Bài học: trước `vercel link --project X` phải `vercel api /v9/projects/X` xem đã tồn tại chưa; tạo mới bằng `vercel project add`.**
   - Việc kế tiếp: **B0** — `packages/giao-dien` (token màu/bo góc/font Be Vietnam Pro đặt sẵn trong app, đầu trang chung có nút chuyển app, chân trang) + trang mẫu cho người dùng duyệt; rồi B1…B5 (Hoá đơn → Lịch giảng → Khai thuế → Tương ớt → Quỹ phòng), B6 chế độ tối.
 
-- 24/10/2026 — **Đợt 5 (Khai thuế) đã chạy trên mạng từ 4.August → xong giai đoạn "một bản code gốc" cho cả 5 app** (chi tiết + tổng kết: `F:\AI\07-BAO-CAO-DOT-5-KHAI-THUE-TONG-KET.md`).
+- 24/10/2026 — **Đợt 5 (Khai thuế) đã chạy trên mạng từ 4.August → xong giai đoạn "một bản code gốc" cho cả 5 app** (chi tiết + tổng kết: `F:\AI\4.August\bao-cao\07-BAO-CAO-DOT-5-KHAI-THUE-TONG-KET.md`).
   - `apps/khaithue` (git subtree từ `F:\AI\HTKK-thanh` main = GitHub = bản đang chạy `66035f8`; 34 commit, 106/106 file). App ở `apps/khaithue/app`, `firebase.json` + `firebase/` ở `apps/khaithue`.
   - **156/156 test** (128 thường — gồm đối chiếu tờ khai thật nhờ junction tạm `apps/khaithue/du-lieu-rieng` → `F:\AI\HTKK-thanh\du-lieu-rieng`, đã gỡ — + 28 luật phân quyền emulator). Build đạt. Footer `©2026 August87-0982722036` → `(C) August87 - 0982722036`.
   - GitHub Actions cũ (test-build + luat-phan-quyen) → `.github/workflows/kiem-tra-khaithue.yml`, xanh.
@@ -72,7 +74,7 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
   - Chờ mắt người dùng: thử Kết nối AI khaithue từ Claude, nhắn thử bot, tin nhắc 8h sáng mai.
 - **Việc kế tiếp của cả dự án** (chưa làm): "app chung" thật — một địa chỉ, đăng nhập một lần (xem "Còn mở"). Có thể dọn dần: xoá repo GitHub cũ (người dùng quyết), gom phần dùng chung vào `packages/`.
 
-- 24/10/2026 — **Đợt 4 (Hoá đơn NPSC) đã chạy trên mạng từ 4.August** (chi tiết: `F:\AI\06-BAO-CAO-DOT-4-HOA-DON.md`).
+- 24/10/2026 — **Đợt 4 (Hoá đơn NPSC) đã chạy trên mạng từ 4.August** (chi tiết: `F:\AI\4.August\bao-cao\06-BAO-CAO-DOT-4-HOA-DON.md`).
   - Repo máy `F:\AI\hoadon` **chậm 5 commit** so với GitHub (bản đang chạy = `2d26206` trên GitHub). Đã `git pull --ff-only` thư mục cũ cho bằng GitHub rồi mới subtree → `apps/hoadon` = đúng bản đang chạy. 29 commit cũ, 101/101 file.
   - Dữ liệu thật `HD-Hung Yen/` + test/script số liệu thật bị `.gitignore` chặn — không chép. Test PDF thật chạy được bằng cách tạm nối junction `apps/hoadon/HD-Hung Yen` → `F:\AI\hoadon\HD-Hung Yen`, chạy xong gỡ.
   - **149/149 test đạt** (120 thường + 29 emulator, gồm test PDF hoá đơn thật). Build đạt. Footer sửa `© 2026 - August87 - 0982722036` → `(C) August87 - 0982722036` (mẫu chung).
@@ -81,7 +83,7 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
   - `F:\AI\hoadon` **đóng băng từ 24/10/2026** (thư mục `HD-Hung Yen` dữ liệu thật vẫn để ở đó — chỉ nằm trên máy).
   - Chờ mắt người dùng: đăng nhập web, nhắn thử bot Telegram hoá đơn, in thử một tờ trình Word.
 
-- 24/10/2026 — **Đợt 3 (Bán buôn tương ớt, có đơn thật) đã chạy trên mạng từ 4.August** (chi tiết: `F:\AI\05-BAO-CAO-DOT-3-TUONG-OT-SI.md`).
+- 24/10/2026 — **Đợt 3 (Bán buôn tương ớt, có đơn thật) đã chạy trên mạng từ 4.August** (chi tiết: `F:\AI\4.August\bao-cao\05-BAO-CAO-DOT-3-TUONG-OT-SI.md`).
   - `apps/tuongot-si` (git subtree từ `F:\AI\2.Ban_ot` main, 12 commit cũ, 64/64 file). lint + 38/38 test + build + build:vercel đạt. Footer có sẵn từ trước (`COPYRIGHT` trong `src/ui.tsx`) — không sửa code app. Footer chân trang chỉ hiện từ màn `lg` (thiết kế cũ).
   - GitHub Actions cũ (`.github/workflows/deploy.yml`, chỉ kiểm tra, không deploy) chuyển thành `.github/workflows/kiem-tra-tuongot-si.yml` ở gốc kho, chạy trong `apps/tuongot-si`, chỉ khi thư mục đó đổi.
   - App đóng gói kiểu Build Output API (`scripts/build-vercel.mjs` → `apps/tuongot-si/.vercel/output`) — chạy được với Root Directory con (đã thử bản xem trước trước khi lên bản chính).
@@ -90,7 +92,7 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
   - `F:\AI\2.Ban_ot` **đóng băng từ 24/10/2026** (file chưa commit `bao-cao/01-BAO-CAO-WEB-TONG-QUAN-LY.md` ở đó là bản chép báo cáo chung, không cần chuyển).
   - Chờ mắt người dùng: lên một đơn thật lần tới xem bình thường không (Claude không tự ghi đơn thử vào dữ liệu thật).
 
-- 24/10/2026 — **Đợt 2 (Lịch giảng ATLĐ) đã chạy trên mạng từ 4.August** (chi tiết: `F:\AI\04-BAO-CAO-DOT-2-LICH-GIANG.md`).
+- 24/10/2026 — **Đợt 2 (Lịch giảng ATLĐ) đã chạy trên mạng từ 4.August** (chi tiết: `F:\AI\4.August\bao-cao\04-BAO-CAO-DOT-2-LICH-GIANG.md`).
   - `apps/antoan` (git subtree từ `F:\AI\ATLD\antoan` main, 10 commit cũ, 60/60 file). 28/28 test đạt (19 thường + 9 emulator), build đạt, footer đã thêm. Không có token Telegram trong mã trình duyệt / lịch sử.
   - Vercel `antoan`: nối `tuongotpho/4-august`, Root Directory `apps/antoan`. Bản `dpl_5vnVqJY7YKD8nUkADm9gm8TzEH9b` gắn quanly-at.vercel.app. Quay lại: Instant Rollback về `dpl_5VTFPawYC7BYkMg4EsMNr4kubbx1`.
   - Kiểm: MCP `tong_quan` khớp 100% (552 lớp 2020–2026, công nợ 9.100.000 / 5 lớp, 2026: 114 lớp / 209.200.000); `/telegram/nhan` trả 401 khi sai mật khẩu (đường sống, khoá không đổi); cron `/cron/nhac` `0 13 * * *` đã đăng ký; footer hiện ở màn đăng nhập.
@@ -101,7 +103,7 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
   - Hạ tầng chung: mọi project Vercel trong kho đặt *Ignored Build Step* = `git diff --quiet HEAD^ HEAD -- .` (thư mục app không đổi thì bỏ qua build). Tuỳ chọn "skip when no changes to root directory" KHÔNG có tác dụng với kho này (không có workspaces) — đã thử, quyphong vẫn build lại.
   - Cách nối một project Vercel: `cd apps/<app>` → `vercel link --yes --project <ten> --scope vietthanh228s-projects` → `vercel git connect https://github.com/tuongotpho/4-august --yes`. CLI tự tạo `.env.local` (token OIDC) và sửa `.gitignore` — xoá `.env.local`, `git checkout -- .gitignore`.
 
-- 24/10/2026 — **Đợt 0 xong, đợt 1 (Quỹ phòng) xong nửa trên máy** (chi tiết: `F:\AI\03-BAO-CAO-DOT-0-1-QUY-PHONG.md`).
+- 24/10/2026 — **Đợt 0 xong, đợt 1 (Quỹ phòng) xong nửa trên máy** (chi tiết: `F:\AI\4.August\bao-cao\03-BAO-CAO-DOT-0-1-QUY-PHONG.md`).
   - Khung: git `main`, `apps/<ten-app>/` + `packages/` (trống). Mỗi app giữ `package-lock.json` riêng, KHÔNG dùng npm workspaces (để Vercel cũ chỉ đổi Root Directory).
   - Quỹ phòng ở `apps/quyphong` (nhập bằng `git subtree` từ `F:\AI\3.Quyphong` main, giữ 8 commit cũ). 19/19 test đạt (17 thường + 2 emulator), build đạt, footer bản quyền đã thêm.
   - Số gốc để so (MCP `tong_quan`): 223 giao dịch, thu 652.840.812, chi 689.724.000, tồn −36.883.188, cần kiểm tra 73.
