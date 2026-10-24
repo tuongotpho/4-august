@@ -58,7 +58,11 @@ export function App() {
 }
 
 function BanQuyen() {
-  return <footer className="ban-quyen">(C) August87 - 0982722036</footer>;
+  return (
+    <footer className="ban-quyen">
+      <p>(C) August87 - 0982722036</p>
+    </footer>
+  );
 }
 
 type Tab = 'so' | 'thong-ke' | 'cong-no';

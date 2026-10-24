@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react'
 import { Icon } from './icons'
 import { dangNhapGoogleChoAi, mayChuChoPhep } from './mcpConnect'
-import { COPYRIGHT } from './ui'
+import { ChanTrang } from './ui'
 
 interface YeuCau {
   ungDung: string
@@ -107,7 +107,7 @@ export default function AiConsentPage() {
 
         {xong && <p className="text-sm text-emerald-700">Xong — đang quay lại ứng dụng AI. Có thể đóng trang này.</p>}
         {!yeuCau && !loi && <p className="text-sm text-slate-500">Đang kiểm tra yêu cầu…</p>}
-        <p className="pt-2 text-center text-xs text-slate-400">{COPYRIGHT}</p>
+        <ChanTrang />
       </div>
     </div>
   )

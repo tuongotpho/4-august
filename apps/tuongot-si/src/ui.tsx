@@ -273,3 +273,19 @@ export function useToast() {
 }
 
 export const COPYRIGHT = '(C) August87 - 0982722036'
+
+/**
+ * Chân trang chung (mẫu thống nhất trang chủ + 5 app): nằm cuối nội dung, đường kẻ mảnh phía trên,
+ * cách nội dung 32px, đệm 16px, chữ 12px xám, căn giữa. Dòng 1 luôn là bản quyền; dòng 2 = ghi chú riêng của app (nếu có).
+ * trenNenMau: biến thể chữ trắng mờ cho nền màu (màn đăng nhập đỏ).
+ */
+export function ChanTrang({ ghiChu, trenNenMau = false }: { ghiChu?: ReactNode; trenNenMau?: boolean }) {
+  return (
+    <footer
+      className={`mt-8 w-full border-t px-4 py-4 text-center text-xs ${trenNenMau ? 'keep-colors border-white/15 text-white/60' : 'border-slate-200 text-slate-500'}`}
+    >
+      <p>{COPYRIGHT}</p>
+      {ghiChu && <p className="mt-1">{ghiChu}</p>}
+    </footer>
+  )
+}

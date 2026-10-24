@@ -61,7 +61,9 @@ h1 { font-size: 20px; margin: 0; }
 @media (min-width: 701px) { .chi-dt { display: none !important; } }
 .loc-them { display: contents; }
 .giua { min-height: 60vh; display: flex; flex-direction: column; gap: 16px; align-items: center; justify-content: center; }
-.ban-quyen { margin-top: 24px; text-align: center; font-size: 12px; color: var(--phu); }
+/* Chân trang chung (mẫu thống nhất trang chủ + 5 app): cuối nội dung, đường kẻ mảnh, cách 32px, đệm 16px, chữ 12px xám, căn giữa */
+.ban-quyen { width: 100%; margin-top: 32px; padding: 16px; border-top: 1px solid var(--vien); text-align: center; font-size: 12px; color: var(--phu); }
+.ban-quyen p { margin: 0; }
 .nho { font-size: 12px; color: var(--phu); }
 .loi { color: var(--chi); }
 .thu { color: var(--thu); }

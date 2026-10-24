@@ -77,8 +77,13 @@ export default function App() {
   return <ManHinh user={mode.user} />
 }
 
+/** Chân trang chung (mẫu thống nhất trang chủ + 5 app): cuối nội dung, đường kẻ mảnh phía trên, cách 32px, đệm 16px, chữ 12px xám, căn giữa. */
 function BanQuyen() {
-  return <footer className="mt-6 text-center text-xs text-slate-400">(C) August87 - 0982722036</footer>
+  return (
+    <footer className="mt-8 w-full border-t border-slate-200 px-4 py-4 text-center text-xs text-slate-500">
+      <p>(C) August87 - 0982722036</p>
+    </footer>
+  )
 }
 
 function ManHinh({ user }: { user: User }) {

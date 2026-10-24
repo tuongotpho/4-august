@@ -80,6 +80,10 @@ export default function App() {
         ) : (
           <CaiDat user={user} />
         )}
+        {/* Chân trang chung (mẫu thống nhất trang chủ + 5 app): cuối nội dung, đường kẻ mảnh phía trên, cách 32px, đệm 16px, chữ 12px xám */}
+        <footer className="mt-8 w-full border-t border-slate-200 px-4 py-4 text-center text-xs text-slate-500">
+          <p>{BAN_QUYEN}</p>
+        </footer>
       </main>
 
       {user && (
@@ -89,8 +93,6 @@ export default function App() {
           <NutTabDuoi dang={tab === 'caiDat'} onClick={() => chonTab('caiDat')}>Cài đặt</NutTabDuoi>
         </nav>
       )}
-
-      <footer className="pb-20 text-center text-xs text-slate-500 sm:pb-6">{BAN_QUYEN}</footer>
     </div>
   )
 }

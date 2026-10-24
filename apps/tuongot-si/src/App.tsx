@@ -14,7 +14,7 @@ import Stats from './pages/Stats'
 import Stock from './pages/Stock'
 import { emptyData, isDemo, login, logout, store, watchAuth, type AuthState } from './store'
 import type { AppData } from './types'
-import { AppCtx, COPYRIGHT, type Ctx, useToast } from './ui'
+import { AppCtx, ChanTrang, type Ctx, useToast } from './ui'
 
 const TABS: { id: string; label: string; icon: IconName }[] = [
   { id: 'overview', label: 'Tổng quan', icon: 'home' },
@@ -144,7 +144,7 @@ export default function App() {
             </button>
           </>
         )}
-        <p className="mt-10 text-xs text-red-100/60">{COPYRIGHT}</p>
+        <ChanTrang trenNenMau />
       </div>
     )
   }
@@ -265,12 +265,8 @@ export default function App() {
               <Overview />
             )}
           </div>
+          <ChanTrang />
         </main>
-
-        {/* Bản quyền cố định ở đáy màn hình (máy tính); điện thoại chỉ ghi trong Cài đặt */}
-        <footer className="fixed right-0 bottom-0 left-64 z-20 hidden border-t border-slate-200/80 bg-white/90 py-1.5 text-center text-xs text-slate-400 backdrop-blur lg:block">
-          {COPYRIGHT}
-        </footer>
 
         {/* Menu dưới (điện thoại) */}
         <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pb-[max(0.125rem,calc(env(safe-area-inset-bottom)-0.75rem))] backdrop-blur lg:hidden">

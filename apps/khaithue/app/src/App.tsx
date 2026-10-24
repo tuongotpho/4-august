@@ -1105,8 +1105,9 @@ export default function App() {
         </>)}
       </main>
 
-      <footer className="border-t border-slate-200 px-4 py-5 text-center text-xs text-slate-500">
-        <p>(C) August87 - 0982722036. Bảo lưu mọi quyền.</p>
+      {/* Chân trang chung (mẫu thống nhất trang chủ + 5 app); dòng 2 = ghi chú riêng của app */}
+      <footer className="mt-8 w-full border-t border-slate-200 px-4 py-4 text-center text-xs text-slate-500">
+        <p>(C) August87 - 0982722036</p>
         <p className="mt-1">Công cụ hỗ trợ lập tờ khai — kiểm tra lại số liệu trước khi nộp lên cơ quan thuế.</p>
       </footer>
 
