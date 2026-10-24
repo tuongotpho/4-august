@@ -39,10 +39,15 @@ Một đợt chỉ được coi là xong khi có đủ bằng chứng đo đư�
 Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên bố xong.
 
 ## Còn mở, chưa quyết
-- Cấu trúc thư mục bên trong (ví dụ `apps/<ten-app>` + `packages/chung`) — chốt ở đợt 0.
+- ~~Cấu trúc thư mục bên trong~~ — đã chốt ở đợt 0: `apps/<ten-app>` + `packages/` (xem `README.md`).
 - App chung chạy chung một địa chỉ (đăng nhập một lần thật sự) — mỗi app sẽ phải build dưới đường dẫn con; chưa thử.
 - Gói Firebase của `app-from-ai` (nhiều khả năng Blaze) và cảnh báo ngân sách — **người dùng kiểm trên Console**.
 
 ## Tiến độ (cập nhật cuối mỗi đợt, mới nhất ở trên)
 
+- 24/10/2026 — **Đợt 0 xong, đợt 1 (Quỹ phòng) xong nửa trên máy** (chi tiết: `F:\AI\03-BAO-CAO-DOT-0-1-QUY-PHONG.md`).
+  - Khung: git `main`, `apps/<ten-app>/` + `packages/` (trống). Mỗi app giữ `package-lock.json` riêng, KHÔNG dùng npm workspaces (để Vercel cũ chỉ đổi Root Directory).
+  - Quỹ phòng ở `apps/quyphong` (nhập bằng `git subtree` từ `F:\AI\3.Quyphong` main, giữ 8 commit cũ). 19/19 test đạt (17 thường + 2 emulator), build đạt, footer bản quyền đã thêm.
+  - Số gốc để so (MCP `tong_quan`): 223 giao dịch, thu 652.840.812, chi 689.724.000, tồn −36.883.188, cần kiểm tra 73.
+  - **CHƯA**: tạo repo GitHub cho 4.August; nối project Vercel `quyphong` sang repo mới với Root Directory `apps/quyphong/webapp`; kiểm đăng nhập/MCP/số liệu trên mạng; đóng băng `F:\AI\3.Quyphong`. Tới lúc đó nếu `3.Quyphong` có commit mới thì kéo về bằng `git subtree pull --prefix=apps/quyphong F:/AI/3.Quyphong main`.
 - 24/10/2026 — Chốt phương án, tạo thư mục. **Chưa chép app nào.** Việc kế tiếp: **đợt 0** = dựng khung (git, cấu trúc thư mục, footer `(C) August87 - 0982722036`), rồi **đợt 1** = chuyển Quỹ phòng.
