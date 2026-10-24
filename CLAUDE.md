@@ -49,6 +49,12 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
 
 ## Tiến độ (cập nhật cuối mỗi đợt, mới nhất ở trên)
 
+- 24/10/2026 — **Giao diện điện thoại thống nhất** (chi tiết `F:\AI\4.August\bao-cao\12-BAO-CAO-GIAO-DIEN-DIEN-THOAI.md`). Commit `6d4cdf0`.
+  - **Mẫu nút về trang chủ chung 5 app** (component `NutTrangChu` chép trong từng app; QP dùng CSS `.nut-trang-chu`): chỉ hiện khi qua cổng, góc TRÁI đầu trang trước tên app, ô 40×40 bo 8px, ngôi nhà SVG (lucide "house", cùng path ở 5 app). Đầu trang trắng (QP, LG, HĐ): viền slate-200, chữ slate-700; đầu trang màu (TƠ đỏ, KT xanh): nền white/15, chữ trắng. TƠ máy tính: nút ở đầu thanh bên. Bỏ hết kiểu cũ ("← Trang chủ", "←", nhà bên phải).
+  - Hoá đơn + Khai thuế: điện thoại (<640px) có **thanh tab dưới đáy** (emoji + tên ngắn, màu app khi chọn), tab đầu trang ẩn; máy tính giữ nguyên. HĐ đầu trang gọn (chỉ ảnh đại diện trên điện thoại).
+  - Đo trên máy (người dùng đăng nhập localhost:5300, khổ 375px): 5/5 có nút nhà 40×40 góc trái, 0 tràn ngang; HĐ thanh dưới 3 mục, KT 5 mục; khổ 1280px HĐ/KT giữ tab cũ, thanh dưới ẩn. Test 6 project đạt.
+  - **Đã lên mạng: Quỹ phòng, Lịch giảng** (đo trên mạng: nút nhà đúng, số liệu QP đúng). **CHƯA lên: Hoá đơn, Khai thuế, Tương ớt** — Vercel Hobby giới hạn 100 deploy/ngày (`api-deployments-free-per-day`). **Việc phải làm khi hết chặn (~trưa 25/10/2026):** `create_deployment` target production, gitSource `sha 6d4cdf04bb95a179f8be455faf6dd46aa548d873`, cho 3 project `hoadon`, `khaithue`, `tuongot-si` (cong-4august không cần — code không đổi). Rồi đo khổ 375px trên mạng như trên.
+
 - 24/10/2026 — **Gom báo cáo + app di động** (chi tiết `F:\AI\4.August\bao-cao\11-BAO-CAO-APP-DI-DONG.md`).
   - 11 báo cáo 00–10 chuyển từ `F:\AI\` vào `F:\AI\4.August\bao-cao\` (`.gitignore` `/bao-cao/` — có số liệu thật). Báo cáo các dự án khác (`1.REA`, `2.Ban_ot\bao-cao`, `SSI`, `vietanh`) để nguyên.
   - Trang chủ cài được như app: `apps/cong/public/manifest.webmanifest` (`id`/`scope`/`start_url` `/`, standalone, 5 lối tắt), biểu tượng LT (vẽ bằng PIL: 192, 512, maskable 512, apple 180, favicon 32). Qua cổng, manifest của 4 app (`/<app>/manifest.webmanifest`, HĐ `site.webmanifest`) được `vercel.json` trả về manifest chung → cài từ trang nào cũng ra một app phạm vi `/` (đi giữa 5 app không bật trình duyệt). Khai thuế không có manifest riêng — không cần.
