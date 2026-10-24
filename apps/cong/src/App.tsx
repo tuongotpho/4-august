@@ -17,6 +17,12 @@ export default function App() {
     ketQuaChuyenTrang().catch((e) => setLoi(thongBaoLoi(e)))
     return theoDoiNguoiDung(setUser)
   }, [])
+  // Đổi #cai-dat trên thanh địa chỉ (không tải lại trang) cũng chuyển tab
+  useEffect(() => {
+    const doi = () => setTab(location.hash === '#cai-dat' ? 'caiDat' : 'ungDung')
+    window.addEventListener('hashchange', doi)
+    return () => window.removeEventListener('hashchange', doi)
+  }, [])
 
   const chonTab = (t: Tab) => {
     setTab(t)
