@@ -5,22 +5,88 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "redirects": [
-    { "source": "/quy-phong", "destination": "/quy-phong/", "permanent": false },
-    { "source": "/lich-giang", "destination": "/lich-giang/", "permanent": false },
-    { "source": "/tuong-ot", "destination": "/tuong-ot/", "permanent": false },
-    { "source": "/hoa-don", "destination": "/hoa-don/", "permanent": false },
-    { "source": "/khai-thue", "destination": "/khai-thue/", "permanent": false }
+    {
+      "source": "/quy-phong",
+      "destination": "/quy-phong/",
+      "permanent": false
+    },
+    {
+      "source": "/lich-giang",
+      "destination": "/lich-giang/",
+      "permanent": false
+    },
+    {
+      "source": "/tuong-ot",
+      "destination": "/tuong-ot/",
+      "permanent": false
+    },
+    {
+      "source": "/hoa-don",
+      "destination": "/hoa-don/",
+      "permanent": false
+    },
+    {
+      "source": "/khai-thue",
+      "destination": "/khai-thue/",
+      "permanent": false
+    }
   ],
   "rewrites": [
-    { "source": "/quy-phong/", "destination": "https://quyphong.vercel.app/" },
-    { "source": "/lich-giang/", "destination": "https://quanly-at.vercel.app/" },
-    { "source": "/tuong-ot/", "destination": "https://tuongot-si.vercel.app/" },
-    { "source": "/hoa-don/", "destination": "https://hoadon-npsc.vercel.app/" },
-    { "source": "/khai-thue/", "destination": "https://khaithue.vercel.app/" },
-    { "source": "/quy-phong/:path*", "destination": "https://quyphong.vercel.app/:path*" },
-    { "source": "/lich-giang/:path*", "destination": "https://quanly-at.vercel.app/:path*" },
-    { "source": "/tuong-ot/:path*", "destination": "https://tuongot-si.vercel.app/:path*" },
-    { "source": "/hoa-don/:path*", "destination": "https://hoadon-npsc.vercel.app/:path*" },
-    { "source": "/khai-thue/:path*", "destination": "https://khaithue.vercel.app/:path*" }
+    {
+      "source": "/quy-phong/manifest.webmanifest",
+      "destination": "/manifest.webmanifest"
+    },
+    {
+      "source": "/lich-giang/manifest.webmanifest",
+      "destination": "/manifest.webmanifest"
+    },
+    {
+      "source": "/tuong-ot/manifest.webmanifest",
+      "destination": "/manifest.webmanifest"
+    },
+    {
+      "source": "/hoa-don/site.webmanifest",
+      "destination": "/manifest.webmanifest"
+    },
+    {
+      "source": "/quy-phong/",
+      "destination": "https://quyphong.vercel.app/"
+    },
+    {
+      "source": "/lich-giang/",
+      "destination": "https://quanly-at.vercel.app/"
+    },
+    {
+      "source": "/tuong-ot/",
+      "destination": "https://tuongot-si.vercel.app/"
+    },
+    {
+      "source": "/hoa-don/",
+      "destination": "https://hoadon-npsc.vercel.app/"
+    },
+    {
+      "source": "/khai-thue/",
+      "destination": "https://khaithue.vercel.app/"
+    },
+    {
+      "source": "/quy-phong/:path*",
+      "destination": "https://quyphong.vercel.app/:path*"
+    },
+    {
+      "source": "/lich-giang/:path*",
+      "destination": "https://quanly-at.vercel.app/:path*"
+    },
+    {
+      "source": "/tuong-ot/:path*",
+      "destination": "https://tuongot-si.vercel.app/:path*"
+    },
+    {
+      "source": "/hoa-don/:path*",
+      "destination": "https://hoadon-npsc.vercel.app/:path*"
+    },
+    {
+      "source": "/khai-thue/:path*",
+      "destination": "https://khaithue.vercel.app/:path*"
+    }
   ]
 }

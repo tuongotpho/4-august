@@ -11,6 +11,15 @@ export interface AppCon {
   diaChiGoc: string
   /** Trong "cài đặt riêng" của app có gì (mở bằng duongDan + ?cai-dat) */
   caiDat: string
+  /** File khai báo app (manifest) của app; qua cổng được thay bằng manifest chung để cài từ trang nào cũng ra một app phạm vi "/" */
+  manifest?: string
+}
+
+/** ?ve=<đường dẫn>: app gửi về trang chủ khi chưa đăng nhập; đăng nhập xong mở lại đúng chỗ.
+ *  Chỉ nhận đường dẫn thuộc 5 app (không cho chuyển sang trang lạ). */
+export function duongVeHopLe(ve: string | null): string | null {
+  if (!ve || !ve.startsWith('/') || ve.startsWith('//')) return null
+  return DS_APP.some((a) => ve.startsWith(a.duongDan)) ? ve : null
 }
 
 export const DS_APP: AppCon[] = [
@@ -23,6 +32,7 @@ export const DS_APP: AppCon[] = [
     duongDan: '/quy-phong/',
     diaChiGoc: 'https://quyphong.vercel.app',
     caiDat: 'Kết nối AI: máy đã cho phép, nhật ký AI ghi / xoá',
+    manifest: 'manifest.webmanifest',
   },
   {
     ma: 'antoan',
@@ -33,6 +43,7 @@ export const DS_APP: AppCon[] = [
     duongDan: '/lich-giang/',
     diaChiGoc: 'https://quanly-at.vercel.app',
     caiDat: 'Nhập Excel, Google Calendar, bot Telegram, Kết nối AI, gộp đối tác, sao lưu',
+    manifest: 'manifest.webmanifest',
   },
   {
     ma: 'tuongot-si',
@@ -43,6 +54,7 @@ export const DS_APP: AppCon[] = [
     duongDan: '/tuong-ot/',
     diaChiGoc: 'https://tuongot-si.vercel.app',
     caiDat: 'Thông tin in hoá đơn, tài khoản nhận tiền (mã QR), sao lưu, Kết nối AI',
+    manifest: 'manifest.webmanifest',
   },
   {
     ma: 'hoadon',
@@ -53,6 +65,7 @@ export const DS_APP: AppCon[] = [
     duongDan: '/hoa-don/',
     diaChiGoc: 'https://hoadon-npsc.vercel.app',
     caiDat: 'Danh sách lựa chọn, hàng cấm, quy tắc tiền, thông tin mẫu Word, sao lưu, bot Telegram, quyền của AI',
+    manifest: 'site.webmanifest',
   },
   {
     ma: 'khaithue',

@@ -5,3 +5,6 @@ export const QUA_CONG = typeof location !== 'undefined' && location.pathname.sta
 /** Trang chủ mở thẳng hộp tài khoản (Kết nối AI, Telegram, người xem) bằng ?cai-dat */
 export const MO_CAI_DAT = QUA_CONG && new URLSearchParams(location.search).has('cai-dat')
 export const TRANG_CHU = '../'
+/** Chưa đăng nhập: về trang chủ đăng nhập, kèm ?ve= để đăng nhập xong quay lại đúng trang đang mở (vd link bot ?hs=…) */
+export const veTrangChuDangNhap = () =>
+  location.replace(TRANG_CHU + '?ve=' + encodeURIComponent(location.pathname + location.search))

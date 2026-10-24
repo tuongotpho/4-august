@@ -29,7 +29,7 @@ import { coMay } from './may/firebase'
 import { dangNhap, dangXuat, useNguoiDung } from './may/useMay'
 import { boSungHoaDonTep, boSungPhuLuc, datCoTraVe, xoaCongTyTrenMay, xoaTaiLieu, type NhomTaiLieu, luuChungTu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, type DuLieuMay, luuLoHang, xoaLoHang, taiLenGiayTo, xoaGiayTo, luuSaoKe, luuGhepTay, xoaSaoKeMay, maBam, taiChiaSeChoToi, type ChiaSe, luuPhieuQuy, xoaPhieuQuy, luuTonDauQuy } from './may/dongBo'
 import { KhoHoSo } from './ui/KhoHoSo'
-import { MO_CAI_DAT, QUA_CONG, TRANG_CHU } from './ui/cong'
+import { MO_CAI_DAT, QUA_CONG, TRANG_CHU, veTrangChuDangNhap } from './ui/cong'
 import { Logo, TaiKhoan } from './ui/DauTrang'
 import { NHAN_GTGT, NHAN_TNCN, tien } from './core/nhan'
 import type { CanhBao, HoSoDN, KyKeKhai, LoaiHD } from './core/types'
@@ -47,7 +47,7 @@ export default function App() {
   const { user, dangTai, loi: loiDangNhap } = useNguoiDung()
   // Qua cổng chung: chưa đăng nhập thì về trang chủ đăng nhập (không dùng chế độ "chỉ lưu trên máy")
   useEffect(() => {
-    if (QUA_CONG && coMay && !dangTai && !user) location.replace(TRANG_CHU)
+    if (QUA_CONG && coMay && !dangTai && !user) veTrangChuDangNhap()
   }, [dangTai, user])
   // Ngăn lưu trên máy: chưa đăng nhập = ngăn khách; đăng nhập = ngăn riêng của tài khoản
   const chuRef = useRef<string | null>(null)

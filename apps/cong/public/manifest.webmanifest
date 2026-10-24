@@ -1,0 +1,26 @@
+{
+  "id": "/",
+  "name": "App by Lê Thanh",
+  "short_name": "App LT",
+  "description": "Quỹ phòng, Lịch giảng, Tương ớt sỉ, Hoá đơn, Khai thuế — một lần đăng nhập",
+  "lang": "vi",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f1f5f9",
+  "theme_color": "#0f172a",
+  "launch_handler": { "client_mode": ["navigate-existing", "auto"] },
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Quỹ phòng KTAT", "short_name": "Quỹ phòng", "url": "/quy-phong/" },
+    { "name": "Lịch giảng ATLĐ", "short_name": "Lịch giảng", "url": "/lich-giang/" },
+    { "name": "Bán buôn tương ớt", "short_name": "Tương ớt", "url": "/tuong-ot/" },
+    { "name": "Hoá đơn NPSC", "short_name": "Hoá đơn", "url": "/hoa-don/" },
+    { "name": "Khai thuế", "short_name": "Khai thuế", "url": "/khai-thue/" }
+  ]
+}

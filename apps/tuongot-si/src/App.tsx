@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { MO_CAI_DAT, QUA_CONG, TRANG_CHU } from './cong'
+import { MO_CAI_DAT, QUA_CONG, TRANG_CHU, veTrangChuDangNhap } from './cong'
 import { Icon, type IconName } from './icons'
 import InstallBanner from './InstallBanner'
 import InvoiceModal from './InvoiceModal'
@@ -117,7 +117,7 @@ export default function App() {
 
   // ---- Qua cổng chung, chưa đăng nhập: đăng nhập ở trang chủ ----
   if (!isDemo && QUA_CONG && auth.checked && !auth.user) {
-    location.replace(TRANG_CHU)
+    veTrangChuDangNhap()
     return <p className="p-8 text-sm text-slate-500">Đang về trang chủ để đăng nhập…</p>
   }
 

@@ -85,7 +85,7 @@ export function tinNhacHan(d: DuLieu, mst: string, homNay: Date): { gui: boolean
   }
   const thuHai = homNay.getUTCDay() === 1
   if (thuHai && (quaHan.length || loi.length)) gui = true
-  dong.push('', 'Mở app: https://khaithue.vercel.app — app không tự nộp; anh ký số và nộp trên thuedientu.gdt.gov.vn.')
+  dong.push('', 'Mở app: https://app-by-lethanh.vercel.app/khai-thue/ — app không tự nộp; anh ký số và nộp trên thuedientu.gdt.gov.vn.')
   return { gui, chu: dong.join('\n') }
 }
 

@@ -5,7 +5,7 @@ import DossierList from './components/DossierList'
 import SettingsPage from './components/SettingsPage'
 import SummaryPage from './components/SummaryPage'
 import TemplatesPage from './components/TemplatesPage'
-import { MO_CAI_DAT, QUA_CONG, TRANG_CHU } from './lib/cong'
+import { MO_CAI_DAT, QUA_CONG, TRANG_CHU, veTrangChuDangNhap } from './lib/cong'
 import { taiBoDocPdf } from './lib/dossierOps'
 import { CHUA_DANG_NHAP, setStore } from './lib/store'
 
@@ -69,7 +69,7 @@ export default function App() {
 
   if (mode.kind === 'login' && QUA_CONG) {
     // Qua cổng chung: đăng nhập ở trang chủ
-    location.replace(TRANG_CHU)
+    veTrangChuDangNhap()
     return <p className="p-8 text-slate-500">Đang về trang chủ để đăng nhập…</p>
   }
 

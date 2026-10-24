@@ -34,6 +34,11 @@ export function useGoiY(ds: LopGiang[] | null): GoiY {
 export const APP_URL =
   typeof location === 'undefined' ? '' : location.hostname === 'app-by-lethanh.vercel.app' ? 'https://quanly-at.vercel.app' : location.origin
 
+/** Link mở lớp gửi ra ngoài (Google Calendar): địa chỉ chung app-by-lethanh — trên điện thoại bấm là mở trong app đã cài.
+ *  Chạy thử trên máy (localhost) thì giữ địa chỉ máy. */
+export const LINK_APP =
+  typeof location === 'undefined' ? '' : location.hostname.endsWith('.vercel.app') ? 'https://app-by-lethanh.vercel.app/lich-giang' : location.origin
+
 /** Địa chỉ máy chủ (bot, AI): đường dẫn tương đối — qua cổng app-by-lethanh/lich-giang/ vẫn tới đúng máy chủ.
  *  Chạy thử trên máy: vite chuyển /ai, /telegram sang máy chủ local (vite.config.ts) */
 export const MAY_CHU = import.meta.env.VITE_MAY_CHU_URL || '.'
@@ -90,7 +95,7 @@ export async function dongBoNen(ds?: LopGiang[]): Promise<number> {
   try {
     const can = (ds ?? (await store.listLop())).filter((l) => l.canDongBo)
     for (const l of can) {
-      const moi = await dongBoLop(cd, l, APP_URL)
+      const moi = await dongBoLop(cd, l, LINK_APP)
       // đọc lại bản mới nhất: người dùng có thể vừa sửa tiếp trong lúc chờ
       const hienTai = (await store.listLop()).find((x) => x.id === l.id)
       if (hienTai && hienTai.suaLuc > l.suaLuc) continue

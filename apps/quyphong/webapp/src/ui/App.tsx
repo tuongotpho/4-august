@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { coFirebase, firebase } from '../lib/firebase.js';
-import { MO_CAI_DAT, QUA_CONG, TRANG_CHU } from '../lib/cong.js';
+import { MO_CAI_DAT, QUA_CONG, TRANG_CHU, veTrangChuDangNhap } from '../lib/cong.js';
 import { FirestoreStore } from '../lib/firestore_store.js';
 import { LocalStore } from '../lib/local_store.js';
 import type { DataStore } from '../lib/store.js';
@@ -40,7 +40,7 @@ export function App() {
   if (coFirebase && user === undefined) return <div className="giua">Đang tải…</div>;
   if (coFirebase && !user && QUA_CONG) {
     // Qua cổng chung: đăng nhập ở trang chủ
-    location.replace(TRANG_CHU);
+    veTrangChuDangNhap();
     return <div className="giua">Đang về trang chủ để đăng nhập…</div>;
   }
   if (coFirebase && !user)

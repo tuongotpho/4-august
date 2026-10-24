@@ -1,6 +1,6 @@
 import type { User } from 'firebase/auth'
 import { useEffect, useState } from 'react'
-import { DS_APP, type AppCon } from './dsApp'
+import { DS_APP, duongVeHopLe, type AppCon } from './dsApp'
 import { dangNhap, dangXuat, ketQuaChuyenTrang, theoDoiNguoiDung } from './firebase'
 
 const BAN_QUYEN = '(C) August87 - 0982722036'
@@ -13,10 +13,17 @@ export default function App() {
   const [loi, setLoi] = useState('')
   const [tab, setTab] = useState<Tab>(() => (location.hash === '#cai-dat' ? 'caiDat' : 'ungDung'))
 
+  // App gửi về đây kèm ?ve= (vd link bot mở hồ sơ khi phiên đã hết) → đăng nhập xong mở lại đúng trang đó
+  const [ve] = useState(() => duongVeHopLe(new URLSearchParams(location.search).get('ve')))
+  const appVe = ve ? DS_APP.find((a) => ve.startsWith(a.duongDan)) : undefined
+
   useEffect(() => {
     ketQuaChuyenTrang().catch((e) => setLoi(thongBaoLoi(e)))
     return theoDoiNguoiDung(setUser)
   }, [])
+  useEffect(() => {
+    if (user && ve) location.replace(ve)
+  }, [user, ve])
   // Đổi #cai-dat trên thanh địa chỉ (không tải lại trang) cũng chuyển tab
   useEffect(() => {
     const doi = () => setTab(location.hash === '#cai-dat' ? 'caiDat' : 'ungDung')
@@ -51,7 +58,7 @@ export default function App() {
         ) : !user ? (
           <>
             <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 text-center shadow-sm sm:p-6">
-              <h2 className="text-lg font-bold">Đăng nhập để dùng các app</h2>
+              <h2 className="text-lg font-bold">{appVe ? `Đăng nhập để mở ${appVe.ten}` : 'Đăng nhập để dùng các app'}</h2>
               <p className="mx-auto mt-1 max-w-md text-sm text-slate-600">
                 Đăng nhập Google một lần ở đây là cả 5 app đều nhận. Dữ liệu mỗi app vẫn cất riêng, chỉ tài khoản của anh xem được.
               </p>
