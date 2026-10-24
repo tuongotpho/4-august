@@ -50,7 +50,8 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
   - Vercel `antoan`: nối `tuongotpho/4-august`, Root Directory `apps/antoan`. Bản `dpl_5vnVqJY7YKD8nUkADm9gm8TzEH9b` gắn quanly-at.vercel.app. Quay lại: Instant Rollback về `dpl_5VTFPawYC7BYkMg4EsMNr4kubbx1`.
   - Kiểm: MCP `tong_quan` khớp 100% (552 lớp 2020–2026, công nợ 9.100.000 / 5 lớp, 2026: 114 lớp / 209.200.000); `/telegram/nhan` trả 401 khi sai mật khẩu (đường sống, khoá không đổi); cron `/cron/nhac` `0 13 * * *` đã đăng ký; footer hiện ở màn đăng nhập.
   - `F:\AI\ATLD\antoan` **đóng băng từ 24/10/2026** (file `.mcp.json` chưa commit ở đó chỉ là cấu hình kết nối, không cần chép).
-  - Chờ mắt người dùng: đăng nhập web, nhắn thử bot Telegram, tin nhắc 20h tối nay có tới không.
+  - Telegram ĐÃ thông qua máy chủ mới: người dùng nhắn thử, bot trả lời (24/10/2026). Nhưng tin trả lời là lỗi **Gemini 402 — hết tiền trả trước** ở AI Studio: lỗi tài khoản, không do chuyển app. Người dùng chọn **để sau** (không cần Gemini lúc này). Hệ quả: bot và nút "Dán tin" trên web không tự đọc tin nhắn thành lớp được (cả hai đi qua `server/ai.ts`); các việc khác (nhắc 20h, đánh dấu đã nhận tiền, MCP, web) không dùng Gemini.
+  - Chờ mắt người dùng: đăng nhập web, tin nhắc 20h tối nay có tới không.
   - Hạ tầng chung: mọi project Vercel trong kho đặt *Ignored Build Step* = `git diff --quiet HEAD^ HEAD -- .` (thư mục app không đổi thì bỏ qua build). Tuỳ chọn "skip when no changes to root directory" KHÔNG có tác dụng với kho này (không có workspaces) — đã thử, quyphong vẫn build lại.
   - Cách nối một project Vercel: `cd apps/<app>` → `vercel link --yes --project <ten> --scope vietthanh228s-projects` → `vercel git connect https://github.com/tuongotpho/4-august --yes`. CLI tự tạo `.env.local` (token OIDC) và sửa `.gitignore` — xoá `.env.local`, `git checkout -- .gitignore`.
 
