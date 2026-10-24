@@ -52,6 +52,7 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
   - Repo GitHub: `tuongotpho/4-august` (riêng tư, tạo 24/10/2026, 12/12 commit khớp máy).
   - **Đã chuyển trên mạng** (24/10/2026): project Vercel `quyphong` nối repo `tuongotpho/4-august` (bằng `vercel git connect`), Root Directory `apps/quyphong/webapp`, bật "bỏ qua build khi thư mục app không đổi". Bản chính thức `dpl_F3vc5Ay6AdVtnrApT79yaGmYUNeV` gắn quyphong.vercel.app. Kiểm: trang mở, có footer, phiên đăng nhập Google cũ vẫn nhận; MCP `tong_quan` khớp từng số với mốc trên. Quay lại: Vercel → Instant Rollback về `dpl_FxH3A9c158m1aEFGH47mf8fU4G3j` (bản từ repo cũ).
   - `F:\AI\3.Quyphong` **đóng băng từ 24/10/2026** — sửa Quỹ phòng chỉ ở `apps/quyphong`.
-  - Còn lại cần mắt người dùng: thử đăng nhập mới từ đầu (đăng xuất → đăng nhập) và giao diện điện thoại.
+  - Người dùng xác nhận đăng nhập được trên bản mới (24/10/2026). Đẩy lên `main` → Vercel tự build (nguồn `git`) — nối repo đã thông.
+  - Còn lại cần mắt người dùng: giao diện điện thoại (footer không bị thanh tab dưới che).
   - Bài học: curl gọi trang 5 giây/lần làm Vercel bật "Security Checkpoint" chặn máy này (người dùng thật không bị). Kiểm trang bằng trình duyệt hoặc `web_fetch_vercel_url`, đừng vòng lặp curl.
 - 24/10/2026 — Chốt phương án, tạo thư mục. **Chưa chép app nào.** Việc kế tiếp: **đợt 0** = dựng khung (git, cấu trúc thư mục, footer `(C) August87 - 0982722036`), rồi **đợt 1** = chuyển Quỹ phòng.
