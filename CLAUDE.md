@@ -9,7 +9,9 @@ Không gom các app công việc / công cộng: Sáng kiến NPSC, QLDA, atld-c
 
 ## 5 app trong phạm vi
 
-| App | Thư mục gốc (đóng băng sau khi chuyển) | Vercel project → địa chỉ | Database Firestore (project `app-from-ai`) | Telegram (ở máy chủ) | Quy mô (đo 24/10/2026) |
+**Cả 5 app đã chuyển xong (24/10/2026)** — code ở `apps/<app>` (bảng thư mục + Root Directory: `README.md`). Cột "thư mục gốc" dưới đây giờ là bản **ĐÓNG BĂNG**, không sửa ở đó nữa.
+
+| App | Thư mục gốc (ĐÃ ĐÓNG BĂNG) | Vercel project → địa chỉ | Database Firestore (project `app-from-ai`) | Telegram (ở máy chủ) | Quy mô (đo 24/10/2026) |
 |---|---|---|---|---|---|
 | Quỹ phòng KTAT | `F:\AI\3.Quyphong\webapp` | `quyphong` → quyphong.vercel.app | `quyphong` | không | 2.043 dòng giao diện, 1.180 máy chủ, 5 file test |
 | Lịch giảng ATLĐ | `F:\AI\ATLD\antoan` | `antoan` → quanly-at.vercel.app (cron 20h `/cron/nhac`) | `antoan` | có (`server/telegram.ts`) | 3.087 / 1.538 / 5 |
@@ -44,6 +46,17 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
 - Gói Firebase của `app-from-ai` (nhiều khả năng Blaze) và cảnh báo ngân sách — **người dùng kiểm trên Console**.
 
 ## Tiến độ (cập nhật cuối mỗi đợt, mới nhất ở trên)
+
+- 24/10/2026 — **Đợt 5 (Khai thuế) đã chạy trên mạng từ 4.August → xong giai đoạn "một bản code gốc" cho cả 5 app** (chi tiết + tổng kết: `F:\AI\07-BAO-CAO-DOT-5-KHAI-THUE-TONG-KET.md`).
+  - `apps/khaithue` (git subtree từ `F:\AI\HTKK-thanh` main = GitHub = bản đang chạy `66035f8`; 34 commit, 106/106 file). App ở `apps/khaithue/app`, `firebase.json` + `firebase/` ở `apps/khaithue`.
+  - **156/156 test** (128 thường — gồm đối chiếu tờ khai thật nhờ junction tạm `apps/khaithue/du-lieu-rieng` → `F:\AI\HTKK-thanh\du-lieu-rieng`, đã gỡ — + 28 luật phân quyền emulator). Build đạt. Footer `©2026 August87-0982722036` → `(C) August87 - 0982722036`.
+  - GitHub Actions cũ (test-build + luat-phan-quyen) → `.github/workflows/kiem-tra-khaithue.yml`, xanh.
+  - Vercel `khaithue`: Root Directory `apps/khaithue/app`, Ignored Build Step, nối repo mới. Bản chính `dpl_E2xsXfFaeCFAA59sKqa7G8XZKjAH`. Quay lại: `dpl_3UVKWzgNcEinMAHZzya46CjYyteH`. Cron `/telegram/nhac` `0 1 * * *` (8h VN) còn.
+  - Lưu ý: khoá `KHAITHUE_MCP_KHOA` chỉ cấp cho **production** → bản xem trước báo thiếu khoá ở `/mcp` là đúng thiết kế, không phải lỗi.
+  - Số liệu: phiên này không có MCP khaithue → so bằng trình duyệt (người dùng đăng nhập): tab Tổng quan trước/sau **giống từng ký tự** (SHA-256 đầu `6d7d7ad28fbb7063`, 8.613 ký tự): 2026 doanh thu 2.697.078.650, mua vào 2.596.837.291, GTGT phải nộp = đã nộp 7.535.743, 11 quý, 17 chứng từ 84.891.716. `/mcp` metadata 200, `/telegram/nhan` sai mật khẩu 401.
+  - `F:\AI\HTKK-thanh` **đóng băng từ 24/10/2026** (dữ liệu thật `du-lieu-rieng/`, `Ban-q1-25.xlsx` vẫn ở đó, chỉ trên máy).
+  - Chờ mắt người dùng: thử Kết nối AI khaithue từ Claude, nhắn thử bot, tin nhắc 8h sáng mai.
+- **Việc kế tiếp của cả dự án** (chưa làm): "app chung" thật — một địa chỉ, đăng nhập một lần (xem "Còn mở"). Có thể dọn dần: xoá repo GitHub cũ (người dùng quyết), gom phần dùng chung vào `packages/`.
 
 - 24/10/2026 — **Đợt 4 (Hoá đơn NPSC) đã chạy trên mạng từ 4.August** (chi tiết: `F:\AI\06-BAO-CAO-DOT-4-HOA-DON.md`).
   - Repo máy `F:\AI\hoadon` **chậm 5 commit** so với GitHub (bản đang chạy = `2d26206` trên GitHub). Đã `git pull --ff-only` thư mục cũ cho bằng GitHub rồi mới subtree → `apps/hoadon` = đúng bản đang chạy. 29 commit cũ, 101/101 file.
