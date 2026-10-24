@@ -50,5 +50,8 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
   - Quỹ phòng ở `apps/quyphong` (nhập bằng `git subtree` từ `F:\AI\3.Quyphong` main, giữ 8 commit cũ). 19/19 test đạt (17 thường + 2 emulator), build đạt, footer bản quyền đã thêm.
   - Số gốc để so (MCP `tong_quan`): 223 giao dịch, thu 652.840.812, chi 689.724.000, tồn −36.883.188, cần kiểm tra 73.
   - Repo GitHub: `tuongotpho/4-august` (riêng tư, tạo 24/10/2026, 12/12 commit khớp máy).
-  - **CHƯA**: nối project Vercel `quyphong` sang repo mới với Root Directory `apps/quyphong/webapp`; kiểm đăng nhập/MCP/số liệu trên mạng; đóng băng `F:\AI\3.Quyphong`. Tới lúc đó nếu `3.Quyphong` có commit mới thì kéo về bằng `git subtree pull --prefix=apps/quyphong F:/AI/3.Quyphong main`.
+  - **Đã chuyển trên mạng** (24/10/2026): project Vercel `quyphong` nối repo `tuongotpho/4-august` (bằng `vercel git connect`), Root Directory `apps/quyphong/webapp`, bật "bỏ qua build khi thư mục app không đổi". Bản chính thức `dpl_F3vc5Ay6AdVtnrApT79yaGmYUNeV` gắn quyphong.vercel.app. Kiểm: trang mở, có footer, phiên đăng nhập Google cũ vẫn nhận; MCP `tong_quan` khớp từng số với mốc trên. Quay lại: Vercel → Instant Rollback về `dpl_FxH3A9c158m1aEFGH47mf8fU4G3j` (bản từ repo cũ).
+  - `F:\AI\3.Quyphong` **đóng băng từ 24/10/2026** — sửa Quỹ phòng chỉ ở `apps/quyphong`.
+  - Còn lại cần mắt người dùng: thử đăng nhập mới từ đầu (đăng xuất → đăng nhập) và giao diện điện thoại.
+  - Bài học: curl gọi trang 5 giây/lần làm Vercel bật "Security Checkpoint" chặn máy này (người dùng thật không bị). Kiểm trang bằng trình duyệt hoặc `web_fetch_vercel_url`, đừng vòng lặp curl.
 - 24/10/2026 — Chốt phương án, tạo thư mục. **Chưa chép app nào.** Việc kế tiếp: **đợt 0** = dựng khung (git, cấu trúc thư mục, footer `(C) August87 - 0982722036`), rồi **đợt 1** = chuyển Quỹ phòng.
