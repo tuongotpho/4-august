@@ -49,6 +49,8 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
 
 ## Tiến độ (cập nhật cuối mỗi đợt, mới nhất ở trên)
 
+- 24/10/2026 — **Lỗi Hoá đơn báo "App vừa có bản cập nhật" lặp lại**: nguyên nhân = cổng `cong-4august` (project mới) mặc định ĐỆM phản hồi chuyển tiếp ngoài (`x-vercel-cache=HIT`, age ~48 phút) → sau mỗi lần deploy app, cổng vẫn trả index.html cũ, gọi file phụ tên cũ đã mất → `vite:preloadError` → tải lại vẫn ra bản cũ. Sửa: `apps/cong/vercel.json` thêm headers `x-vercel-enable-rewrite-caching: 0` cho 5 đường dẫn app (commit sau 65f3aaa). **CHƯA lên mạng (Vercel chặn deploy)** — khi hết chặn build `cong-4august` bằng commit MỚI NHẤT (chứa sửa này) cùng 5 app commit `6bd764d`; rồi đo `/hoa-don/` không còn `x-vercel-cache=HIT`.
+
 - 24/10/2026 — **Chân trang thống nhất trang chủ + 5 app** (chi tiết `F:\AI\4.August\bao-cao\13-BAO-CAO-CHAN-TRANG-CHUNG.md`). Commit `6bd764d`.
   - Mẫu: `<footer>` cuối nội dung (không ghim), `mt-8 w-full border-t border-slate-200 px-4 py-4 text-center text-xs text-slate-500`; dòng 1 luôn `(C) August87 - 0982722036`; dòng 2 tuỳ app (chỉ KT: "Công cụ hỗ trợ lập tờ khai — kiểm tra lại số liệu…"; bỏ "Bảo lưu mọi quyền."). Nền màu (màn đăng nhập TƠ): biến thể `keep-colors border-white/15 text-white/60`. QP: CSS `.ban-quyen` tương đương. TƠ: `ChanTrang` trong `src/ui.tsx` (KHÔNG gắn `keep-colors` cho bản thường để chế độ tối đổi màu), bỏ footer ghim chỉ-máy-tính, dùng cả ở trang `/ket-noi-ai`. Dòng giới thiệu trong hộp Cài đặt TƠ giữ nguyên (không phải chân trang).
   - Đo trên máy: 6/6 nơi ở 375px cùng `12px | đệm 16px | kẻ 1px | cách 32px | static`, không bị thanh tab che, 0 tràn ngang; 1280px: TƠ, HĐ đúng 1 chân trang cùng kiểu. Test 6 project đạt.

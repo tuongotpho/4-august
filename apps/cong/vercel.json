@@ -88,5 +88,52 @@
       "source": "/khai-thue/:path*",
       "destination": "https://khaithue.vercel.app/:path*"
     }
+  ],
+  "headers": [
+    {
+      "source": "/quy-phong/:path*",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/lich-giang/:path*",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/tuong-ot/:path*",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/hoa-don/:path*",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/khai-thue/:path*",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    }
   ]
 }
