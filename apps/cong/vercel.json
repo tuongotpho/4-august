@@ -11,6 +11,11 @@
     { "source": "/khai-thue", "destination": "/khai-thue/", "permanent": false }
   ],
   "rewrites": [
+    { "source": "/quy-phong/", "destination": "https://quyphong.vercel.app/" },
+    { "source": "/lich-giang/", "destination": "https://quanly-at.vercel.app/" },
+    { "source": "/tuong-ot/", "destination": "https://tuongot-si.vercel.app/" },
+    { "source": "/hoa-don/", "destination": "https://hoadon-npsc.vercel.app/" },
+    { "source": "/khai-thue/", "destination": "https://khaithue.vercel.app/" },
     { "source": "/quy-phong/:path*", "destination": "https://quyphong.vercel.app/:path*" },
     { "source": "/lich-giang/:path*", "destination": "https://quanly-at.vercel.app/:path*" },
     { "source": "/tuong-ot/:path*", "destination": "https://tuongot-si.vercel.app/:path*" },
