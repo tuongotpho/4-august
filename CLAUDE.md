@@ -45,6 +45,15 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
 
 ## Tiến độ (cập nhật cuối mỗi đợt, mới nhất ở trên)
 
+- 24/10/2026 — **Đợt 4 (Hoá đơn NPSC) đã chạy trên mạng từ 4.August** (chi tiết: `F:\AI\06-BAO-CAO-DOT-4-HOA-DON.md`).
+  - Repo máy `F:\AI\hoadon` **chậm 5 commit** so với GitHub (bản đang chạy = `2d26206` trên GitHub). Đã `git pull --ff-only` thư mục cũ cho bằng GitHub rồi mới subtree → `apps/hoadon` = đúng bản đang chạy. 29 commit cũ, 101/101 file.
+  - Dữ liệu thật `HD-Hung Yen/` + test/script số liệu thật bị `.gitignore` chặn — không chép. Test PDF thật chạy được bằng cách tạm nối junction `apps/hoadon/HD-Hung Yen` → `F:\AI\hoadon\HD-Hung Yen`, chạy xong gỡ.
+  - **149/149 test đạt** (120 thường + 29 emulator, gồm test PDF hoá đơn thật). Build đạt. Footer sửa `© 2026 - August87 - 0982722036` → `(C) August87 - 0982722036` (mẫu chung).
+  - Vercel `hoadon`: Root Directory `apps/hoadon`, Ignored Build Step, nối `tuongotpho/4-august`. Bản xem trước kiểm trước (máy chủ AI, file mẫu `/mau/to-trinh.docx`), rồi bản chính `dpl_2RkxzfTQCbHcUTHJ16zdTxnyp6Eb` gắn hoadon-npsc.vercel.app. Quay lại: Instant Rollback về `dpl_DzwKfih8LR45nxBsgXX8rEarW5hH`.
+  - Kiểm: MCP `tong_quan` trước = sau (60 hồ sơ, 652.521.060; choLamHs 5 / 50.460.070; choKt 11 / 88.581.820; daTt 44 / 513.479.170; cần chú ý 16). `/telegram/nhan` sai mật khẩu → 401. Màn đăng nhập có footer.
+  - `F:\AI\hoadon` **đóng băng từ 24/10/2026** (thư mục `HD-Hung Yen` dữ liệu thật vẫn để ở đó — chỉ nằm trên máy).
+  - Chờ mắt người dùng: đăng nhập web, nhắn thử bot Telegram hoá đơn, in thử một tờ trình Word.
+
 - 24/10/2026 — **Đợt 3 (Bán buôn tương ớt, có đơn thật) đã chạy trên mạng từ 4.August** (chi tiết: `F:\AI\05-BAO-CAO-DOT-3-TUONG-OT-SI.md`).
   - `apps/tuongot-si` (git subtree từ `F:\AI\2.Ban_ot` main, 12 commit cũ, 64/64 file). lint + 38/38 test + build + build:vercel đạt. Footer có sẵn từ trước (`COPYRIGHT` trong `src/ui.tsx`) — không sửa code app. Footer chân trang chỉ hiện từ màn `lg` (thiết kế cũ).
   - GitHub Actions cũ (`.github/workflows/deploy.yml`, chỉ kiểm tra, không deploy) chuyển thành `.github/workflows/kiem-tra-tuongot-si.yml` ở gốc kho, chạy trong `apps/tuongot-si`, chỉ khi thư mục đó đổi.
