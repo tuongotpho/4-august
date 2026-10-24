@@ -1,0 +1,34 @@
+# Bán buôn tương ớt: kiểm tra mỗi lần đẩy code (kiểu + test + đóng gói thử) — chép từ repo cũ tuongot_buon.
+# Deploy do Vercel tự làm (project tuongot-si, Root Directory apps/tuongot-si) — Vercel cũng chạy test trước khi build:
+# test đỏ thì KHÔNG lên mạng, giống rơ-le chặn đóng điện khi đo cách điện không đạt.
+name: Kiểm tra tuongot-si
+
+on:
+  push:
+    branches: [main]
+    paths: ['apps/tuongot-si/**', '.github/workflows/kiem-tra-tuongot-si.yml']
+  pull_request:
+    paths: ['apps/tuongot-si/**', '.github/workflows/kiem-tra-tuongot-si.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: tuongot-si-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/tuongot-si
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/tuongot-si/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build && npm run build:vercel
