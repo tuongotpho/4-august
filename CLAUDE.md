@@ -45,6 +45,15 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
 
 ## Tiến độ (cập nhật cuối mỗi đợt, mới nhất ở trên)
 
+- 24/10/2026 — **Đợt 2 (Lịch giảng ATLĐ) đã chạy trên mạng từ 4.August** (chi tiết: `F:\AI\04-BAO-CAO-DOT-2-LICH-GIANG.md`).
+  - `apps/antoan` (git subtree từ `F:\AI\ATLD\antoan` main, 10 commit cũ, 60/60 file). 28/28 test đạt (19 thường + 9 emulator), build đạt, footer đã thêm. Không có token Telegram trong mã trình duyệt / lịch sử.
+  - Vercel `antoan`: nối `tuongotpho/4-august`, Root Directory `apps/antoan`. Bản `dpl_5vnVqJY7YKD8nUkADm9gm8TzEH9b` gắn quanly-at.vercel.app. Quay lại: Instant Rollback về `dpl_5VTFPawYC7BYkMg4EsMNr4kubbx1`.
+  - Kiểm: MCP `tong_quan` khớp 100% (552 lớp 2020–2026, công nợ 9.100.000 / 5 lớp, 2026: 114 lớp / 209.200.000); `/telegram/nhan` trả 401 khi sai mật khẩu (đường sống, khoá không đổi); cron `/cron/nhac` `0 13 * * *` đã đăng ký; footer hiện ở màn đăng nhập.
+  - `F:\AI\ATLD\antoan` **đóng băng từ 24/10/2026** (file `.mcp.json` chưa commit ở đó chỉ là cấu hình kết nối, không cần chép).
+  - Chờ mắt người dùng: đăng nhập web, nhắn thử bot Telegram, tin nhắc 20h tối nay có tới không.
+  - Hạ tầng chung: mọi project Vercel trong kho đặt *Ignored Build Step* = `git diff --quiet HEAD^ HEAD -- .` (thư mục app không đổi thì bỏ qua build). Tuỳ chọn "skip when no changes to root directory" KHÔNG có tác dụng với kho này (không có workspaces) — đã thử, quyphong vẫn build lại.
+  - Cách nối một project Vercel: `cd apps/<app>` → `vercel link --yes --project <ten> --scope vietthanh228s-projects` → `vercel git connect https://github.com/tuongotpho/4-august --yes`. CLI tự tạo `.env.local` (token OIDC) và sửa `.gitignore` — xoá `.env.local`, `git checkout -- .gitignore`.
+
 - 24/10/2026 — **Đợt 0 xong, đợt 1 (Quỹ phòng) xong nửa trên máy** (chi tiết: `F:\AI\03-BAO-CAO-DOT-0-1-QUY-PHONG.md`).
   - Khung: git `main`, `apps/<ten-app>/` + `packages/` (trống). Mỗi app giữ `package-lock.json` riêng, KHÔNG dùng npm workspaces (để Vercel cũ chỉ đổi Root Directory).
   - Quỹ phòng ở `apps/quyphong` (nhập bằng `git subtree` từ `F:\AI\3.Quyphong` main, giữ 8 commit cũ). 19/19 test đạt (17 thường + 2 emulator), build đạt, footer bản quyền đã thêm.
