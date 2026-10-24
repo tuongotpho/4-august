@@ -47,6 +47,12 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
 
 ## Tiến độ (cập nhật cuối mỗi đợt, mới nhất ở trên)
 
+- 24/10/2026 — **Trang chủ là nơi vào duy nhất** (người dùng chốt; chi tiết `F:\AI\10-BAO-CAO-TRANG-CHU-DANG-NHAP-CAI-DAT.md`).
+  - `apps/cong` giờ là app Vite + React + Tailwind + Firebase Auth (chỉ đăng nhập). Chưa đăng nhập: nút "Đăng nhập bằng Google", 5 ô app khoá. Đăng nhập: tab **Ứng dụng** / **Cài đặt** (`#cai-dat`). Cài đặt = Tài khoản + Đăng xuất (cả 5 app) + mỗi app một mục: địa chỉ Kết nối AI (chép) + nút "Mở cài đặt riêng →" = `/<app>/?cai-dat`. Danh sách app ở `apps/cong/src/dsApp.ts`; test `dsApp.test.ts` bắt buộc mỗi app có đủ redirect + 2 rewrite trong `vercel.json`.
+  - Mỗi app có file `cong.ts` (`QUA_CONG` = đường dẫn bắt đầu bằng `/<app>/`, `MO_CAI_DAT`, `TRANG_CHU='../'`). Qua cổng: chưa đăng nhập → `location.replace('../')`; bỏ Đăng xuất + nút/tab Cài đặt, thêm "← Trang chủ"; `?cai-dat` mở thẳng phần cài đặt riêng (QP: hộp Kết nối AI; LG: tab Cài đặt, ẩn mục Tài khoản; TƠ: hộp Cài đặt; HĐ: tab Cài đặt & sao lưu; KT: hộp tài khoản mở sẵn, không nút Đăng xuất). Ở địa chỉ gốc: không đổi gì (đã đo tuongot-si).
+  - Đo trên mạng (phiên người dùng): trang chủ 2 tab, 5 link; Cài đặt có tài khoản + 5 mục + 5 địa chỉ MCP đúng gốc; 5/5 app qua cổng đúng như trên ở cả mở thường lẫn `?cai-dat`. Trên máy (chưa đăng nhập): 5 ô khoá; `/lich-giang/` `/hoa-don/` `/khai-thue/` tự về trang chủ. Test: QP 17, LG 19, TƠ 38, HĐ 120, KT 119, cổng 2 — đạt.
+  - **Chưa đo:** Quỹ phòng + Tương ớt tự về trang chủ khi chưa đăng nhập (bản build trên máy không có cấu hình Firebase nên chạy chế độ thử) — cần người dùng: Cài đặt → Đăng xuất → mở `/quy-phong/`, `/tuong-ot/`.
+
 - 24/10/2026 — **Giai đoạn A xong: một địa chỉ chung `https://app-by-lethanh.vercel.app`, đăng nhập một lần** (chi tiết: `F:\AI\09-BAO-CAO-GIAI-DOAN-A-CONG-CHUNG.md`; phương án + đo giao diện: `F:\AI\08-…`).
   - **Đã chốt với người dùng:** tên miền `app-by-lethanh.vercel.app`; **mỗi app một màu nhận diện** (giữ màu đang dùng: QP `#1f4e78`, LG teal-700 `#0f766e`, TƠ red-700 `#b91c1c`, HĐ blue-600 `#2563eb`, KT emerald-700 `#047857`), mọi thứ khác giống nhau; **chế độ tối cho cả 5, làm sau cùng**.
   - Trang cổng `apps/cong` (HTML tĩnh + `vercel.json`), project Vercel **`cong-4august`** (`prj_IvxBxX3hztdxOHM5jVOOUeXDxypN`), domain `app-by-lethanh.vercel.app`. Chuyển tiếp ngầm: `/quy-phong/` `/lich-giang/` `/tuong-ot/` `/hoa-don/` `/khai-thue/` → địa chỉ gốc từng app. Phải có cả quy tắc `/<app>/` riêng — `:path*` không khớp đường dẫn trống.
