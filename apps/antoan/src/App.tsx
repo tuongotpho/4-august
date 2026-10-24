@@ -63,11 +63,16 @@ export default function App() {
           <p className="text-sm text-slate-600">Đăng nhập Google để dữ liệu được cất trên mạng: máy tính, điện thoại đều thấy cùng một lịch. Chỉ tài khoản của anh xem được dữ liệu của anh.</p>
           <button className="btn-primary w-full py-2.5 text-base" onClick={() => void dangNhap()}>Đăng nhập bằng Google</button>
           {loiDN && <p className="rounded bg-red-50 p-2 text-left text-xs text-red-700">{loiDN}</p>}
+          <BanQuyen />
         </div>
       </div>
     )
   }
   return <ManHinh user={mode.user} />
+}
+
+function BanQuyen() {
+  return <footer className="mt-6 text-center text-xs text-slate-400">(C) August87 - 0982722036</footer>
 }
 
 function ManHinh({ user }: { user: User }) {
@@ -159,6 +164,8 @@ function ManHinh({ user }: { user: User }) {
         />
       )}
       {tab === 'caiDat' && <CaiDatPage ds={ds} />}
+
+      <BanQuyen />
 
       {danTin && <DanTin onDong={() => setDanTin(false)} onMo={(l) => setSua({ lop: l, moi: true })} />}
       {sua && <SuaLop key={sua.lop.id} lop={sua.lop} moi={sua.moi} tatCa={ds} onDong={() => setSua(null)} />}
