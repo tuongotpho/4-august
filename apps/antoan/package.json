@@ -1,0 +1,39 @@
+{
+  "name": "lich-giang-atld",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Quản lý lịch giảng an toàn lao động — web app + bot Telegram tự điền + đồng bộ Google Calendar",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json",
+    "test:firebase": "firebase emulators:exec --only auth,firestore --project demo-atld \"vitest run tests/firebase.test.ts tests/mcp.test.ts\"",
+    "deploy:rules": "firebase deploy --only firestore:antoan --project app-from-ai",
+    "server": "tsx server/chayMay.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "firebase": "^12.19.0",
+    "jsdom": "^29.1.1",
+    "pizzip": "^3.3.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  }
+}

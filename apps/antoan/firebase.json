@@ -1,0 +1,14 @@
+{
+  "firestore": [
+    {
+      "database": "antoan",
+      "rules": "firestore.rules"
+    }
+  ],
+  "emulators": {
+    "auth": { "port": 9198 },
+    "firestore": { "port": 8188 },
+    "ui": { "enabled": false },
+    "singleProjectMode": true
+  }
+}
