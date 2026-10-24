@@ -1,0 +1,10 @@
+# Chung cho cả kho — mỗi app còn .gitignore riêng trong apps/<ten-app>/
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.vercel
+.claude/
+*.tsbuildinfo
+*.log
