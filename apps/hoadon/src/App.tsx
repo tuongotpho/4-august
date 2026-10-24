@@ -174,5 +174,5 @@ function TaiKhoan({ user }: { user: User }) {
 }
 
 function ChanTrang() {
-  return <footer className="border-t border-slate-200 px-4 py-3 text-center text-xs text-slate-500 lg:px-6">© 2026 - August87 - 0982722036</footer>
+  return <footer className="border-t border-slate-200 px-4 py-3 text-center text-xs text-slate-500 lg:px-6">(C) August87 - 0982722036</footer>
 }
