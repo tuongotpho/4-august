@@ -128,6 +128,12 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
     <div className="trang">
       <header>
         <h1>Quỹ phòng KTAT</h1>
+        {/* Qua cổng chung: nút về trang chủ luôn hiện (không giấu trong menu ⋯ trên điện thoại) */}
+        {QUA_CONG && (
+          <a className="ve-trang-chu" href={TRANG_CHU}>
+            ← <span className="an-dt">Trang chủ</span>
+          </a>
+        )}
         <div className={moMenu ? 'tai-khoan mo' : 'tai-khoan'}>
           <button className="nut-menu" aria-label="Menu" aria-expanded={moMenu} onClick={() => setMoMenu(!moMenu)}>
             ⋯
@@ -143,7 +149,6 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
               </span>
             )}
             {/* Qua cổng chung: Kết nối AI, đăng xuất ở trang chủ (trang chủ mở Kết nối AI bằng ?cai-dat) */}
-            {QUA_CONG && <a href={TRANG_CHU}>← Trang chủ</a>}
             {user && store.ai && !QUA_CONG && <button onClick={() => setMoAI(true)}>Kết nối AI</button>}
             <button onClick={() => fileRef.current?.click()}>Nhập JSON</button>
             <button onClick={xuat} disabled={!daLoc.length}>
