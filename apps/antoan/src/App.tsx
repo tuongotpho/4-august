@@ -7,6 +7,7 @@ import DanTin from './components/DanTin'
 import LichThang from './components/LichThang'
 import SuaLop from './components/SuaLop'
 import TongHop from './components/TongHop'
+import { MO_CAI_DAT, QUA_CONG, TRANG_CHU } from './lib/cong'
 import { dongBoNen, useLoiLich, useLop } from './lib/hooks'
 import { GIO_MAC_DINH, homNay, lopMoi, type LopGiang } from './lib/model'
 import { CHUA_DANG_NHAP, setStore } from './lib/store'
@@ -55,6 +56,11 @@ export default function App() {
   }
 
   if (mode.kind === 'checking') return <p className="p-8 text-slate-500">Đang khởi động…</p>
+  if (mode.kind === 'login' && QUA_CONG) {
+    // Qua cổng chung: đăng nhập ở trang chủ
+    location.replace(TRANG_CHU)
+    return <p className="p-8 text-slate-500">Đang về trang chủ để đăng nhập…</p>
+  }
   if (mode.kind === 'login') {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
@@ -78,7 +84,7 @@ function BanQuyen() {
 function ManHinh({ user }: { user: User }) {
   const ds = useLop()
   const loiLich = useLoiLich()
-  const [tab, setTab] = useState<Tab>('lich')
+  const [tab, setTab] = useState<Tab>(MO_CAI_DAT ? 'caiDat' : 'lich')
   const [sua, setSua] = useState<{ lop: LopGiang; moi: boolean } | null>(null)
   const [danTin, setDanTin] = useState(false)
   // Bộ lọc mang từ trang Tổng hợp sang Danh sách; đổi `lan` để Danh sách dựng lại với bộ lọc mới
@@ -106,7 +112,8 @@ function ManHinh({ user }: { user: User }) {
     ['danhSach', '📋', 'Danh sách'],
     ['congNo', '💰', `Công nợ${soNo ? ` (${soNo})` : ''}`],
     ['tongHop', '📊', 'Tổng hợp'],
-    ['caiDat', '⚙️', 'Cài đặt'],
+    // Qua cổng chung: Cài đặt mở từ trang chủ (?cai-dat), không nằm trên thanh tab
+    ...(QUA_CONG ? [] : [['caiDat', '⚙️', 'Cài đặt'] as [Tab, string, string]]),
   ]
   const mo = (l: LopGiang) => setSua({ lop: l, moi: !ds.some((x) => x.id === l.id) })
   const them = (ngay = homNay()) => setSua({ lop: lopMoi({ ngay, gioBD: GIO_MAC_DINH.sang[0], gioKT: GIO_MAC_DINH.sang[1] }), moi: true })
@@ -126,7 +133,11 @@ function ManHinh({ user }: { user: User }) {
         <span className="flex-1" />
         <button className="btn" onClick={() => setDanTin(true)}>📋 <span className="hidden sm:inline">Dán tin nhắn</span><span className="sm:hidden">Dán tin</span></button>
         <button className="btn-primary hidden sm:inline-flex" onClick={() => them()}>+ Thêm lớp</button>
-        <button className="hidden text-xs text-slate-400 hover:text-slate-600 sm:block" title={user.email ?? ''} onClick={() => void fb().then((f) => f.dangXuat())}>Đăng xuất</button>
+        {QUA_CONG ? (
+          <a className="btn" href={TRANG_CHU}>← <span className="hidden sm:inline">Trang chủ</span></a>
+        ) : (
+          <button className="hidden text-xs text-slate-400 hover:text-slate-600 sm:block" title={user.email ?? ''} onClick={() => void fb().then((f) => f.dangXuat())}>Đăng xuất</button>
+        )}
       </header>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-slate-200 bg-white/95 backdrop-blur sm:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>

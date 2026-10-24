@@ -55,6 +55,7 @@ code { font-size: 12px; }
 header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 h1 { font-size: 20px; margin: 0; }
 .tai-khoan, .tai-khoan .menu { display: flex; gap: 8px; align-items: center; }
+.tai-khoan .menu a { color: var(--chinh); text-decoration: none; font-size: 14px; font-weight: 600; white-space: nowrap; }
 .nut-menu, .nen-menu, .nut-loc { display: none; }
 @media (min-width: 701px) { .chi-dt { display: none !important; } }
 .loc-them { display: contents; }
@@ -221,6 +222,7 @@ button.lien-ket { border: none; background: none; text-align: left; color: var(-
     position: absolute; right: 0; top: 52px; z-index: 21; min-width: 230px; padding: 6px;
     background: var(--the); border: 1px solid var(--vien); border-radius: 12px; box-shadow: 0 8px 24px rgb(0 0 0 / .25);
   }
+  .tai-khoan.mo .menu a { display: flex; align-items: center; min-height: 44px; padding: 0 12px; }
   .tai-khoan.mo .menu button { border: none; background: none; text-align: left; min-height: 44px; border-radius: 8px; }
   .tai-khoan.mo .menu button:active { background: color-mix(in srgb, var(--chinh) 12%, transparent); }
   .tai-khoan .email { padding: 8px 10px; border-bottom: 1px solid var(--vien); margin-bottom: 4px; overflow-wrap: anywhere; }

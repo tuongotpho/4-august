@@ -29,8 +29,9 @@ function AnhDaiDien({ user, lon }: { user: User; lon?: boolean }) {
 }
 
 /** Ô tài khoản góc phải: tên + email, bấm vào mở bảng có nút đăng xuất (giống Gmail) */
-export function TaiKhoan({ user, onDangXuat }: { user: User; onDangXuat: () => void }) {
-  const [mo, setMo] = useState(false)
+/** onDangXuat bỏ trống = không có nút Đăng xuất (mở qua cổng chung: đăng xuất ở trang chủ). moSan = mở sẵn hộp */
+export function TaiKhoan({ user, onDangXuat, moSan = false }: { user: User; onDangXuat?: () => void; moSan?: boolean }) {
+  const [mo, setMo] = useState(moSan)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!mo) return
@@ -69,15 +70,17 @@ export function TaiKhoan({ user, onDangXuat }: { user: User; onDangXuat: () => v
           <KetNoiAI uid={user.uid} />
           <NhacHanTelegram user={user} />
           <NguoiXem user={user} />
-          <button
-            className="mt-3 w-full rounded-full border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
-            onClick={() => {
-              setMo(false)
-              onDangXuat()
-            }}
-          >
-            Đăng xuất
-          </button>
+          {onDangXuat && (
+            <button
+              className="mt-3 w-full rounded-full border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
+              onClick={() => {
+                setMo(false)
+                onDangXuat()
+              }}
+            >
+              Đăng xuất
+            </button>
+          )}
         </div>
       )}
     </div>

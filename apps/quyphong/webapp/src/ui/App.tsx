@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { coFirebase, firebase } from '../lib/firebase.js';
+import { MO_CAI_DAT, QUA_CONG, TRANG_CHU } from '../lib/cong.js';
 import { FirestoreStore } from '../lib/firestore_store.js';
 import { LocalStore } from '../lib/local_store.js';
 import type { DataStore } from '../lib/store.js';
@@ -37,6 +38,11 @@ export function App() {
   }, [user]);
 
   if (coFirebase && user === undefined) return <div className="giua">Đang tải…</div>;
+  if (coFirebase && !user && QUA_CONG) {
+    // Qua cổng chung: đăng nhập ở trang chủ
+    location.replace(TRANG_CHU);
+    return <div className="giua">Đang về trang chủ để đăng nhập…</div>;
+  }
   if (coFirebase && !user)
     return (
       <div className="giua">
@@ -65,7 +71,7 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
   /** Form đang mở: sửa một giao dịch, hoặc thêm mới (theo mẫu hoặc trống). */
   const [form, setForm] = useState<{ ban?: GiaoDich; mau?: MauNhap | null; macDinh?: GiaoDich; tieuDe?: string } | null>(null);
   const [moChonMau, setMoChonMau] = useState(false);
-  const [moAI, setMoAI] = useState(false);
+  const [moAI, setMoAI] = useState(MO_CAI_DAT);
   /** Điện thoại: menu ⋯ ở đầu trang và phần lọc thêm (nhóm, năm, tháng…) mặc định gập. */
   const [moMenu, setMoMenu] = useState(false);
   const [moLoc, setMoLoc] = useState(false);
@@ -136,12 +142,14 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
                 Lưu trên máy này
               </span>
             )}
-            {user && store.ai && <button onClick={() => setMoAI(true)}>Kết nối AI</button>}
+            {/* Qua cổng chung: Kết nối AI, đăng xuất ở trang chủ (trang chủ mở Kết nối AI bằng ?cai-dat) */}
+            {QUA_CONG && <a href={TRANG_CHU}>← Trang chủ</a>}
+            {user && store.ai && !QUA_CONG && <button onClick={() => setMoAI(true)}>Kết nối AI</button>}
             <button onClick={() => fileRef.current?.click()}>Nhập JSON</button>
             <button onClick={xuat} disabled={!daLoc.length}>
               Xuất Excel (CSV)
             </button>
-            {user && <button onClick={onDangXuat}>Đăng xuất</button>}
+            {user && !QUA_CONG && <button onClick={onDangXuat}>Đăng xuất</button>}
           </div>
         </div>
       </header>

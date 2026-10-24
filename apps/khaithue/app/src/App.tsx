@@ -29,6 +29,7 @@ import { coMay } from './may/firebase'
 import { dangNhap, dangXuat, useNguoiDung } from './may/useMay'
 import { boSungHoaDonTep, boSungPhuLuc, datCoTraVe, xoaCongTyTrenMay, xoaTaiLieu, type NhomTaiLieu, luuChungTu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, type DuLieuMay, luuLoHang, xoaLoHang, taiLenGiayTo, xoaGiayTo, luuSaoKe, luuGhepTay, xoaSaoKeMay, maBam, taiChiaSeChoToi, type ChiaSe, luuPhieuQuy, xoaPhieuQuy, luuTonDauQuy } from './may/dongBo'
 import { KhoHoSo } from './ui/KhoHoSo'
+import { MO_CAI_DAT, QUA_CONG, TRANG_CHU } from './ui/cong'
 import { Logo, TaiKhoan } from './ui/DauTrang'
 import { NHAN_GTGT, NHAN_TNCN, tien } from './core/nhan'
 import type { CanhBao, HoSoDN, KyKeKhai, LoaiHD } from './core/types'
@@ -43,7 +44,11 @@ import { KetLuanGTGT, PhuLuc, TheTong } from './ui/ToKhaiGTGT'
 const THIEU_CQT = (h: HoSoDN) => !h.maCQTNoiNop || !h.tenCQTNoiNop || !h.nguoiKy || !h.maTinhNNT
 
 export default function App() {
-  const { user, loi: loiDangNhap } = useNguoiDung()
+  const { user, dangTai, loi: loiDangNhap } = useNguoiDung()
+  // Qua cổng chung: chưa đăng nhập thì về trang chủ đăng nhập (không dùng chế độ "chỉ lưu trên máy")
+  useEffect(() => {
+    if (QUA_CONG && coMay && !dangTai && !user) location.replace(TRANG_CHU)
+  }, [dangTai, user])
   // Ngăn lưu trên máy: chưa đăng nhập = ngăn khách; đăng nhập = ngăn riêng của tài khoản
   const chuRef = useRef<string | null>(null)
   const [kho, setKhoState] = useState<Kho>(() => docKho(null))
@@ -716,7 +721,16 @@ export default function App() {
             <h1 className="truncate text-lg font-bold leading-tight sm:text-xl">Kê khai thuế quý</h1>
             <p className="hidden truncate text-xs text-emerald-100 sm:block">01/GTGT (kèm phụ lục giảm thuế) và 05/KK-TNCN — xuất XML để nộp trên thuedientu.gdt.gov.vn</p>
           </div>
-          {coMay && (
+          {coMay && QUA_CONG && (
+            // Qua cổng chung: đăng nhập, đăng xuất ở trang chủ; hộp tài khoản (cài đặt) chỉ mở khi trang chủ gọi ?cai-dat
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              {user && MO_CAI_DAT && <TaiKhoan user={user} moSan />}
+              <a className="rounded-full bg-white px-3 py-1.5 text-sm font-medium text-emerald-800 hover:bg-emerald-50" href={TRANG_CHU}>
+                ← <span className="hidden sm:inline">Trang chủ</span>
+              </a>
+            </div>
+          )}
+          {coMay && !QUA_CONG && (
             <div className="ml-auto shrink-0">
               {user ? (
                 <TaiKhoan

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import maScript from '../../apps-script/Lich.gs?raw'
+import { QUA_CONG } from '../lib/cong'
 import { APP_URL, dongBoNen, goiMayChu, luuNhieuLop, taiFile, useCaiDat } from '../lib/hooks'
 import { khoaNgauNhien, thuKetNoi } from '../lib/lichGoogle'
 import { boDau, chuanLop, homNay, ngayVN, type CaiDat, type LopGiang } from '../lib/model'
@@ -16,7 +17,8 @@ export default function CaiDatPage({ ds }: { ds: LopGiang[] }) {
       <KetNoiAI />
       <GopTen ds={ds} cd={cd} />
       <SaoLuu ds={ds} />
-      <TaiKhoan />
+      {/* Qua cổng chung: tài khoản, đăng xuất ở trang chủ */}
+      {!QUA_CONG && <TaiKhoan />}
     </div>
   )
 }

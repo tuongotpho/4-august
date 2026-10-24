@@ -5,6 +5,7 @@ import DossierList from './components/DossierList'
 import SettingsPage from './components/SettingsPage'
 import SummaryPage from './components/SummaryPage'
 import TemplatesPage from './components/TemplatesPage'
+import { MO_CAI_DAT, QUA_CONG, TRANG_CHU } from './lib/cong'
 import { taiBoDocPdf } from './lib/dossierOps'
 import { CHUA_DANG_NHAP, setStore } from './lib/store'
 
@@ -14,7 +15,8 @@ const TABS: [Tab, string][] = [
   ['hoSo', 'Hồ sơ thanh toán'],
   ['tongHop', 'Tổng hợp'],
   ['mau', 'Mẫu in'],
-  ['caiDat', 'Cài đặt & sao lưu'],
+  // Qua cổng chung: Cài đặt mở từ trang chủ (?cai-dat), không nằm trên thanh tab
+  ...(QUA_CONG ? [] : [['caiDat', 'Cài đặt & sao lưu'] as [Tab, string]]),
 ]
 
 type Mode = { kind: 'checking' } | { kind: 'login' } | { kind: 'cloud'; user: User }
@@ -65,6 +67,12 @@ export default function App() {
 
   if (mode.kind === 'checking') return <p className="p-8 text-slate-500">Đang khởi động…</p>
 
+  if (mode.kind === 'login' && QUA_CONG) {
+    // Qua cổng chung: đăng nhập ở trang chủ
+    location.replace(TRANG_CHU)
+    return <p className="p-8 text-slate-500">Đang về trang chủ để đăng nhập…</p>
+  }
+
   if (mode.kind === 'login') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-4">
@@ -88,7 +96,7 @@ export default function App() {
 }
 
 function Main({ user }: { user: User }) {
-  const [tab, setTab] = useState<Tab>('hoSo')
+  const [tab, setTab] = useState<Tab>(MO_CAI_DAT ? 'caiDat' : 'hoSo')
   // ?hs=<id>: mở thẳng hồ sơ đó (link bot Telegram gửi về sau khi tạo hồ sơ)
   const [editingId, setEditingId] = useState<string | null>(() => new URLSearchParams(location.search).get('hs'))
   useEffect(() => {
@@ -119,9 +127,16 @@ function Main({ user }: { user: User }) {
           </nav>
           <div className="ml-auto flex items-center gap-2 text-xs text-slate-500">
             <TaiKhoan user={user} />
-            <button className="btn !py-1 !text-xs" onClick={() => fb().then((m) => m.dangXuat())}>
-              Đăng xuất
-            </button>
+            {/* Qua cổng chung: đăng xuất ở trang chủ */}
+            {QUA_CONG ? (
+              <a className="btn !py-1 !text-xs" href={TRANG_CHU}>
+                ← Trang chủ
+              </a>
+            ) : (
+              <button className="btn !py-1 !text-xs" onClick={() => fb().then((m) => m.dangXuat())}>
+                Đăng xuất
+              </button>
+            )}
           </div>
         </div>
       </header>

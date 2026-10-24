@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { MO_CAI_DAT, QUA_CONG, TRANG_CHU } from './cong'
 import { Icon, type IconName } from './icons'
 import InstallBanner from './InstallBanner'
 import InvoiceModal from './InvoiceModal'
@@ -45,7 +46,7 @@ export default function App() {
   const [orderForm, setOrderForm] = useState<{ orderId?: string; customerId?: string } | null>(null)
   const [invoiceId, setInvoiceId] = useState<string | null>(null)
   const [customerId, setCustomerId] = useState<string | null>(null)
-  const [showSettings, setShowSettings] = useState(false)
+  const [showSettings, setShowSettings] = useState(MO_CAI_DAT)
   const [toastNode, toast] = useToast()
   const [dark, setDark] = useState(readDark)
 
@@ -114,6 +115,12 @@ export default function App() {
   const current = TABS.find((t) => t.id === tab) ?? TABS[0]
   const shop = data.settings.shopName
 
+  // ---- Qua cổng chung, chưa đăng nhập: đăng nhập ở trang chủ ----
+  if (!isDemo && QUA_CONG && auth.checked && !auth.user) {
+    location.replace(TRANG_CHU)
+    return <p className="p-8 text-sm text-slate-500">Đang về trang chủ để đăng nhập…</p>
+  }
+
   // ---- Chưa đăng nhập / không phải chủ shop ----
   if (!isDemo && !auth.isAdmin) {
     return (
@@ -180,10 +187,17 @@ export default function App() {
             <button onClick={() => setDark((d) => !d)} className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2 font-medium text-red-100/90 hover:bg-white/10">
               <Icon name={dark ? 'sun' : 'moon'} className="h-5 w-5" /> {dark ? 'Giao diện sáng' : 'Giao diện tối'}
             </button>
-            <button onClick={() => setShowSettings(true)} className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2 font-medium text-red-100/90 hover:bg-white/10">
-              <Icon name="settings" className="h-5 w-5" /> Cài đặt
-            </button>
-            {auth.user && (
+            {/* Qua cổng chung: cài đặt (?cai-dat), đăng xuất ở trang chủ */}
+            {QUA_CONG ? (
+              <a href={TRANG_CHU} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 font-medium text-red-100/90 hover:bg-white/10">
+                <Icon name="home" className="h-5 w-5" /> Trang chủ
+              </a>
+            ) : (
+              <button onClick={() => setShowSettings(true)} className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2 font-medium text-red-100/90 hover:bg-white/10">
+                <Icon name="settings" className="h-5 w-5" /> Cài đặt
+              </button>
+            )}
+            {auth.user && !QUA_CONG && (
               <button onClick={() => logout()} className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2 font-medium text-red-100/90 hover:bg-white/10" title={auth.user.email}>
                 <Icon name="logout" className="h-5 w-5" /> Đăng xuất
               </button>
@@ -207,10 +221,16 @@ export default function App() {
               <button onClick={() => setDark((d) => !d)} className="grid h-9 w-9 cursor-pointer place-items-center rounded-xl hover:bg-white/10" aria-label="Đổi giao diện sáng/tối">
                 <Icon name={dark ? 'sun' : 'moon'} className="h-5 w-5" />
               </button>
-              <button onClick={() => setShowSettings(true)} className="grid h-9 w-9 cursor-pointer place-items-center rounded-xl hover:bg-white/10" aria-label="Cài đặt">
-                <Icon name="settings" className="h-5 w-5" />
-              </button>
-              {auth.user && (
+              {QUA_CONG ? (
+                <a href={TRANG_CHU} className="grid h-9 w-9 place-items-center rounded-xl hover:bg-white/10" aria-label="Trang chủ">
+                  <Icon name="home" className="h-5 w-5" />
+                </a>
+              ) : (
+                <button onClick={() => setShowSettings(true)} className="grid h-9 w-9 cursor-pointer place-items-center rounded-xl hover:bg-white/10" aria-label="Cài đặt">
+                  <Icon name="settings" className="h-5 w-5" />
+                </button>
+              )}
+              {auth.user && !QUA_CONG && (
                 <button onClick={() => confirm('Đăng xuất?') && logout()} className="grid h-9 w-9 cursor-pointer place-items-center rounded-xl hover:bg-white/10" aria-label="Đăng xuất">
                   <Icon name="logout" className="h-5 w-5" />
                 </button>
