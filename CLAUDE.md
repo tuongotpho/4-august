@@ -49,5 +49,6 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
   - Khung: git `main`, `apps/<ten-app>/` + `packages/` (trống). Mỗi app giữ `package-lock.json` riêng, KHÔNG dùng npm workspaces (để Vercel cũ chỉ đổi Root Directory).
   - Quỹ phòng ở `apps/quyphong` (nhập bằng `git subtree` từ `F:\AI\3.Quyphong` main, giữ 8 commit cũ). 19/19 test đạt (17 thường + 2 emulator), build đạt, footer bản quyền đã thêm.
   - Số gốc để so (MCP `tong_quan`): 223 giao dịch, thu 652.840.812, chi 689.724.000, tồn −36.883.188, cần kiểm tra 73.
-  - **CHƯA**: tạo repo GitHub cho 4.August; nối project Vercel `quyphong` sang repo mới với Root Directory `apps/quyphong/webapp`; kiểm đăng nhập/MCP/số liệu trên mạng; đóng băng `F:\AI\3.Quyphong`. Tới lúc đó nếu `3.Quyphong` có commit mới thì kéo về bằng `git subtree pull --prefix=apps/quyphong F:/AI/3.Quyphong main`.
+  - Repo GitHub: `tuongotpho/4-august` (riêng tư, tạo 24/10/2026, 12/12 commit khớp máy).
+  - **CHƯA**: nối project Vercel `quyphong` sang repo mới với Root Directory `apps/quyphong/webapp`; kiểm đăng nhập/MCP/số liệu trên mạng; đóng băng `F:\AI\3.Quyphong`. Tới lúc đó nếu `3.Quyphong` có commit mới thì kéo về bằng `git subtree pull --prefix=apps/quyphong F:/AI/3.Quyphong main`.
 - 24/10/2026 — Chốt phương án, tạo thư mục. **Chưa chép app nào.** Việc kế tiếp: **đợt 0** = dựng khung (git, cấu trúc thư mục, footer `(C) August87 - 0982722036`), rồi **đợt 1** = chuyển Quỹ phòng.
