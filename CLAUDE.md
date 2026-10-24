@@ -45,6 +45,15 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
 
 ## Tiến độ (cập nhật cuối mỗi đợt, mới nhất ở trên)
 
+- 24/10/2026 — **Đợt 3 (Bán buôn tương ớt, có đơn thật) đã chạy trên mạng từ 4.August** (chi tiết: `F:\AI\05-BAO-CAO-DOT-3-TUONG-OT-SI.md`).
+  - `apps/tuongot-si` (git subtree từ `F:\AI\2.Ban_ot` main, 12 commit cũ, 64/64 file). lint + 38/38 test + build + build:vercel đạt. Footer có sẵn từ trước (`COPYRIGHT` trong `src/ui.tsx`) — không sửa code app. Footer chân trang chỉ hiện từ màn `lg` (thiết kế cũ).
+  - GitHub Actions cũ (`.github/workflows/deploy.yml`, chỉ kiểm tra, không deploy) chuyển thành `.github/workflows/kiem-tra-tuongot-si.yml` ở gốc kho, chạy trong `apps/tuongot-si`, chỉ khi thư mục đó đổi.
+  - App đóng gói kiểu Build Output API (`scripts/build-vercel.mjs` → `apps/tuongot-si/.vercel/output`) — chạy được với Root Directory con (đã thử bản xem trước trước khi lên bản chính).
+  - Vercel `tuongot-si`: Root Directory `apps/tuongot-si`, Ignored Build Step như các app khác, nối `tuongotpho/4-august`. Bản chính `dpl_EJHGEqf7GkxmsvjkMQxpdHMA6ZCp` gắn tuongot-si.vercel.app. Quay lại: Instant Rollback về `dpl_CVaqjBAk2DF4ymtTnRcveahbLpVh`.
+  - Kiểm (chỉ công cụ đọc, không ghi đơn): MCP tong_quan / ton_kho / cong_no trước = sau (3 khách, 22 đơn, T10 doanh thu 1.900.000 lãi 602.000 57 chai, tồn 13/23/70, nợ 0, Phở Hiền trả dư 300.000). Web đã đăng nhập hiện đúng số đó, 0 lỗi console.
+  - `F:\AI\2.Ban_ot` **đóng băng từ 24/10/2026** (file chưa commit `bao-cao/01-BAO-CAO-WEB-TONG-QUAN-LY.md` ở đó là bản chép báo cáo chung, không cần chuyển).
+  - Chờ mắt người dùng: lên một đơn thật lần tới xem bình thường không (Claude không tự ghi đơn thử vào dữ liệu thật).
+
 - 24/10/2026 — **Đợt 2 (Lịch giảng ATLĐ) đã chạy trên mạng từ 4.August** (chi tiết: `F:\AI\04-BAO-CAO-DOT-2-LICH-GIANG.md`).
   - `apps/antoan` (git subtree từ `F:\AI\ATLD\antoan` main, 10 commit cũ, 60/60 file). 28/28 test đạt (19 thường + 9 emulator), build đạt, footer đã thêm. Không có token Telegram trong mã trình duyệt / lịch sử.
   - Vercel `antoan`: nối `tuongotpho/4-august`, Root Directory `apps/antoan`. Bản `dpl_5vnVqJY7YKD8nUkADm9gm8TzEH9b` gắn quanly-at.vercel.app. Quay lại: Instant Rollback về `dpl_5VTFPawYC7BYkMg4EsMNr4kubbx1`.
