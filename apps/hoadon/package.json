@@ -1,0 +1,50 @@
+{
+  "name": "quan-ly-hoa-don",
+  "version": "1.0.1",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && tsc --noEmit -p tsconfig.mcp.json && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.mcp.json",
+    "gan-o-mau": "node scripts/gan-o-mau.mjs",
+    "test:firebase": "firebase emulators:exec --only auth,firestore,storage --project demo-hoadon \"vitest run tests/firebase-store.test.ts tests/mcp-firebase.test.ts tests/telegram-firebase.test.ts\"",
+    "deploy:rules": "firebase deploy --only firestore:hoadon,storage:hoadon --project app-from-ai",
+    "mcp:web": "tsx mcp/chayWeb.ts"
+  },
+  "keywords": [],
+  "author": "Kỹ thuật – An toàn",
+  "license": "ISC",
+  "description": "Quản lý hóa đơn, tờ trình và đề nghị thanh toán",
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/file-saver": "^2.0.7",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "docx-preview": "^0.4.1",
+    "docxtemplater": "^3.71.0",
+    "file-saver": "^2.0.5",
+    "firebase": "^12.19.0",
+    "jsdom": "^29.1.1",
+    "lodash": "^4.18.1",
+    "pdfjs-dist": "^6.3.289",
+    "pizzip": "^3.3.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  },
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@xmldom/xmldom": "^0.9.12",
+    "zod": "^4.6.5"
+  }
+}
