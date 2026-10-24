@@ -1,0 +1,41 @@
+rules_version = '2';
+
+// Sổ bán buôn tương ớt: khách, công nợ, giá vốn là dữ liệu kinh doanh riêng.
+// → Chỉ chủ shop (email dưới đây) được XEM và SỬA. Người khác mở link chỉ thấy màn hình đăng nhập.
+// Thêm người: thêm email vào danh sách, chạy lại `firebase deploy --only firestore`,
+// và thêm cùng email vào VITE_ADMIN_EMAILS (file .env + GitHub Variables).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in [
+          'vietthanh228@gmail.com'
+        ];
+    }
+
+    function known(coll) {
+      return coll in ['customers', 'products', 'orders', 'receipts', 'stockIns', 'suppliers', 'purchases', 'config'];
+    }
+
+    match /{coll}/{docId} {
+      allow read, write: if known(coll) && isOwner();
+    }
+
+    // Kết nối AI (MCP): mỗi máy / ứng dụng AI được chủ shop cho phép. Xoá = thu hồi quyền máy đó.
+    match /mcp_sessions/{sessionId} {
+      allow read, delete: if isOwner() && resource.data.uid == request.auth.uid;
+      allow create: if isOwner() && request.resource.data.uid == request.auth.uid;
+      // Máy chủ chỉ cập nhật "lần dùng cuối"; không ai đổi được chủ phiên
+      allow update: if isOwner() && resource.data.uid == request.auth.uid
+                    && request.resource.data.uid == request.auth.uid;
+    }
+
+    // Nhật ký mọi lần AI ghi dữ liệu: chỉ được thêm, không ai sửa / xoá được.
+    match /mcp_logs/{logId} {
+      allow read: if isOwner();
+      allow create: if isOwner() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

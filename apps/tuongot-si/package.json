@@ -1,0 +1,43 @@
+{
+  "name": "tuongot-buon",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "predev": "node scripts/gen-dark.mjs",
+    "dev": "vite --host 0.0.0.0 --port 3001",
+    "dev:demo": "vite --mode demo --port 3001",
+    "prebuild": "node scripts/gen-dark.mjs",
+    "build": "tsc && vite build",
+    "lint": "tsc --noEmit && tsc --noEmit -p tsconfig.mcp.json",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "build:vercel": "node scripts/build-vercel.mjs",
+    "mcp:thu": "tsx mcp/chayThu.ts"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.5",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "esbuild": "^0.28.2",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "firebase": "^12.19.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "zod": "^4.6.7"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}
