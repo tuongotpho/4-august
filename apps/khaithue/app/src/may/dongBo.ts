@@ -1,0 +1,346 @@
+// Lưu / đọc hồ sơ thuế trên mây.
+//
+// Firestore (database "khaithue"):
+//   nguoiDung/{uid}/congTy/{mst}                    thông tin công ty
+//   nguoiDung/{uid}/congTy/{mst}/toKhai/{maBam}     tờ khai đã nộp (số liệu tóm tắt + đường dẫn file XML)
+//   nguoiDung/{uid}/congTy/{mst}/tepHoaDon/{maBam}  file Excel hoá đơn (quý, số HĐ, đường dẫn file)
+//   nguoiDung/{uid}/congTy/{mst}/daXuat/{tenFile}   file XML app đã xuất
+//   nguoiDung/{uid}/congTy/{mst}/chungTu/{maBam}    chứng từ nộp tiền vào ngân sách
+// Storage (bucket "khaithue"): nguoiDung/{uid}/{mst}/...  -> file gốc
+//
+// Mã bản ghi = mã băm SHA-256 của nội dung file: nạp lại cùng một file không sinh bản trùng.
+
+import type { HoaDonGoc } from '../core/hoaDonGoc'
+import type { GiayTo, LoHang } from '../core/loHang'
+import type { SaoKe } from '../core/saoKe'
+import type { CaiDatQuy, PhieuQuy } from '../core/soQuy'
+import { collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
+import { deleteObject, getBytes, ref, uploadBytes } from 'firebase/storage'
+import { db, luuTru } from './firebase'
+import type { CongTyLuu, HoaDonGon, ToKhaiMay } from '../core/kho'
+import type { ChungTu } from '../core/taiLieu'
+import type { ToKhaiDaNop } from '../core/docToKhai'
+import type { KyKeKhai } from '../core/types'
+import { khoaKy } from '../core/kho'
+
+export async function maBam(du: ArrayBuffer | string): Promise<string> {
+  const b = typeof du === 'string' ? new TextEncoder().encode(du) : new Uint8Array(du)
+  const h = await crypto.subtle.digest('SHA-256', b)
+  return [...new Uint8Array(h)].map((x) => x.toString(16).padStart(2, '0')).join('').slice(0, 32)
+}
+
+const nhanhCongTy = (uid: string, mst: string) => `nguoiDung/${uid}/congTy/${mst}`
+/** Tên file an toàn cho đường dẫn Storage */
+const tenAnToan = (ten: string) => ten.replace(/[^\p{L}\p{N}._ -]/gu, '_').slice(0, 120)
+
+export async function luuCongTy(uid: string, c: CongTyLuu) {
+  await setDoc(doc(db, nhanhCongTy(uid, c.hoSo.mst)), { ...c, capNhat: serverTimestamp() })
+}
+
+/** Lưu tờ khai XML đã nộp (mọi mẫu): file gốc lên Storage, số liệu lên Firestore. Trả về mã bản ghi. */
+export async function luuToKhai(uid: string, tk: ToKhaiDaNop, xml: string, tenFile: string, them: { tenTKhai?: string; kyChu?: string } = {}): Promise<string> {
+  const id = await maBam(xml)
+  const mst = tk.hoSo.mst
+  const duongDan = `nguoiDung/${uid}/${mst}/toKhai/${id}.xml`
+  await uploadBytes(ref(luuTru, duongDan), new TextEncoder().encode(xml), { contentType: 'application/xml' })
+  // merge: giữ nguyên cờ "CQT trả về" nếu đã đánh dấu trước đó
+  await setDoc(doc(db, `${nhanhCongTy(uid, mst)}/toKhai/${id}`), {
+    mst, maTKhai: tk.maTKhai, tenTKhai: them.tenTKhai ?? '', ky: them.kyChu ?? (tk.ky ? khoaKy(tk.ky) : ''), loaiTKhai: tk.loaiTKhai, soLan: tk.soLan, ngayLap: tk.ngayLap,
+    ct: tk.ct, plMua: tk.plMua.filter((d) => d.ten), plBan: tk.plBan.filter((d) => d.ten), tenFile, duongDan, napLuc: serverTimestamp(),
+  }, { merge: true })
+  return id
+}
+
+export interface TepHoaDonMay {
+  id: string
+  ten: string
+  ky: string
+  soBan: number
+  soMua: number
+  kichThuoc: number
+  duongDan: string
+  /** Hoá đơn rút gọn trong file — để dựng tổng quan mà không phải tải lại file */
+  hd?: HoaDonGon[]
+  /** Các tháng file này phủ (theo kỳ ghi trên đầu file + tháng có hoá đơn), theo chiều */
+  phu?: { ban: string[]; mua: string[] }
+  /** File là hoá đơn GỐC (XML/PDF một hoá đơn): phần đọc được — dòng hàng, mã CQT, chữ ký */
+  goc?: HoaDonGoc
+}
+
+export async function luuTepHoaDon(
+  uid: string, mst: string, ten: string, du: ArrayBuffer, ky: KyKeKhai | null, soBan: number, soMua: number,
+  hd: HoaDonGon[] = [], phu: { ban: string[]; mua: string[] } = { ban: [], mua: [] }, goc?: HoaDonGoc,
+) {
+  const id = await maBam(du)
+  const duongDan = `nguoiDung/${uid}/${mst}/hoaDon/${id}/${tenAnToan(ten)}`
+  await uploadBytes(ref(luuTru, duongDan), new Uint8Array(du))
+  const ghi: Omit<TepHoaDonMay, 'id'> = { ten, ky: ky ? khoaKy(ky) : '', soBan, soMua, kichThuoc: du.byteLength, duongDan, hd, phu, ...(goc ? { goc } : {}) }
+  await setDoc(doc(db, `${nhanhCongTy(uid, mst)}/tepHoaDon/${id}`), { ...ghi, napLuc: serverTimestamp() })
+}
+
+export interface DaXuatMay {
+  id: string
+  loai: 'gtgt' | 'tncn'
+  ky: string
+  tenFile: string
+  ct40: number | null
+  duongDan: string
+}
+
+export async function luuDaXuat(uid: string, mst: string, ky: KyKeKhai, loai: 'gtgt' | 'tncn', tenFile: string, xml: string, ct40: number | null) {
+  const duongDan = `nguoiDung/${uid}/${mst}/daXuat/${tenAnToan(tenFile)}`
+  await uploadBytes(ref(luuTru, duongDan), new TextEncoder().encode(xml), { contentType: 'application/xml' })
+  await setDoc(doc(db, `${nhanhCongTy(uid, mst)}/daXuat/${tenAnToan(tenFile)}`), { loai, ky: khoaKy(ky), tenFile, ct40, duongDan, luc: serverTimestamp() })
+}
+
+export type ChungTuMay = ChungTu & { id: string; duongDan: string; tenFile: string }
+
+/** Lưu chứng từ nộp tiền (XML) */
+export async function luuChungTu(uid: string, ct: ChungTu, xml: string, tenFile: string) {
+  const id = await maBam(xml)
+  const duongDan = `nguoiDung/${uid}/${ct.mst}/chungTu/${id}.xml`
+  await uploadBytes(ref(luuTru, duongDan), new TextEncoder().encode(xml), { contentType: 'application/xml' })
+  await setDoc(doc(db, `${nhanhCongTy(uid, ct.mst)}/chungTu/${id}`), { ...ct, duongDan, tenFile, napLuc: serverTimestamp() })
+}
+
+/** Bổ sung danh sách hoá đơn rút gọn cho file đã lưu trước đây (bản cũ chưa có) */
+export async function boSungHoaDonTep(uid: string, mst: string, id: string, hd: HoaDonGon[], soBan: number, soMua: number, phu: { ban: string[]; mua: string[] }) {
+  await updateDoc(doc(db, `${nhanhCongTy(uid, mst)}/tepHoaDon/${id}`), { hd, soBan, soMua, phu })
+}
+
+/** Bổ sung phụ lục (người mua / người bán) cho tờ khai lưu bằng bản cũ */
+export async function boSungPhuLuc(uid: string, mst: string, id: string, plMua: ToKhaiDaNop['plMua'], plBan: ToKhaiDaNop['plBan']) {
+  await updateDoc(doc(db, `${nhanhCongTy(uid, mst)}/toKhai/${id}`), { plMua, plBan })
+}
+
+export async function datCoTraVe(uid: string, mst: string, ids: string[], gt: boolean) {
+  await Promise.all(ids.map((id) => updateDoc(doc(db, `${nhanhCongTy(uid, mst)}/toKhai/${id}`), { khongChapNhan: gt })))
+}
+
+export interface DuLieuMay {
+  congTy: CongTyLuu[]
+  toKhai: (ToKhaiMay & { duongDan: string })[]
+  tepHoaDon: Record<string, TepHoaDonMay[]>
+  daXuat: Record<string, DaXuatMay[]>
+  chungTu: ChungTuMay[]
+  loHang: { mst: string; lo: LoHang }[]
+  saoKe: { mst: string; sk: SaoKe }[]
+  soQuy: { mst: string; caiDat: CaiDatQuy | null; phieu: PhieuQuy[] }[]
+}
+
+/** Tải toàn bộ hồ sơ của tài khoản (chỉ số liệu, chưa tải file) */
+export async function taiDuLieuMay(uid: string): Promise<DuLieuMay> {
+  const kq: DuLieuMay = { congTy: [], toKhai: [], tepHoaDon: {}, daXuat: {}, chungTu: [], loHang: [], saoKe: [], soQuy: [] }
+  const cts = await getDocs(collection(db, `nguoiDung/${uid}/congTy`))
+  await Promise.all(cts.docs.map(async (d) => {
+    const c = d.data() as CongTyLuu
+    kq.congTy.push({ hoSo: c.hoSo, kyNguon: c.kyNguon ?? '', suaTay: !!c.suaTay })
+    const mst = d.id
+    const [tk, hd, xu, ct, lo, sk, pq, cd] = await Promise.all([
+      getDocs(collection(db, `${nhanhCongTy(uid, mst)}/toKhai`)),
+      getDocs(collection(db, `${nhanhCongTy(uid, mst)}/tepHoaDon`)),
+      getDocs(collection(db, `${nhanhCongTy(uid, mst)}/daXuat`)),
+      getDocs(collection(db, `${nhanhCongTy(uid, mst)}/chungTu`)),
+      getDocs(collection(db, `${nhanhCongTy(uid, mst)}/loHang`)),
+      getDocs(collection(db, `${nhanhCongTy(uid, mst)}/saoKe`)),
+      getDocs(collection(db, `${nhanhCongTy(uid, mst)}/phieuQuy`)),
+      getDoc(doc(db, `${nhanhCongTy(uid, mst)}/soQuy/caiDat`)),
+    ])
+    if (pq.size || cd.exists()) kq.soQuy.push({ mst, caiDat: cd.exists() ? (cd.data() as CaiDatQuy) : null, phieu: pq.docs.map((x) => ({ ...(x.data() as Omit<PhieuQuy, 'id'>), id: x.id })) })
+    kq.saoKe.push(...sk.docs.map((x) => ({ mst, sk: { ...(x.data() as Omit<SaoKe, 'id'>), id: x.id } })))
+    kq.loHang.push(...lo.docs.map((x) => ({ mst, lo: { ...(x.data() as Omit<LoHang, 'id'>), id: x.id } })))
+    kq.chungTu.push(...ct.docs.map((x) => ({ id: x.id, ...(x.data() as Omit<ChungTuMay, 'id'>) })))
+    kq.toKhai.push(...tk.docs.map((x) => ({ id: x.id, ...(x.data() as Omit<ToKhaiMay, 'id'> & { duongDan: string }) })))
+    kq.tepHoaDon[mst] = hd.docs.map((x) => ({ id: x.id, ...(x.data() as Omit<TepHoaDonMay, 'id'>) }))
+    kq.daXuat[mst] = xu.docs.map((x) => ({ id: x.id, ...(x.data() as Omit<DaXuatMay, 'id'>) }))
+  }))
+  return kq
+}
+
+export async function taiTep(duongDan: string): Promise<ArrayBuffer> {
+  return getBytes(ref(luuTru, duongDan))
+}
+
+// ---------------- XOÁ (không hoàn tác được) ----------------
+
+export type NhomTaiLieu = 'toKhai' | 'tepHoaDon' | 'chungTu' | 'daXuat'
+
+/** Xoá 1 tài liệu: bản ghi số liệu + file gốc trên Storage */
+export async function xoaTaiLieu(uid: string, mst: string, nhom: NhomTaiLieu, id: string, duongDan?: string) {
+  if (duongDan) await deleteObject(ref(luuTru, duongDan)).catch((e) => {
+    if ((e as { code?: string }).code !== 'storage/object-not-found') throw e
+  })
+  await deleteDoc(doc(db, `${nhanhCongTy(uid, mst)}/${nhom}/${id}`))
+}
+
+/** Xoá TOÀN BỘ hồ sơ một công ty của tài khoản này trên mây. Trả về số tài liệu đã xoá. */
+export async function xoaCongTyTrenMay(uid: string, mst: string, tienDo?: (xong: number, tong: number) => void): Promise<number> {
+  const nhom: NhomTaiLieu[] = ['toKhai', 'tepHoaDon', 'chungTu', 'daXuat']
+  const ds = (await Promise.all(nhom.map(async (n) => (await getDocs(collection(db, `${nhanhCongTy(uid, mst)}/${n}`))).docs.map((d) => ({ n, id: d.id, duongDan: (d.data() as { duongDan?: string }).duongDan }))))).flat()
+  // Sổ quỹ: xoá phiếu + tồn đầu
+  for (const d of (await getDocs(collection(db, `${nhanhCongTy(uid, mst)}/phieuQuy`))).docs) await deleteDoc(d.ref)
+  await deleteDoc(doc(db, `${nhanhCongTy(uid, mst)}/soQuy/caiDat`))
+  // Sao kê: xoá bản ghi + file gốc
+  for (const d of (await getDocs(collection(db, `${nhanhCongTy(uid, mst)}/saoKe`))).docs) await xoaSaoKeMay(uid, mst, d.id, (d.data() as { duongDan?: string }).duongDan)
+  // Lô hàng: xoá luôn giấy tờ đã tải lên của từng lô
+  const lo = (await getDocs(collection(db, `${nhanhCongTy(uid, mst)}/loHang`))).docs.map((d) => ({ ...(d.data() as Omit<LoHang, 'id'>), id: d.id }))
+  let xong = 0
+  const tong = ds.length + lo.length
+  for (const d of ds) {
+    await xoaTaiLieu(uid, mst, d.n, d.id, d.duongDan)
+    tienDo?.(++xong, tong)
+  }
+  for (const l of lo) {
+    await xoaLoHang(uid, mst, l)
+    tienDo?.(++xong, tong)
+  }
+  await deleteDoc(doc(db, nhanhCongTy(uid, mst)))
+  return tong
+}
+
+// ---------------- AI kết nối qua MCP (máy chủ app/mcp/may) ----------------
+//   nguoiDung/{uid}/phienAI/{ma}     mỗi máy / ứng dụng AI được cho phép — xoá = thu hồi ngay
+//   nguoiDung/{uid}/nhatKyAI/{ma}    mỗi lần AI ghi / xoá dữ liệu
+
+export interface PhienAIMay {
+  id: string
+  tenMay: string
+  ungDung: string
+  noiNhan: string
+  taoLuc: Date | null
+}
+
+export interface DongNhatKyAI {
+  id: string
+  luc: Date | null
+  tenMay: string
+  congCu: string
+  moTa: string
+}
+
+const ngayCua = (v: unknown) => (v && typeof (v as { toDate?: () => Date }).toDate === 'function' ? (v as { toDate: () => Date }).toDate() : null)
+
+export async function taiPhienAI(uid: string): Promise<PhienAIMay[]> {
+  const ds = await getDocs(collection(db, `nguoiDung/${uid}/phienAI`))
+  return ds.docs
+    .map((d) => {
+      const x = d.data()
+      return { id: d.id, tenMay: String(x.tenMay ?? ''), ungDung: String(x.ungDung ?? ''), noiNhan: String(x.noiNhan ?? ''), taoLuc: ngayCua(x.taoLuc) }
+    })
+    .sort((a, b) => (b.taoLuc?.getTime() ?? 0) - (a.taoLuc?.getTime() ?? 0))
+}
+
+export async function thuHoiPhienAI(uid: string, id: string) {
+  await deleteDoc(doc(db, `nguoiDung/${uid}/phienAI/${id}`))
+}
+
+export async function taiNhatKyAI(uid: string, soDong = 15): Promise<DongNhatKyAI[]> {
+  const ds = await getDocs(query(collection(db, `nguoiDung/${uid}/nhatKyAI`), orderBy('luc', 'desc'), limit(soDong)))
+  return ds.docs.map((d) => {
+    const x = d.data()
+    return { id: d.id, luc: ngayCua(x.luc), tenMay: String(x.tenMay ?? ''), congCu: String(x.congCu ?? ''), moTa: String(x.moTa ?? '') }
+  })
+}
+
+// ---------------- LÔ HÀNG ----------------
+//   nguoiDung/{uid}/congTy/{mst}/loHang/{id}            thông tin lô (hoá đơn trong lô, số tấn gõ tay, danh sách giấy tờ)
+//   Storage: nguoiDung/{uid}/{mst}/loHang/{id}/{tên file}  giấy tờ chứng minh (hợp đồng, phiếu cân, biên bản...)
+
+export async function luuLoHang(uid: string, mst: string, lo: LoHang) {
+  const { id, ...du } = lo
+  await setDoc(doc(db, `${nhanhCongTy(uid, mst)}/loHang/${id}`), { ...du, capNhat: serverTimestamp() })
+}
+
+/** Xoá lô và mọi giấy tờ đã tải lên của lô (không hoàn tác được) */
+export async function xoaLoHang(uid: string, mst: string, lo: LoHang) {
+  await Promise.all(lo.giayTo.filter((g) => g.duongDan).map((g) => deleteObject(ref(luuTru, g.duongDan)).catch(() => undefined)))
+  await deleteDoc(doc(db, `${nhanhCongTy(uid, mst)}/loHang/${lo.id}`))
+}
+
+export async function taiLenGiayTo(uid: string, mst: string, loId: string, loai: GiayTo['loai'], f: File): Promise<GiayTo> {
+  const du = await f.arrayBuffer()
+  const duongDan = `nguoiDung/${uid}/${mst}/loHang/${loId}/${(await maBam(du)).slice(0, 12)}-${tenAnToan(f.name)}`
+  await uploadBytes(ref(luuTru, duongDan), new Uint8Array(du), { contentType: f.type || undefined })
+  return { loai, ten: f.name, duongDan, kichThuoc: du.byteLength }
+}
+
+export async function xoaGiayTo(g: GiayTo) {
+  if (g.duongDan) await deleteObject(ref(luuTru, g.duongDan)).catch(() => undefined)
+}
+
+// ---------------- SAO KÊ NGÂN HÀNG ----------------
+//   nguoiDung/{uid}/congTy/{mst}/saoKe/{id}               giao dịch đã đọc + gán tay (id = mã băm file -> nạp lại không trùng)
+//   Storage: nguoiDung/{uid}/{mst}/saoKe/{id}/{tên file}   file sao kê gốc
+
+export async function luuSaoKe(uid: string, mst: string, sk: SaoKe, du?: ArrayBuffer): Promise<string | undefined> {
+  const { id, ...ghi } = sk
+  let duongDan: string | undefined
+  if (du) {
+    duongDan = `nguoiDung/${uid}/${mst}/saoKe/${id}/${tenAnToan(sk.tenFile)}`
+    await uploadBytes(ref(luuTru, duongDan), new Uint8Array(du))
+  }
+  await setDoc(doc(db, `${nhanhCongTy(uid, mst)}/saoKe/${id}`), { ...ghi, ...(duongDan ? { duongDan } : {}), capNhat: serverTimestamp() }, { merge: true })
+  return duongDan
+}
+
+/** Chỉ ghi phần gán tay (không đụng giao dịch đã đọc) */
+export async function luuGhepTay(uid: string, mst: string, id: string, ghepTay: Record<string, string[]>) {
+  await updateDoc(doc(db, `${nhanhCongTy(uid, mst)}/saoKe/${id}`), { ghepTay, capNhat: serverTimestamp() })
+}
+
+export async function xoaSaoKeMay(uid: string, mst: string, id: string, duongDan?: string) {
+  if (duongDan) await deleteObject(ref(luuTru, duongDan)).catch(() => undefined)
+  await deleteDoc(doc(db, `${nhanhCongTy(uid, mst)}/saoKe/${id}`))
+}
+
+// ---------------- NGƯỜI XEM (giám đốc chỉ xem) ----------------
+//   nguoiDung/{uid}/nguoiXem/{email}     danh sách email được xem (luật phân quyền dựa vào đây)
+//   chiaSe/{email}/tu/{chuUid}            lời mời: để người xem biết hồ sơ của ai được chia sẻ cho mình
+
+export interface ChiaSe {
+  chuUid: string
+  chuEmail: string
+  chuTen: string
+}
+
+const chuanEmail = (e: string) => e.trim().toLowerCase()
+
+export async function taiNguoiXem(uid: string): Promise<string[]> {
+  return (await getDocs(collection(db, `nguoiDung/${uid}/nguoiXem`))).docs.map((d) => d.id).sort()
+}
+
+export async function themNguoiXem(uid: string, chu: { email: string; ten: string }, email: string) {
+  const e = chuanEmail(email)
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) throw new Error('Email không hợp lệ')
+  await setDoc(doc(db, `nguoiDung/${uid}/nguoiXem/${e}`), { themLuc: serverTimestamp() })
+  await setDoc(doc(db, `chiaSe/${e}/tu/${uid}`), { chuUid: uid, chuEmail: chu.email, chuTen: chu.ten, themLuc: serverTimestamp() })
+}
+
+export async function boNguoiXem(uid: string, email: string) {
+  const e = chuanEmail(email)
+  await deleteDoc(doc(db, `chiaSe/${e}/tu/${uid}`))
+  await deleteDoc(doc(db, `nguoiDung/${uid}/nguoiXem/${e}`))
+}
+
+/** Các hồ sơ người khác chia sẻ cho email của mình */
+export async function taiChiaSeChoToi(email: string): Promise<ChiaSe[]> {
+  const ds = await getDocs(collection(db, `chiaSe/${chuanEmail(email)}/tu`))
+  return ds.docs.map((d) => d.data() as ChiaSe)
+}
+
+// ---------------- SỔ QUỸ TIỀN MẶT ----------------
+//   nguoiDung/{uid}/congTy/{mst}/phieuQuy/{id}    phiếu thu / chi
+//   nguoiDung/{uid}/congTy/{mst}/soQuy/caiDat     tồn quỹ đầu kỳ
+
+export async function luuPhieuQuy(uid: string, mst: string, p: PhieuQuy) {
+  const { id, ...ghi } = p
+  await setDoc(doc(db, `${nhanhCongTy(uid, mst)}/phieuQuy/${id}`), { ...ghi, capNhat: serverTimestamp() })
+}
+
+export async function xoaPhieuQuy(uid: string, mst: string, id: string) {
+  await deleteDoc(doc(db, `${nhanhCongTy(uid, mst)}/phieuQuy/${id}`))
+}
+
+export async function luuTonDauQuy(uid: string, mst: string, cd: CaiDatQuy) {
+  await setDoc(doc(db, `${nhanhCongTy(uid, mst)}/soQuy/caiDat`), { ...cd, capNhat: serverTimestamp() })
+}
