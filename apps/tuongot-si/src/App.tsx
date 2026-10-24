@@ -155,6 +155,7 @@ export default function App() {
         {/* Thanh bên (máy tính) */}
         <aside className="keep-colors fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-gradient-to-b from-red-800 to-red-950 text-white lg:flex">
           <div className="flex items-center gap-3 px-5 py-6">
+            {QUA_CONG && <NutTrangChu />}
             <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-red-700 shadow-lg shadow-black/20">
               <Icon name="chili" className="h-6 w-6" strokeWidth={1.7} />
             </div>
@@ -187,12 +188,8 @@ export default function App() {
             <button onClick={() => setDark((d) => !d)} className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2 font-medium text-red-100/90 hover:bg-white/10">
               <Icon name={dark ? 'sun' : 'moon'} className="h-5 w-5" /> {dark ? 'Giao diện sáng' : 'Giao diện tối'}
             </button>
-            {/* Qua cổng chung: cài đặt (?cai-dat), đăng xuất ở trang chủ */}
-            {QUA_CONG ? (
-              <a href={TRANG_CHU} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 font-medium text-red-100/90 hover:bg-white/10">
-                <Icon name="home" className="h-5 w-5" /> Trang chủ
-              </a>
-            ) : (
+            {/* Qua cổng chung: cài đặt (?cai-dat), đăng xuất ở trang chủ (nút nhà góc trái) */}
+            {!QUA_CONG && (
               <button onClick={() => setShowSettings(true)} className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2 font-medium text-red-100/90 hover:bg-white/10">
                 <Icon name="settings" className="h-5 w-5" /> Cài đặt
               </button>
@@ -209,6 +206,7 @@ export default function App() {
         <header className="keep-colors sticky top-0 z-30 bg-red-800 px-4 pt-[max(0.625rem,env(safe-area-inset-top))] pb-2.5 text-white shadow-md lg:hidden">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2.5">
+              {QUA_CONG && <NutTrangChu />}
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-white text-red-700">
                 <Icon name="chili" className="h-5 w-5" strokeWidth={1.7} />
               </span>
@@ -221,11 +219,7 @@ export default function App() {
               <button onClick={() => setDark((d) => !d)} className="grid h-9 w-9 cursor-pointer place-items-center rounded-xl hover:bg-white/10" aria-label="Đổi giao diện sáng/tối">
                 <Icon name={dark ? 'sun' : 'moon'} className="h-5 w-5" />
               </button>
-              {QUA_CONG ? (
-                <a href={TRANG_CHU} className="grid h-9 w-9 place-items-center rounded-xl hover:bg-white/10" aria-label="Trang chủ">
-                  <Icon name="home" className="h-5 w-5" />
-                </a>
-              ) : (
+              {!QUA_CONG && (
                 <button onClick={() => setShowSettings(true)} className="grid h-9 w-9 cursor-pointer place-items-center rounded-xl hover:bg-white/10" aria-label="Cài đặt">
                   <Icon name="settings" className="h-5 w-5" />
                 </button>
@@ -320,3 +314,15 @@ export default function App() {
   )
 }
 
+
+/** Nút về trang chủ chung (mẫu thống nhất 5 app): góc trái đầu trang, ô 40px bo 8px, biểu tượng ngôi nhà — kiểu trên nền màu. */
+function NutTrangChu() {
+  return (
+    <a href={TRANG_CHU} aria-label="Về trang chủ" title="Về trang chủ" className="keep-colors grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white/15 text-white hover:bg-white/25">
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
+        <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      </svg>
+    </a>
+  )
+}

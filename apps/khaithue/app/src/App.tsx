@@ -713,21 +713,19 @@ export default function App() {
   const dsCongTy = Object.values(kho.congTy)
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800">
-      <header className="sticky top-0 z-40 bg-emerald-700 text-white shadow-md">
+    <div className="min-h-screen bg-slate-100 pb-20 text-slate-800 sm:pb-0">
+      <header className="sticky top-0 z-40 bg-emerald-700 pt-[env(safe-area-inset-top)] text-white shadow-md">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-2">
+          {QUA_CONG && <NutTrangChu />}
           <Logo className="h-10 w-10 shrink-0" />
           <div className="min-w-0">
             <h1 className="truncate text-lg font-bold leading-tight sm:text-xl">Kê khai thuế quý</h1>
             <p className="hidden truncate text-xs text-emerald-100 sm:block">01/GTGT (kèm phụ lục giảm thuế) và 05/KK-TNCN — xuất XML để nộp trên thuedientu.gdt.gov.vn</p>
           </div>
-          {coMay && QUA_CONG && (
-            // Qua cổng chung: đăng nhập, đăng xuất ở trang chủ; hộp tài khoản (cài đặt) chỉ mở khi trang chủ gọi ?cai-dat
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              {user && MO_CAI_DAT && <TaiKhoan user={user} moSan />}
-              <a className="rounded-full bg-white px-3 py-1.5 text-sm font-medium text-emerald-800 hover:bg-emerald-50" href={TRANG_CHU}>
-                ← <span className="hidden sm:inline">Trang chủ</span>
-              </a>
+          {coMay && QUA_CONG && user && MO_CAI_DAT && (
+            // Qua cổng chung: đăng nhập, đăng xuất ở trang chủ (nút nhà góc trái); hộp tài khoản (cài đặt) chỉ mở khi trang chủ gọi ?cai-dat
+            <div className="ml-auto shrink-0">
+              <TaiKhoan user={user} moSan />
             </div>
           )}
           {coMay && !QUA_CONG && (
@@ -779,9 +777,10 @@ export default function App() {
         {dangXem && <XemChiaSe cs={dangXem} onDong={() => setDangXem(null)} />}
         {!dangXem && (<>
         <nav className="flex flex-wrap gap-2">
-          {([['tongQuan', '📊 Tổng quan'], ['keKhai', '📝 Kê khai quý'], ['loHang', '📦 Lô hàng'], ['congNo', '💳 Công nợ'], ['kho', '🗂 Kho hồ sơ']] as const).map(([k, ten]) => (
-            <button key={k} onClick={() => setTab(k)} className={`rounded-xl px-4 py-2 font-medium ${tab === k ? 'bg-emerald-700 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>
-              {ten}
+          {/* Máy tính: tab dạng viên ở đây; điện thoại: thanh tab dưới đáy (THANH_TAB, cuối trang) */}
+          {THANH_TAB.map(([k, icon, ten]) => (
+            <button key={k} onClick={() => setTab(k)} className={`hidden rounded-xl px-4 py-2 font-medium sm:inline-block ${tab === k ? 'bg-emerald-700 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>
+              {icon} {ten}
             </button>
           ))}
           {Object.keys(kho.congTy).length > 1 && (
@@ -1110,6 +1109,39 @@ export default function App() {
         <p>(C) August87 - 0982722036. Bảo lưu mọi quyền.</p>
         <p className="mt-1">Công cụ hỗ trợ lập tờ khai — kiểm tra lại số liệu trước khi nộp lên cơ quan thuế.</p>
       </footer>
+
+      {!dangXem && (
+        // Điện thoại: thanh tab dưới đáy (máy tính dùng tab dạng viên ở đầu nội dung)
+        <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 bg-white/95 backdrop-blur sm:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          {THANH_TAB.map(([k, icon, , ngan]) => (
+            <button key={k} onClick={() => (setTab(k), window.scrollTo(0, 0))} className={`flex flex-1 flex-col items-center py-1.5 text-[11px] ${tab === k ? 'font-semibold text-emerald-700' : 'text-slate-500'}`}>
+              <span className="text-lg leading-6">{icon}</span>
+              {ngan}
+            </button>
+          ))}
+        </nav>
+      )}
     </div>
+  )
+}
+
+// [tab, biểu tượng, tên đầy đủ (máy tính), tên ngắn (thanh dưới đáy điện thoại)]
+const THANH_TAB = [
+  ['tongQuan', '📊', 'Tổng quan', 'Tổng quan'],
+  ['keKhai', '📝', 'Kê khai quý', 'Kê khai'],
+  ['loHang', '📦', 'Lô hàng', 'Lô hàng'],
+  ['congNo', '💳', 'Công nợ', 'Công nợ'],
+  ['kho', '🗂', 'Kho hồ sơ', 'Kho HS'],
+] as const
+
+/** Nút về trang chủ chung (mẫu thống nhất 5 app): góc trái đầu trang, ô 40px bo 8px, biểu tượng ngôi nhà — kiểu trên nền màu. */
+function NutTrangChu() {
+  return (
+    <a href={TRANG_CHU} aria-label="Về trang chủ" title="Về trang chủ" className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white/15 text-white hover:bg-white/25">
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
+        <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      </svg>
+    </a>
   )
 }

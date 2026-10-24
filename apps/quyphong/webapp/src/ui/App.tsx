@@ -127,13 +127,16 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
   return (
     <div className="trang">
       <header>
-        <h1>Quỹ phòng KTAT</h1>
-        {/* Qua cổng chung: nút về trang chủ luôn hiện (không giấu trong menu ⋯ trên điện thoại) */}
+        {/* Qua cổng chung: nút về trang chủ (mẫu thống nhất 5 app: góc trái, ô 40px, ngôi nhà), luôn hiện */}
         {QUA_CONG && (
-          <a className="ve-trang-chu" href={TRANG_CHU}>
-            ← <span className="an-dt">Trang chủ</span>
+          <a className="nut-trang-chu" href={TRANG_CHU} aria-label="Về trang chủ" title="Về trang chủ">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
+              <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            </svg>
           </a>
         )}
+        <h1>Quỹ phòng KTAT</h1>
         <div className={moMenu ? 'tai-khoan mo' : 'tai-khoan'}>
           <button className="nut-menu" aria-label="Menu" aria-expanded={moMenu} onClick={() => setMoMenu(!moMenu)}>
             ⋯

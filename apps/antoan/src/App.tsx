@@ -120,7 +120,8 @@ function ManHinh({ user }: { user: User }) {
 
   return (
     <div className="mx-auto max-w-7xl p-2 pb-24 sm:p-4">
-      <header className="mb-3 flex items-center gap-2">
+      <header className="mb-3 flex items-center gap-2 pt-[env(safe-area-inset-top)]">
+        {QUA_CONG && <NutTrangChu />}
         <h1 className="flex items-center gap-2 text-lg font-bold text-slate-800"><img src="icon.svg" alt="" className="h-7 w-7" />Lịch giảng ATLĐ</h1>
         {/* máy tính: tab ở trên; điện thoại: thanh tab dưới đáy */}
         <nav className="ml-4 hidden gap-1 sm:flex">
@@ -133,9 +134,8 @@ function ManHinh({ user }: { user: User }) {
         <span className="flex-1" />
         <button className="btn" onClick={() => setDanTin(true)}>📋 <span className="hidden sm:inline">Dán tin nhắn</span><span className="sm:hidden">Dán tin</span></button>
         <button className="btn-primary hidden sm:inline-flex" onClick={() => them()}>+ Thêm lớp</button>
-        {QUA_CONG ? (
-          <a className="btn" href={TRANG_CHU}>← <span className="hidden sm:inline">Trang chủ</span></a>
-        ) : (
+        {/* Qua cổng chung: đăng xuất ở trang chủ (nút nhà góc trái) */}
+        {!QUA_CONG && (
           <button className="hidden text-xs text-slate-400 hover:text-slate-600 sm:block" title={user.email ?? ''} onClick={() => void fb().then((f) => f.dangXuat())}>Đăng xuất</button>
         )}
       </header>
@@ -181,5 +181,17 @@ function ManHinh({ user }: { user: User }) {
       {danTin && <DanTin onDong={() => setDanTin(false)} onMo={(l) => setSua({ lop: l, moi: true })} />}
       {sua && <SuaLop key={sua.lop.id} lop={sua.lop} moi={sua.moi} tatCa={ds} onDong={() => setSua(null)} />}
     </div>
+  )
+}
+
+/** Nút về trang chủ chung (mẫu thống nhất 5 app): góc trái đầu trang, ô 40px bo 8px, biểu tượng ngôi nhà. */
+function NutTrangChu() {
+  return (
+    <a href={TRANG_CHU} aria-label="Về trang chủ" title="Về trang chủ" className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50">
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
+        <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      </svg>
+    </a>
   )
 }

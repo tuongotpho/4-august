@@ -55,7 +55,8 @@ code { font-size: 12px; }
 header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 h1 { font-size: 20px; margin: 0; }
 .tai-khoan, .tai-khoan .menu { display: flex; gap: 8px; align-items: center; }
-.ve-trang-chu { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 12px; border: 1px solid var(--vien); border-radius: 8px; color: var(--chinh); text-decoration: none; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.nut-trang-chu { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border: 1px solid var(--vien); border-radius: 8px; background: var(--the); color: var(--chu); }
+.nut-trang-chu + h1 { margin-right: auto; }
 .nut-menu, .nen-menu, .nut-loc { display: none; }
 @media (min-width: 701px) { .chi-dt { display: none !important; } }
 .loc-them { display: contents; }
