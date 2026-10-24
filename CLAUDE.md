@@ -42,10 +42,18 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
 
 ## Còn mở, chưa quyết
 - ~~Cấu trúc thư mục bên trong~~ — đã chốt ở đợt 0: `apps/<ten-app>` + `packages/` (xem `README.md`).
-- App chung chạy chung một địa chỉ (đăng nhập một lần thật sự) — mỗi app sẽ phải build dưới đường dẫn con; chưa thử.
+- ~~App chung chạy chung một địa chỉ~~ — xong 24/10/2026: `app-by-lethanh.vercel.app` (trang cổng + chuyển tiếp, xem Tiến độ).
 - Gói Firebase của `app-from-ai` (nhiều khả năng Blaze) và cảnh báo ngân sách — **người dùng kiểm trên Console**.
 
 ## Tiến độ (cập nhật cuối mỗi đợt, mới nhất ở trên)
+
+- 24/10/2026 — **Giai đoạn A xong: một địa chỉ chung `https://app-by-lethanh.vercel.app`, đăng nhập một lần** (chi tiết: `F:\AI\09-BAO-CAO-GIAI-DOAN-A-CONG-CHUNG.md`; phương án + đo giao diện: `F:\AI\08-…`).
+  - **Đã chốt với người dùng:** tên miền `app-by-lethanh.vercel.app`; **mỗi app một màu nhận diện** (giữ màu đang dùng: QP `#1f4e78`, LG teal-700 `#0f766e`, TƠ red-700 `#b91c1c`, HĐ blue-600 `#2563eb`, KT emerald-700 `#047857`), mọi thứ khác giống nhau; **chế độ tối cho cả 5, làm sau cùng**.
+  - Trang cổng `apps/cong` (HTML tĩnh + `vercel.json`), project Vercel **`cong-4august`** (`prj_IvxBxX3hztdxOHM5jVOOUeXDxypN`), domain `app-by-lethanh.vercel.app`. Chuyển tiếp ngầm: `/quy-phong/` `/lich-giang/` `/tuong-ot/` `/hoa-don/` `/khai-thue/` → địa chỉ gốc từng app. Phải có cả quy tắc `/<app>/` riêng — `:path*` không khớp đường dẫn trống.
+  - 5 app build `base: './'` (đường dẫn tương đối) → cùng bản build chạy ở địa chỉ gốc lẫn dưới cổng. Manifest: `start_url`/`scope` `./`, icon tương đối (giữ `"id": "/"` của Quỹ phòng để app đã cài không bị coi là app khác). Gọi máy chủ Telegram/AI bằng đường dẫn tương đối. Hiển thị địa chỉ MCP + link Google Calendar (Lịch giảng): nếu `location.hostname === 'app-by-lethanh.vercel.app'` thì dùng địa chỉ gốc của app.
+  - Đo: qua cổng 5/5 trang 200 + file JS 200, CSP Khai thuế giữ nguyên; người dùng đăng nhập 1 lần ở `/hoa-don/` → 4 app kia tự vào (có tài khoản, số liệu); ô Kết nối AI qua cổng hiện `https://quyphong.vercel.app/mcp`; địa chỉ cũ (quanly-at) vẫn chạy, 0 lỗi file; CI tuongot-si + khaithue xanh; đẩy nhánh `cong-chung` → 5 bản xem trước đạt rồi mới gộp `main`.
+  - **Lỗi Claude gây ra rồi đã sửa:** `vercel link --project app-by-lethanh` gắn vào **project v0 cũ có sẵn** của người dùng (`prj_My3we…`, trang `v0-app-by-lethanh.vercel.app`, Next.js) và sửa 3 thiết lập. Đã trả về đúng gốc (framework `nextjs`, rootDirectory trống, không Ignored Build Step — tra từ bản deploy cũ), trang v0 vẫn 200, không deploy gì vào đó. **Bài học: trước `vercel link --project X` phải `vercel api /v9/projects/X` xem đã tồn tại chưa; tạo mới bằng `vercel project add`.**
+  - Việc kế tiếp: **B0** — `packages/giao-dien` (token màu/bo góc/font Be Vietnam Pro đặt sẵn trong app, đầu trang chung có nút chuyển app, chân trang) + trang mẫu cho người dùng duyệt; rồi B1…B5 (Hoá đơn → Lịch giảng → Khai thuế → Tương ớt → Quỹ phòng), B6 chế độ tối.
 
 - 24/10/2026 — **Đợt 5 (Khai thuế) đã chạy trên mạng từ 4.August → xong giai đoạn "một bản code gốc" cho cả 5 app** (chi tiết + tổng kết: `F:\AI\07-BAO-CAO-DOT-5-KHAI-THUE-TONG-KET.md`).
   - `apps/khaithue` (git subtree từ `F:\AI\HTKK-thanh` main = GitHub = bản đang chạy `66035f8`; 34 commit, 106/106 file). App ở `apps/khaithue/app`, `firebase.json` + `firebase/` ở `apps/khaithue`.
