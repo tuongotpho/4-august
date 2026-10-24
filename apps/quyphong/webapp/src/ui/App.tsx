@@ -44,10 +44,15 @@ export function App() {
         <button className="chinh" onClick={() => signInWithPopup(fb!.auth, new GoogleAuthProvider())}>
           Đăng nhập bằng Google
         </button>
+        <BanQuyen />
       </div>
     );
 
   return <SoQuy store={store!} user={user ?? null} onDangXuat={fb ? () => signOut(fb.auth) : undefined} />;
+}
+
+function BanQuyen() {
+  return <footer className="ban-quyen">(C) August87 - 0982722036</footer>;
 }
 
 type Tab = 'so' | 'thong-ke' | 'cong-no';
@@ -260,6 +265,8 @@ function SoQuy({ store, user, onDangXuat }: { store: DataStore; user: User | nul
           )}
         </>
       )}
+
+      <BanQuyen />
 
       <button className="nut-noi" aria-label="Thêm giao dịch" onClick={() => setMoChonMau(true)}>
         +
