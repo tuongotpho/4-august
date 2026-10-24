@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="robots" content="noindex" />
+    <title>App by Lê Thanh</title>
+    <!--
+      Trang cổng 4.August: một địa chỉ cho 5 app. Mỗi app nằm ở đường dẫn con (vercel.json chuyển tiếp ngầm
+      sang project Vercel của app đó) → cùng tên miền nên đăng nhập Google một lần là cả 5 app nhận.
+      Màu nhận diện từng app: giữ đúng màu chủ đạo app đang dùng (báo cáo F:\AI\08-…).
+    -->
+    <style>
+      :root {
+        --nen: #f1f5f9; --the: #fff; --chu: #0f172a; --phu: #64748b; --vien: #e2e8f0;
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root { --nen: #0b1120; --the: #111827; --chu: #e2e8f0; --phu: #94a3b8; --vien: #1f2937; color-scheme: dark; }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; min-height: 100vh; background: var(--nen); color: var(--chu);
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        display: flex; flex-direction: column;
+        padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+      }
+      main { width: 100%; max-width: 960px; margin: 0 auto; flex: 1; }
+      h1 { font-size: 22px; margin: 8px 0 4px; }
+      .phu { color: var(--phu); font-size: 14px; margin: 0 0 20px; }
+      .luoi { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+      a.o {
+        display: flex; gap: 14px; align-items: center; padding: 16px; border-radius: 12px;
+        background: var(--the); border: 1px solid var(--vien); color: inherit; text-decoration: none;
+        transition: border-color .15s, transform .15s;
+      }
+      a.o:hover { border-color: var(--mau); transform: translateY(-1px); }
+      a.o:focus-visible { outline: 2px solid var(--mau); outline-offset: 2px; }
+      .dau { width: 44px; height: 44px; border-radius: 10px; background: var(--mau); color: #fff;
+        display: grid; place-items: center; font-weight: 700; font-size: 16px; flex-shrink: 0; }
+      .ten { font-weight: 600; font-size: 16px; }
+      .mo-ta { color: var(--phu); font-size: 13px; margin-top: 2px; }
+      footer { text-align: center; color: var(--phu); font-size: 12px; padding-top: 24px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>App by Lê Thanh</h1>
+      <p class="phu">Đăng nhập Google ở một app là cả 5 app đều nhận.</p>
+      <nav class="luoi" aria-label="Các app">
+        <a class="o" href="quy-phong/" style="--mau:#1f4e78">
+          <span class="dau">QP</span>
+          <span><div class="ten">Quỹ phòng KTAT</div><div class="mo-ta">Sổ thu – chi, công nợ ứng</div></span>
+        </a>
+        <a class="o" href="lich-giang/" style="--mau:#0f766e">
+          <span class="dau">LG</span>
+          <span><div class="ten">Lịch giảng ATLĐ</div><div class="mo-ta">Lịch lớp, thù lao, công nợ đối tác</div></span>
+        </a>
+        <a class="o" href="tuong-ot/" style="--mau:#b91c1c">
+          <span class="dau">TƠ</span>
+          <span><div class="ten">Bán buôn tương ớt</div><div class="mo-ta">Đơn hàng, khách, tồn kho</div></span>
+        </a>
+        <a class="o" href="hoa-don/" style="--mau:#2563eb">
+          <span class="dau">HĐ</span>
+          <span><div class="ten">Hoá đơn NPSC</div><div class="mo-ta">Hồ sơ hoá đơn, tờ trình, ĐNTT</div></span>
+        </a>
+        <a class="o" href="khai-thue/" style="--mau:#047857">
+          <span class="dau">KT</span>
+          <span><div class="ten">Khai thuế</div><div class="mo-ta">Tờ khai quý, hoá đơn, sổ quỹ</div></span>
+        </a>
+      </nav>
+    </main>
+    <footer>(C) August87 - 0982722036</footer>
+  </body>
+</html>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import maScript from '../../apps-script/Lich.gs?raw'
-import { dongBoNen, goiMayChu, luuNhieuLop, taiFile, useCaiDat } from '../lib/hooks'
+import { APP_URL, dongBoNen, goiMayChu, luuNhieuLop, taiFile, useCaiDat } from '../lib/hooks'
 import { khoaNgauNhien, thuKetNoi } from '../lib/lichGoogle'
 import { boDau, chuanLop, homNay, ngayVN, type CaiDat, type LopGiang } from '../lib/model'
 import type { KetQuaNhap } from '../lib/nhapExcel'
@@ -243,7 +243,7 @@ function Telegram() {
 // ---------------- Kết nối AI (MCP) ----------------
 
 function KetNoiAI() {
-  const diaChi = `${location.origin}/mcp`
+  const diaChi = `${APP_URL}/mcp`
   const [phien, setPhien] = useState<PhienMay[]>([])
   const [nhatKy, setNhatKy] = useState<DongNhatKy[]>([])
   const [daChep, setDaChep] = useState('')

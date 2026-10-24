@@ -15,7 +15,8 @@ export function mayChuChoPhep(thamSo: string | null, dev = env.DEV): string {
   return location.origin
 }
 
-export const mcpUrl = () => `${location.origin}/mcp`
+/** Mở qua cổng app-by-lethanh thì máy chủ MCP vẫn ở địa chỉ gốc tuongot-si.vercel.app */
+export const mcpUrl = () => `${location.hostname === 'app-by-lethanh.vercel.app' ? 'https://tuongot-si.vercel.app' : location.origin}/mcp`
 
 const cfg = {
   apiKey: env.VITE_FIREBASE_API_KEY as string,

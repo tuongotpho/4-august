@@ -5,6 +5,8 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Đường dẫn tương đối: cùng một bản build chạy ở tuongot-si.vercel.app và dưới cổng app-by-lethanh.vercel.app/tuong-ot/
+  base: './',
   server: {
     host: '0.0.0.0',
     port: 3000,

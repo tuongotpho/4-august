@@ -84,6 +84,9 @@ export function TaiKhoan({ user, onDangXuat }: { user: User; onDangXuat: () => v
   )
 }
 
+/** Địa chỉ gốc của app (máy chủ Kết nối AI ở đây). Mở qua cổng app-by-lethanh thì vẫn là khaithue.vercel.app. */
+const DIA_CHI_GOC = location.hostname === 'app-by-lethanh.vercel.app' ? 'https://khaithue.vercel.app' : location.origin
+
 const gio = (d: Date | null) => (d ? d.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : '')
 
 /** AI (Claude Code, Claude Desktop...) kết nối vào hồ sơ qua MCP: địa chỉ kết nối, máy đang có quyền, nhật ký AI ghi/xoá */
@@ -92,7 +95,7 @@ function KetNoiAI({ uid }: { uid: string }) {
   const [nhatKy, setNhatKy] = useState<DongNhatKyAI[]>([])
   const [loi, setLoi] = useState('')
   const [daChep, setDaChep] = useState(false)
-  const diaChi = `${location.origin}/mcp`
+  const diaChi = `${DIA_CHI_GOC}/mcp`
   const tai = () => {
     taiPhienAI(uid).then(setPhien).catch((e) => setLoi((e as Error).message))
     taiNhatKyAI(uid).then(setNhatKy).catch(() => undefined)
@@ -172,7 +175,8 @@ function NhacHanTelegram({ user }: { user: User }) {
     setDang(true)
     setLoi('')
     try {
-      const r = await fetch(duong, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ maLamMoi: user.refreshToken, ...than }) })
+      // '.' + '/telegram/…' = đường dẫn tương đối: qua cổng app-by-lethanh/khai-thue/ vẫn tới đúng máy chủ
+      const r = await fetch('.' + duong, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ maLamMoi: user.refreshToken, ...than }) })
       const j = (await r.json().catch(() => ({}))) as Record<string, string>
       if (!r.ok) throw new Error(j.loi || `Máy chủ trả lỗi ${r.status}`)
       return j

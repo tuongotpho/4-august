@@ -1,0 +1,20 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "",
+  "outputDirectory": ".",
+  "redirects": [
+    { "source": "/quy-phong", "destination": "/quy-phong/", "permanent": false },
+    { "source": "/lich-giang", "destination": "/lich-giang/", "permanent": false },
+    { "source": "/tuong-ot", "destination": "/tuong-ot/", "permanent": false },
+    { "source": "/hoa-don", "destination": "/hoa-don/", "permanent": false },
+    { "source": "/khai-thue", "destination": "/khai-thue/", "permanent": false }
+  ],
+  "rewrites": [
+    { "source": "/quy-phong/:path*", "destination": "https://quyphong.vercel.app/:path*" },
+    { "source": "/lich-giang/:path*", "destination": "https://quanly-at.vercel.app/:path*" },
+    { "source": "/tuong-ot/:path*", "destination": "https://tuongot-si.vercel.app/:path*" },
+    { "source": "/hoa-don/:path*", "destination": "https://hoadon-npsc.vercel.app/:path*" },
+    { "source": "/khai-thue/:path*", "destination": "https://khaithue.vercel.app/:path*" }
+  ]
+}

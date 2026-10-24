@@ -6,6 +6,8 @@ import tailwindcss from '@tailwindcss/vite'
 // đổi cổng là trình duyệt coi như "trang khác" và không thấy dữ liệu cũ.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Đường dẫn tương đối: cùng một bản build chạy ở hoadon-npsc.vercel.app và dưới cổng app-by-lethanh.vercel.app/hoa-don/
+  base: './',
   // không theo dõi thư mục bộ cài — tránh khóa thư mục khi đóng gói trên Windows
   server: { port: 5180, strictPort: true, watch: { ignored: ['**/release/**', '**/HD-Hung Yen/**'] } },
   preview: { port: 5180, strictPort: true },

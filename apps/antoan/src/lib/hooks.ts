@@ -30,10 +30,13 @@ export function useGoiY(ds: LopGiang[] | null): GoiY {
   return useMemo(() => goiY(ds ?? []), [ds])
 }
 
-export const APP_URL = typeof location !== 'undefined' ? location.origin : ''
+/** Địa chỉ gốc của app (link mở lớp trong Google Calendar, địa chỉ Kết nối AI). Mở qua cổng app-by-lethanh thì vẫn là quanly-at. */
+export const APP_URL =
+  typeof location === 'undefined' ? '' : location.hostname === 'app-by-lethanh.vercel.app' ? 'https://quanly-at.vercel.app' : location.origin
 
-/** Địa chỉ máy chủ (bot, AI). Chạy thử trên máy: vite chuyển /ai, /telegram sang máy chủ local (vite.config.ts) */
-export const MAY_CHU = import.meta.env.VITE_MAY_CHU_URL || ''
+/** Địa chỉ máy chủ (bot, AI): đường dẫn tương đối — qua cổng app-by-lethanh/lich-giang/ vẫn tới đúng máy chủ.
+ *  Chạy thử trên máy: vite chuyển /ai, /telegram sang máy chủ local (vite.config.ts) */
+export const MAY_CHU = import.meta.env.VITE_MAY_CHU_URL || '.'
 
 /** Lỗi đồng bộ lịch gần nhất (hiện ở thanh trên cùng) */
 let loiLich = ''

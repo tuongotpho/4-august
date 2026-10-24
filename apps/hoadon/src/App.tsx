@@ -69,7 +69,7 @@ export default function App() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-4">
         <div className="card w-full max-w-md space-y-4 text-center">
-          <h1 className="flex items-center justify-center gap-2 text-xl font-bold text-slate-800"><img src="/icon-192.png" alt="" className="h-9 w-9" />Quản lý hóa đơn</h1>
+          <h1 className="flex items-center justify-center gap-2 text-xl font-bold text-slate-800"><img src="icon-192.png" alt="" className="h-9 w-9" />Quản lý hóa đơn</h1>
           <p className="text-sm text-slate-600">
             Đăng nhập Google để dữ liệu được cất trên mạng: mở ở máy nào, điện thoại nào cũng thấy cùng một bộ hồ sơ. Chỉ tài khoản của anh xem
             được dữ liệu của anh.
@@ -100,7 +100,7 @@ function Main({ user }: { user: User }) {
       <div className="sticky top-0 z-40 shadow-sm">
       <header className="border-b border-slate-200 bg-white">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2.5 lg:px-6">
-          <h1 className="flex items-center gap-2 text-lg font-bold text-slate-800"><img src="/favicon-32.png" alt="" className="h-7 w-7" />Quản lý hóa đơn</h1>
+          <h1 className="flex items-center gap-2 text-lg font-bold text-slate-800"><img src="favicon-32.png" alt="" className="h-7 w-7" />Quản lý hóa đơn</h1>
           <nav className="flex flex-wrap gap-1">
             {TABS.map(([k, label]) => (
               <button

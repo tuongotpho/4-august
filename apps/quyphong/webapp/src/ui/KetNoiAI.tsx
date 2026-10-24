@@ -8,7 +8,9 @@ export function KetNoiAI({ ai, onDong }: { ai: NonNullable<DataStore['ai']>; onD
   const [phien, setPhien] = useState<PhienAI[] | null>(null);
   const [nhatKy, setNhatKy] = useState<NhatKyAI[]>([]);
   const [daChep, setDaChep] = useState('');
-  const url = `${location.origin}/mcp`;
+  // Mở qua cổng app-by-lethanh thì máy chủ AI vẫn ở địa chỉ gốc quyphong.vercel.app
+  const goc = location.hostname === 'app-by-lethanh.vercel.app' ? 'https://quyphong.vercel.app' : location.origin;
+  const url = `${goc}/mcp`;
   const lenh = `claude mcp add --transport http quyphong ${url}`;
 
   useEffect(() => ai.theoDoiPhien(setPhien), [ai]);

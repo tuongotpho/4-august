@@ -66,7 +66,7 @@ export default function InstallBanner() {
   return (
     <div className="mb-4 rounded-2xl border border-green-200 bg-green-50 p-3 lg:hidden">
       <div className="flex items-center gap-3">
-        <img src="/icon-192.png" alt="" className="h-10 w-10 shrink-0 rounded-xl" />
+        <img src="icon-192.png" alt="" className="h-10 w-10 shrink-0 rounded-xl" />
         <div className="min-w-0 flex-1 text-sm">
           <div className="font-semibold text-green-900">Cài app lên màn hình chính</div>
           <div className="text-xs text-green-800">Mở nhanh như app thật, toàn màn hình.</div>
