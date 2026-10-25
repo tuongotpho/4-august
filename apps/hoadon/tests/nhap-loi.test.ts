@@ -7,6 +7,9 @@ import type { DataStore } from '../src/lib/store'
 vi.mock('../src/lib/pdfText', () => {
   throw new TypeError('Failed to fetch dynamically imported module: https://hoadon-npsc.vercel.app/assets/pdfText-cu.js')
 })
+// Web có bản mới hay không (so tên file chạy với máy chủ) — mỗi ca tự đặt
+const capNhat = vi.hoisted(() => ({ coBanMoi: true }))
+vi.mock('../src/lib/capNhat', () => ({ coBanMoi: async () => capNhat.coBanMoi }))
 
 const { docLaiHoSoTrong, laHoSoTrong, nhapHoaDonCu } = await import('../src/lib/dossierOps')
 const { emptyDossier, emptyInvoice } = await import('../src/lib/model')
@@ -42,14 +45,26 @@ beforeEach(() => {
   setStore(mem)
 })
 
-describe('nhập khi trang là bản cũ (bộ đọc PDF không tải được)', () => {
-  it('DỪNG cả lô, KHÔNG tạo hồ sơ trống, không để lại file', async () => {
-    const pdf = (n: string) => new File([new Uint8Array([37, 80, 68, 70])], n, { type: 'application/pdf' })
+describe('nhập khi bộ đọc PDF không tải được', () => {
+  const pdf = (n: string) => new File([new Uint8Array([37, 80, 68, 70])], n, { type: 'application/pdf' })
+
+  it('web có bản mới: DỪNG cả lô, KHÔNG tạo hồ sơ trống, không để lại file, báo tải lại', async () => {
+    capNhat.coBanMoi = true
     const kq = await nhapHoaDonCu([pdf('a.pdf'), pdf('b.pdf'), pdf('c.pdf')])
     expect(mem.d.size).toBe(0)
     expect(mem.f.size).toBe(0)
     expect(kq).toHaveLength(1) // dừng ngay ở file đầu
     expect(kq[0].loi).toMatch(/bản cập nhật/)
+  })
+
+  it('không có bản mới (trình duyệt máy cũ): vẫn dừng cả lô, nhưng KHÔNG nói "bản cập nhật" (tải lại cũng không hết)', async () => {
+    capNhat.coBanMoi = false
+    const kq = await nhapHoaDonCu([pdf('a.pdf'), pdf('b.pdf')])
+    expect(mem.d.size).toBe(0)
+    expect(mem.f.size).toBe(0)
+    expect(kq).toHaveLength(1)
+    expect(kq[0].loi).toMatch(/Trình duyệt trên máy này chưa chạy được phần đọc PDF/)
+    expect(kq[0].loi).not.toMatch(/bản cập nhật/)
   })
 })
 

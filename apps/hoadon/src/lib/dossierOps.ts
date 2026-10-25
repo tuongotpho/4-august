@@ -1,3 +1,4 @@
+import { coBanMoi } from './capNhat'
 import { parseInvoiceXml } from './invoiceXml'
 import { moTaHangCam, timHangCam } from './hangCam'
 import { banDoThayThe, biLienQuan, moTaBiLienQuan, moTaLienQuan } from './thayThe'
@@ -34,10 +35,18 @@ export class BanNhapError extends Error {
   }
 }
 
-/** Trang đang mở là bản cũ, web vừa có bản mới -> tệp phần mềm cũ không còn trên mạng. */
+/**
+ * Không tải được phần đọc PDF → dừng cả lô (không tạo hồ sơ trống). Hai nguyên nhân, báo đúng từng cái:
+ * - coBanMoi: trang đang mở là bản cũ, web vừa có bản mới → tệp cũ không còn trên mạng → tải lại trang;
+ * - ngược lại: trình duyệt máy này không chạy được phần đọc PDF (điện thoại chưa cập nhật…).
+ */
 export class AppCuError extends Error {
-  constructor() {
-    super('App vừa có bản cập nhật trên mạng — bấm "Tải lại trang" (hoặc F5) rồi làm lại. Chưa có gì được lưu.')
+  constructor(coBanMoi = true, chiTiet = '') {
+    super(
+      coBanMoi
+        ? 'App vừa có bản cập nhật trên mạng — bấm "Tải lại trang" (hoặc F5) rồi làm lại. Chưa có gì được lưu.'
+        : `Trình duyệt trên máy này chưa chạy được phần đọc PDF${chiTiet ? ` (${chiTiet})` : ''} — cập nhật Chrome/Safari hoặc làm trên máy tính. Chưa có gì được lưu.`,
+    )
   }
 }
 
@@ -45,8 +54,8 @@ export class AppCuError extends Error {
 export async function taiBoDocPdf() {
   try {
     return await import('./pdfText')
-  } catch {
-    throw new AppCuError()
+  } catch (e) {
+    throw new AppCuError(await coBanMoi(), (e as Error)?.message ?? '')
   }
 }
 

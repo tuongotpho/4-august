@@ -1,6 +1,8 @@
-import * as pdfjs from 'pdfjs-dist'
+// Bản 'legacy' của pdf.js: kèm sẵn phần dự phòng cho trình duyệt chưa cập nhật (điện thoại) — bản thường gọi thẳng
+// các hàm rất mới (Map.getOrInsertComputed, Promise.withResolvers…) nên hỏng trên máy cũ.
+import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs'
 import { groupLines, type PdfTextItem } from './invoicePdf'
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
 
