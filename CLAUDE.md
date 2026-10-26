@@ -49,6 +49,8 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
 
 ## Tiến độ (cập nhật cuối mỗi đợt, mới nhất ở trên)
 
+- 26/10/2026 — **Hoá đơn: đọc địa chỉ người bán bị PDF ngắt dòng** (`diaChiNguoiBan` trong `src/lib/invoicePdf.ts`): dòng đầu chưa có tỉnh thì nối tối đa 2 dòng dưới, chỉ khi dòng dưới không phải nhãn khác và nối xong ra được tỉnh. Nút "↻ Đọc lại địa chỉ" ở trang Hồ sơ (`docLaiDiaChi` trong `dossierOps.ts`) đọc lại file đã đính kèm, CHỈ sửa ô địa chỉ. Trên mạng trước khi sửa: 61/64 HĐ ra tỉnh, 3 HĐ địa chỉ cụt — **người dùng bấm nút để sửa 3 HĐ đó** (Claude không tự ghi). Lưu ý: `invoicePdf.ts` dùng chung với máy chủ MCP (`mcp/docPdf.ts`, Node ESM) → import giá trị phải có đuôi `.js`; `tsconfig.mcp.json` (bundler) KHÔNG bắt lỗi này — kiểm bằng tsconfig tạm `module/moduleResolution: nodenext`, include `mcp`, `api` (lỗi TS2835 của `import type` thì bỏ qua). Đo: 154 test đạt, build đạt.
+
 - 26/10/2026 — **Hoá đơn: cột Tỉnh + lọc theo tỉnh** ở bảng Hồ sơ và bảng kê Tổng hợp, thêm cột Tỉnh ở 2 file CSV; ô tìm cũng tìm theo tỉnh. Tỉnh **suy từ địa chỉ người bán** (`src/lib/tinh.ts`, không thêm trường dữ liệu), quy về 34 tỉnh sau 01/7/2025 (Thái Bình → Hưng Yên…); không đoán được → "(chưa rõ tỉnh)". Đo: 151 test đạt, build đạt, bản thử dữ liệu giả. **Chưa xem tỷ lệ "(chưa rõ tỉnh)" trên dữ liệu thật.**
 
 - 26/10/2026 — **Hoá đơn: trang Tổng hợp** (chỉ giao diện, KHÔNG đổi cấu trúc dữ liệu).

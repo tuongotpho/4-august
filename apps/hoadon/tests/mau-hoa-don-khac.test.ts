@@ -32,6 +32,25 @@ describe('các mẫu hóa đơn khác', () => {
   })
 })
 
+describe('địa chỉ người bán bị PDF ngắt dòng', () => {
+  const doc = (...dong: string[]) => parseInvoiceText(['Đơn vị bán hàng: CÔNG TY THỬ', 'Mã số thuế: 0100000001', ...dong, 'Tên người mua: BÊN MUA']).diaChiNguoiBan
+  it('nối dòng dưới khi dòng đầu chưa có tỉnh', () => {
+    // dữ liệu giả, giữ đúng chỗ bị ngắt như các hóa đơn thật
+    expect(doc('Địa chỉ: A1 – NV1 ô số 1, Khu đô thị thử nghiệm đường Thử,Phường Tây', 'Mỗ, Thành phố Hà Nội, Việt Nam', 'Điện thoại: 0240000000'))
+      .toBe('A1 – NV1 ô số 1, Khu đô thị thử nghiệm đường Thử,Phường Tây Mỗ, Thành phố Hà Nội, Việt Nam')
+    expect(doc('Địa chỉ (Address): Số 1 đường Thử, Phường Thử, Thị xã Thử, Tỉnh Hưng', 'Yên'))
+      .toBe('Số 1 đường Thử, Phường Thử, Thị xã Thử, Tỉnh Hưng Yên')
+    // cắt 2 lần
+    expect(doc('Địa chỉ: Số 1 ngõ 1 phố Thử, Phường Thử, Quận Nam Từ', 'Liêm, Thành phố', 'Hà Nội'))
+      .toBe('Số 1 ngõ 1 phố Thử, Phường Thử, Quận Nam Từ Liêm, Thành phố Hà Nội')
+  })
+  it('không nối khi dòng đầu đã đủ tỉnh, hoặc dòng dưới là nhãn khác / nối vẫn không ra tỉnh', () => {
+    expect(doc('Địa chỉ: Số 1 Tràng Tiền, Hà Nội', 'Số 5 phố khác')).toBe('Số 1 Tràng Tiền, Hà Nội')
+    expect(doc('Địa chỉ: Số 5 đường Trần Phú, phường Nguyễn Trãi', 'Điện thoại: 0240000000')).toBe('Số 5 đường Trần Phú, phường Nguyễn Trãi')
+    expect(doc('Địa chỉ: Số 5 đường Trần Phú, phường Nguyễn Trãi', 'HÓA ĐƠN GIÁ TRỊ GIA TĂNG')).toBe('Số 5 đường Trần Phú, phường Nguyễn Trãi')
+  })
+})
+
 describe('rượu/bia: món ăn nấu với rượu/bia không tính', () => {
   const cam = (...ten: string[]) =>
     timHangCam([{ ...emptyInvoice(), items: ten.map((t) => ({ ten: t, dvt: '', soLuong: 1, donGia: 0, thanhTien: 1, thueSuat: '' })) }], TU_KHOA_CAM_MAC_DINH).map((c) => c.ten)

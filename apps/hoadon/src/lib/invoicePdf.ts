@@ -1,4 +1,5 @@
 import type { ParsedInvoice } from './invoiceXml'
+import { CHUA_RO_TINH, tinhTuDiaChi } from './tinh.js' // đuôi .js: máy chủ (mcp/docPdf.ts) chạy Node ESM
 import type { HdLienQuan } from './types'
 
 /**
@@ -79,6 +80,27 @@ function kyHieuHoaDon(lines: string[], all: string): string {
   return /\b([12]C\d{2}[A-Z]{2,3})\b/.exec(truoc)?.[1] ?? ''
 }
 
+/**
+ * Địa chỉ người bán. Địa chỉ dài bị PDF ngắt sang dòng dưới
+ * ("…,Phường Tây" / "Mỗ, Thành phố Hà Nội, Việt Nam") -> nối tối đa 2 dòng tiếp theo,
+ * nhưng CHỈ khi dòng đầu chưa có tên tỉnh và nối xong thì đọc ra được tỉnh (tránh nối nhầm dòng khác).
+ */
+function diaChiNguoiBan(seller: string): string {
+  const sl = seller.split('\n')
+  const i = sl.findIndex((l) => /Địa chỉ\s*(?:\([^)]*\))?\s*:/i.test(l))
+  if (i < 0) return ''
+  const dau = cutAtNextLabel(first(sl[i], /Địa chỉ\s*(?:\([^)]*\))?\s*:\s*(.+)/i))
+  if (!dau || tinhTuDiaChi(dau) !== CHUA_RO_TINH) return dau
+  let noi = dau
+  for (const l of sl.slice(i + 1, i + 3)) {
+    const t = l.trim()
+    if (!t || t.includes(':')) break // dòng có nhãn ("Điện thoại:", "Mã số thuế:"…) là thông tin khác
+    noi = `${noi} ${cutAtNextLabel(t)}`.replace(/\s+/g, ' ')
+    if (tinhTuDiaChi(noi) !== CHUA_RO_TINH) return noi
+  }
+  return dau
+}
+
 /** Bản thể hiện chưa cấp số ("Số : <Chưa cấp số>") — bản nháp, KHÔNG phải hóa đơn chính thức. */
 export function laBanNhap(lines: string[]): boolean {
   return lines.some((l) => /Số[^:\n]*:\s*<?\s*Chưa\s+cấp\s+số/i.test(l))
@@ -101,7 +123,7 @@ export function parseInvoiceText(lines: string[]): Partial<ParsedInvoice> & { fo
     ),
     // hộ kinh doanh có khi ghi "Căn cước công dân" / "Mã số định danh"; Bkav/VNPT ghi "MST (Tax Code)"
     mstNguoiBan: first(seller, /(?:Mã số thuế|MST|Căn cước công dân|CCCD|Mã số định danh)[ \t]*(?:\([^)]*\))?[ \t]*:[ \t]*([\d \t-]{9,32})/i).replace(/\s/g, ''), // tối đa 32 ký tự: VNPT viết tách từng chữ số
-    diaChiNguoiBan: cutAtNextLabel(first(seller, /Địa chỉ\s*(?:\([^)]*\))?\s*:\s*(.+)/i)),
+    diaChiNguoiBan: diaChiNguoiBan(seller),
     stkNguoiBan: first(seller, /Số tài khoản\s*(?:\([^)]*\))?\s*:\s*([\d\s.-]{5,30}\d)/i).replace(/[\s.]/g, ''),
     nganHangNguoiBan: cutAtNextLabel(first(seller, /Ngân hàng\s*(?:\([^)]*\))?\s*:\s*(.+)/i)),
   }

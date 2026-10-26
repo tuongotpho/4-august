@@ -5,6 +5,7 @@ import { banDoThayThe, biLienQuan, moTaBiLienQuan, moTaLienQuan } from './thayTh
 import { laBanNhap, parseInvoiceText } from './invoicePdf'
 import { emptyDossier, emptyInvoice, khoaHoaDon, toAccountName } from './model'
 import { newId, store } from './store'
+import { CHUA_RO_TINH, tinhCua, tinhTuDiaChi } from './tinh'
 import type { Dossier, Invoice, StoredFile } from './types'
 
 /** Tên tài khoản: ưu tiên tên anh đã sửa tay lần trước cho cùng mã số thuế. */
@@ -295,4 +296,47 @@ export async function docLaiHoSoTrong(onTienDo?: (xong: number, tong: number) =>
     onTienDo?.(++xong, can.length)
   }
   return out
+}
+
+/** Hóa đơn có file đính kèm nhưng địa chỉ người bán chưa ra tỉnh — vd địa chỉ bị cụt do PDF ngắt dòng (bộ đọc cũ). */
+export const laDiaChiCut = (i: Invoice) => i.fileIds.length > 0 && tinhCua(i) === CHUA_RO_TINH
+
+/**
+ * Đọc lại ĐỊA CHỈ người bán từ PDF/XML đã cất cho các hóa đơn ở trên. Chỉ sửa ô địa chỉ,
+ * và chỉ khi đọc lại ra được tỉnh; các ô khác của hồ sơ giữ nguyên.
+ */
+export async function docLaiDiaChi(onTienDo?: (xong: number, tong: number) => void): Promise<{ sua: number; tong: number }> {
+  const can = (await store.listDossiers()).filter((d) => d.invoices.some(laDiaChiCut))
+  const tong = can.reduce((a, d) => a + d.invoices.filter(laDiaChiCut).length, 0)
+  let sua = 0
+  let xong = 0
+  for (const d of can) {
+    let doi = false
+    const invoices: Invoice[] = []
+    for (const inv of d.invoices) {
+      if (!laDiaChiCut(inv)) {
+        invoices.push(inv)
+        continue
+      }
+      let moi = ''
+      for (const fid of inv.fileIds) {
+        const f = await store.getFile(fid)
+        if (!f) continue
+        const file = new File([f.data], f.name, { type: f.type })
+        const p = isXml(file) ? parseInvoiceXml(await file.text()) : isPdf(file) ? await readPdfInvoice(file) : null
+        if (p?.diaChiNguoiBan && tinhTuDiaChi(p.diaChiNguoiBan) !== CHUA_RO_TINH) {
+          moi = p.diaChiNguoiBan
+          break
+        }
+      }
+      if (moi) {
+        sua++
+        doi = true
+      }
+      invoices.push(moi ? { ...inv, diaChiNguoiBan: moi } : inv)
+      onTienDo?.(++xong, tong)
+    }
+    if (doi) await store.saveDossier({ ...d, invoices, updatedAt: Date.now() })
+  }
+  return { sua, tong }
 }

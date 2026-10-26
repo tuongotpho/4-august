@@ -11,7 +11,7 @@ vi.mock('../src/lib/pdfText', () => {
 const capNhat = vi.hoisted(() => ({ coBanMoi: true }))
 vi.mock('../src/lib/capNhat', () => ({ coBanMoi: async () => capNhat.coBanMoi }))
 
-const { docLaiHoSoTrong, laHoSoTrong, nhapHoaDonCu } = await import('../src/lib/dossierOps')
+const { docLaiDiaChi, docLaiHoSoTrong, laDiaChiCut, laHoSoTrong, nhapHoaDonCu } = await import('../src/lib/dossierOps')
 const { emptyDossier, emptyInvoice } = await import('../src/lib/model')
 const { setStore } = await import('../src/lib/store')
 
@@ -88,5 +88,21 @@ describe('hồ sơ đã có số HĐ nhưng 0 đ (tổng tiền ở trang sau) c
     expect(laHoSoTrong(d)).toBe(true)
     expect(laHoSoTrong({ ...d, invoices: [{ ...d.invoices[0], tongTien: 9353540 }] })).toBe(false)
     expect(laHoSoTrong({ ...d, invoices: [{ ...d.invoices[0], fileIds: [] }] })).toBe(false) // không có file thì không đọc lại được
+  })
+})
+
+describe('đọc lại địa chỉ người bán bị cụt', () => {
+  it('chỉ sửa ô địa chỉ khi đọc lại ra tỉnh; các ô khác giữ nguyên', async () => {
+    const xml = readFileSync('tests/fixtures/hoa-don-tt78.xml', 'utf8') // DChi: "Số 1 Phố Thử, Hà Nội"
+    await mem.putFile({ id: 'x1', name: 'hd.xml', type: 'text/xml', size: xml.length, addedAt: 1, data: new Blob([xml], { type: 'text/xml' }) })
+    const inv = { ...emptyInvoice(), soHd: '999', tongTien: 5, diaChiNguoiBan: 'Số 1 Phố Thử, Phường Tây', fileIds: ['x1'] }
+    const d = { ...emptyDossier(), noiDung: 'giữ nguyên', invoices: [inv, { ...emptyInvoice(), diaChiNguoiBan: 'Cầu Giấy', fileIds: [] }] }
+    await mem.saveDossier(d)
+    expect(laDiaChiCut(inv)).toBe(true)
+    expect(await docLaiDiaChi()).toEqual({ sua: 1, tong: 1 }) // HĐ thứ 2 không có file -> không tính
+    const sau = mem.d.get(d.id)!
+    expect(sau.invoices[0]).toMatchObject({ diaChiNguoiBan: 'Số 1 Phố Thử, Hà Nội', soHd: '999', tongTien: 5 })
+    expect(sau.invoices[1].diaChiNguoiBan).toBe('Cầu Giấy')
+    expect(sau.noiDung).toBe('giữ nguyên')
   })
 })

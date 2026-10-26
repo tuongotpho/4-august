@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { dossiersToCsv } from '../lib/csv'
 import { fmtDate, today } from '../lib/dates'
 import { sapXep, XEP_MAC_DINH, type CachXep, type KieuXep } from '../lib/status'
-import { docLaiHoSoTrong, emptyDossier, filesToInvoices, laHoSoTrong } from '../lib/dossierOps'
+import { docLaiDiaChi, docLaiHoSoTrong, emptyDossier, filesToInvoices, laDiaChiCut, laHoSoTrong } from '../lib/dossierOps'
 import { downloadBlob, useDossiers, useRuiRo, useSettings } from '../lib/hooks'
 import { traHoaDon } from '../lib/ruiRo'
 import { formatMoney } from '../lib/numberToWords'
@@ -152,6 +152,7 @@ export default function DossierList({ onOpen }: { onOpen: (id: string, ds?: stri
   }
 
   const soTrong = (list ?? []).filter(laHoSoTrong).length
+  const soDiaChiCut = (list ?? []).reduce((a, d) => a + d.invoices.filter(laDiaChiCut).length, 0)
   const daChon = (list ?? []).filter((d) => chon.has(d.id))
 
   async function xoaDaChon() {
@@ -187,6 +188,20 @@ Không lấy lại được (trừ khi có bản sao lưu .zip).`,
       }
       if (loi.length) dong.push(`⚠ Chưa đọc được ${loi.length}:`, ...loi.map((k) => `• ${k.tenFile}: ${k.loi}`))
       void bao(dong.join('\n'))
+    } catch (e) {
+      setDangLam('')
+      void bao((e as Error).message)
+    }
+  }
+
+  async function docLaiDc() {
+    try {
+      const { sua, tong } = await docLaiDiaChi((x, t) => setDangLam(`Đang đọc lại địa chỉ ${x}/${t} hóa đơn…`))
+      setDangLam('')
+      void bao(
+        `Đã sửa địa chỉ ${sua}/${tong} hóa đơn.` +
+          (sua < tong ? `\n${tong - sua} hóa đơn vẫn chưa ra tỉnh (file không ghi tỉnh / mẫu lạ) — mở hồ sơ để sửa ô "Địa chỉ" bằng tay.` : ''),
+      )
     } catch (e) {
       setDangLam('')
       void bao((e as Error).message)
@@ -374,6 +389,17 @@ Không lấy lại được (trừ khi có bản sao lưu .zip).`,
           </button>
           <button className="text-xs hover:underline" onClick={() => setChon(new Set((list ?? []).filter(laHoSoTrong).map((d) => d.id)))}>
             Chọn hết các hồ sơ trống
+          </button>
+        </div>
+      )}
+
+      {soDiaChiCut > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700">
+          <span>
+            Có <b>{soDiaChiCut} hóa đơn chưa rõ tỉnh</b> mà có file đính kèm (địa chỉ có thể bị cụt do bộ đọc PDF cũ) — đọc lại địa chỉ từ file, các ô khác giữ nguyên.
+          </span>
+          <button className="btn !py-1" disabled={!!dangLam} onClick={docLaiDc}>
+            ↻ Đọc lại địa chỉ
           </button>
         </div>
       )}
