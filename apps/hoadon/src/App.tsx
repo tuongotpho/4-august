@@ -103,6 +103,14 @@ function Main({ user }: { user: User }) {
   useEffect(() => {
     if (new URLSearchParams(location.search).has('hs')) history.replaceState(null, '', location.pathname)
   }, [])
+  // thứ tự hồ sơ của danh sách vừa mở (đã lọc / xếp) — để màn hồ sơ đi "‹ Trước / Sau ›"
+  const [dsMo, setDsMo] = useState<string[]>([])
+  const moHoSo = (id: string, ds?: string[]) => {
+    setDsMo(ds ?? [])
+    setEditingId(id)
+    window.scrollTo(0, 0)
+  }
+  const viTri = editingId ? dsMo.indexOf(editingId) : -1
   const chonTab = (k: Tab) => {
     setTab(k)
     setEditingId(null)
@@ -135,7 +143,9 @@ function Main({ user }: { user: User }) {
               </button>
             ))}
           </nav>
-          <div className="ml-auto flex items-center gap-2 text-xs text-slate-500">
+          {/* Chỗ để từng trang gắn nút thao tác lên thanh menu (máy tính) — xem DossierList */}
+          <div id="cong-cu-trang" className="ml-auto hidden items-center gap-2 sm:flex" />
+          <div className="flex items-center gap-2 text-xs text-slate-500">
             <TaiKhoan user={user} />
             {/* Qua cổng chung: đăng xuất ở trang chủ (nút nhà góc trái) */}
             {!QUA_CONG && (
@@ -161,15 +171,21 @@ function Main({ user }: { user: User }) {
       <main className="px-4 py-5 lg:px-6">
         {tab === 'hoSo' &&
           (editingId ? (
-            <DossierEditor id={editingId} onClose={() => setEditingId(null)} />
+            // key: đổi hồ sơ = dựng lại màn hình, hồ sơ đang sửa dở được lưu ngay khi rời
+            <DossierEditor
+              key={editingId}
+              id={editingId}
+              onClose={() => setEditingId(null)}
+              ke={viTri >= 0 ? { viTri: viTri + 1, tong: dsMo.length, truoc: dsMo[viTri - 1], sau: dsMo[viTri + 1], mo: (id) => moHoSo(id, dsMo) } : undefined}
+            />
           ) : (
-            <DossierList onOpen={setEditingId} />
+            <DossierList onOpen={moHoSo} />
           ))}
         {tab === 'tongHop' && (
           <SummaryPage
             onOpen={(id) => {
               setTab('hoSo')
-              setEditingId(id)
+              moHoSo(id)
             }}
           />
         )}

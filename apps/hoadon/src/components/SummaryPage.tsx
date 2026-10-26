@@ -46,7 +46,7 @@ export default function SummaryPage({ onOpen }: { onOpen: (id: string) => void }
       if (year !== 'all' && Number(r.inv.ngayHd.slice(0, 4)) !== year) return false
       if (month !== 'all' && Number(r.inv.ngayHd.slice(5, 7)) !== month) return false
       if (!kw) return true
-      return [r.inv.soHd, r.inv.tenNguoiBan, r.inv.mstNguoiBan, r.d.noiDung].join(' ').toLowerCase().includes(kw)
+      return [r.inv.soHd, r.inv.tenNguoiBan, r.inv.mstNguoiBan, r.d.noiDung, r.d.nguoiDeNghi].join(' ').toLowerCase().includes(kw)
     })
   }, [allRows, year, month, q])
   // Lọc theo hashtag công việc: bấm vào thanh trong biểu đồ "Theo việc"
@@ -329,7 +329,7 @@ export default function SummaryPage({ onOpen }: { onOpen: (id: string) => void }
       <div ref={bangKeRef} className="card scroll-mt-20 overflow-x-auto">
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <h3 className="font-semibold text-slate-800">Bảng kê hóa đơn ({rows.length}){tag && <span className="font-normal text-slate-500"> — {tag === KHONG_TAG ? tag : `#${tag}`}</span>}{nguoiBan && <span className="font-normal text-slate-500"> — {tenNguoiBan}</span>}</h3>
-          <input className="inp max-w-xs" placeholder="Tìm số HĐ, người bán, MST, nội dung…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="inp max-w-xs" placeholder="Tìm số HĐ, người bán, MST, nội dung, người TT…" value={q} onChange={(e) => setQ(e.target.value)} />
           <button className="btn ml-auto" onClick={() => downloadBlob(invoicesToCsv(rows), `Bang ke hoa don ${kyLabel.replace(/\//g, '-')}${tag ? ` - ${tag === KHONG_TAG ? 'chua gan tag' : tag}` : ''}${nguoiBan ? ` - ${nguoiBan}` : ''}.csv`)}>
             ⬇ Xuất Excel
           </button>
@@ -343,6 +343,7 @@ export default function SummaryPage({ onOpen }: { onOpen: (id: string) => void }
               <th className="px-2 py-1.5">Người bán</th>
               <th className="px-2 py-1.5 text-right">Tổng tiền</th>
               <th className="px-2 py-1.5">Nội dung</th>
+              <th className="px-2 py-1.5" title="Người đề nghị thanh toán của hồ sơ">Người thanh toán</th>
               <th className="px-2 py-1.5">Nộp KT</th>
               <th className="px-2 py-1.5">KT thanh toán</th>
               <th className="px-2 py-1.5">Trạng thái</th>
@@ -350,7 +351,7 @@ export default function SummaryPage({ onOpen }: { onOpen: (id: string) => void }
           </thead>
           <tbody>
             {rows.length === 0 && (
-              <tr><td colSpan={9} className="px-2 py-6 text-center text-slate-400">Không có hóa đơn nào trong kỳ này.</td></tr>
+              <tr><td colSpan={10} className="px-2 py-6 text-center text-slate-400">Không có hóa đơn nào trong kỳ này.</td></tr>
             )}
             {rows.map((r, i) => (
               <tr key={r.inv.id} className="cursor-pointer border-t border-slate-100 hover:bg-blue-50/50" onClick={() => onOpen(r.d.id)}>
@@ -360,6 +361,7 @@ export default function SummaryPage({ onOpen }: { onOpen: (id: string) => void }
                 <td className="max-w-[14rem] truncate px-2 py-1.5">{r.inv.tenNguoiBan}</td>
                 <td className="px-2 py-1.5 text-right font-medium">{formatMoney(r.inv.tongTien)}</td>
                 <td className="max-w-[18rem] truncate px-2 py-1.5 text-slate-600"><TagChips tags={r.d.tags} className="mr-1 align-middle" />{r.d.noiDung}</td>
+                <td className="whitespace-nowrap px-2 py-1.5">{r.d.nguoiDeNghi || <span className="text-slate-300">—</span>}</td>
                 <td className="px-2 py-1.5">{fmtDate(r.d.ngayNopKeToan)}</td>
                 <td className="px-2 py-1.5">{fmtDate(r.d.ngayKeToanTt)}</td>
                 <td className="px-2 py-1.5">
@@ -371,7 +373,7 @@ export default function SummaryPage({ onOpen }: { onOpen: (id: string) => void }
               <tr className="border-t-2 border-slate-300 font-semibold">
                 <td colSpan={4} className="px-2 py-1.5">Cộng</td>
                 <td className="px-2 py-1.5 text-right">{formatMoney(totals.tong)}</td>
-                <td colSpan={4} />
+                <td colSpan={5} />
               </tr>
             )}
           </tbody>

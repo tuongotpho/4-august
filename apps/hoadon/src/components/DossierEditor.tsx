@@ -25,7 +25,16 @@ import { bao, hoi } from '../lib/dialog'
 
 const docx = () => import('../lib/docx') // docxtemplater + pizzip: chỉ tải khi xuất / xem trước
 
-export default function DossierEditor({ id, onClose }: { id: string; onClose: () => void }) {
+/** Đi qua lại giữa các hồ sơ của danh sách đang lọc. */
+export interface KeHoSo {
+  viTri: number // 1-based
+  tong: number
+  truoc?: string
+  sau?: string
+  mo: (id: string) => void
+}
+
+export default function DossierEditor({ id, onClose, ke }: { id: string; onClose: () => void; ke?: KeHoSo }) {
   const settings = useSettings()
   const ruiRo = useRuiRo()
   const [d, setD] = useState<Dossier | null>(null)
@@ -217,7 +226,18 @@ Anh có chắc vẫn xuất tờ trình / đề nghị thanh toán?`,
         </button>
         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLOR[st]}`}>{STATUS_LABEL[st]}</span>
         <span className="text-xs text-slate-400">{saved ? '✓ Đã lưu' : 'Đang lưu…'}</span>
-        <button className="btn-danger ml-auto" onClick={del}>
+        {ke && ke.tong > 1 && (
+          <span className="ml-auto inline-flex items-center gap-1 text-xs text-slate-500">
+            <button className="btn !px-2 !py-1" disabled={!ke.truoc} title="Hồ sơ trước trong danh sách" onClick={() => ke.truoc && ke.mo(ke.truoc)}>
+              ‹ Trước
+            </button>
+            <span className="px-1 tabular-nums">{ke.viTri}/{ke.tong}</span>
+            <button className="btn !px-2 !py-1" disabled={!ke.sau} title="Hồ sơ sau trong danh sách" onClick={() => ke.sau && ke.mo(ke.sau)}>
+              Sau ›
+            </button>
+          </span>
+        )}
+        <button className={`btn-danger ${ke && ke.tong > 1 ? '' : 'ml-auto'}`} onClick={del}>
           Xóa hồ sơ
         </button>
       </div>

@@ -49,6 +49,13 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
 
 ## Tiến độ (cập nhật cuối mỗi đợt, mới nhất ở trên)
 
+- 26/10/2026 — **Hoá đơn: giao diện trang Hồ sơ thanh toán dễ quản lý khoản chi** (chỉ sửa giao diện, KHÔNG đổi cấu trúc dữ liệu → bot / MCP không ảnh hưởng).
+  - Bộ lọc 1 dòng (máy tính): tìm không dấu nhiều từ, trạng thái, năm/tháng HĐ, cách xếp, nút hashtag kèm số hồ sơ, tổng tiền đang hiện; nhớ bộ lọc trên máy (`localStorage` `hoadon-loc`). Logic ở `src/lib/locHoSo.ts`.
+  - Bảng: nhóm theo tháng có cộng tiền, cột Hóa đơn gọn, thêm cột Người TT, nội dung hiện đủ 2–3 dòng; **sửa nhanh dạng thả xuống** ngay trên ô (nội dung + tag, người TT, tờ trình, ĐNTT, nộp KT, KT TT, trạng thái — đổi trạng thái = điền/xoá ngày, xoá thì hỏi lại; `src/lib/suaNhanh.ts`, `src/components/SuaNhanh.tsx`). Cột của hóa đơn đỏ không sửa ở đây.
+  - Gắn / bỏ tag hàng loạt cho hồ sơ đã chọn; ô thả file thành ô thứ 5 cạnh 4 ô trạng thái; nút Xuất Excel / Nhập HĐ cũ / Hồ sơ mới lên thanh menu (ô `#cong-cu-trang` ở `App.tsx`); điện thoại: danh sách dạng thẻ. Màn hồ sơ có "‹ Trước / Sau ›" theo danh sách đang lọc.
+  - Tổng hợp: bảng kê thêm cột Người thanh toán; 2 file CSV thêm cột Người thanh toán (+ Hashtag ở sổ theo dõi).
+  - Đo: 131 test thường đạt (+11 mới), build đạt; xem trên localhost:5180 (dữ liệu thật, chỉ mở xem, không ghi thử) ở 1580px và 375px, 0 tràn ngang. **Chưa thử ghi bằng ô sửa nhanh trên dữ liệu thật** — người dùng thử.
+
 - 25/10/2026 — **Đã đưa lên mạng phần treo** (Vercel hết chặn): `create_deployment` sha `6bd764d` cho hoadon, khaithue, quyphong, antoan → Ready; đẩy `56e73b6` → cong-4august tự build (tắt đệm chuyển tiếp) → success.
   - Đo: trang qua cổng và địa chỉ gốc cùng tên file chạy ở cả 5 app ngay sau deploy (HĐ `index-DC_LV4Ec.js`) → **lỗi "App vừa có bản cập nhật" lặp lại đã hết**. Khổ 375px trên mạng: HĐ thanh dưới 3 mục, KT 5 mục; nút nhà 40×40 ở QP/LG/HĐ/KT; chân trang 12px|16|1|32 ở trang chủ + 4 app; 0 tràn ngang; QP tồn −36.883.188.
   - Tương ớt: người dùng cho phép → build sha `6bd764d` (`dpl_9EyEy3SP7WfoCLc6nYZz5iYi1S9W`) Ready. Đo: MCP tong_quan không đổi (3 khách, 22 đơn, T10 1.900.000 / lãi 602.000, tồn 13/23/70, nợ 0); qua cổng 375px nút nhà 40×40, 1 chân trang 12px|16|1|32 static, không bị thanh tab che, 0 tràn ngang; địa chỉ gốc 1280px: 1 chân trang, vẫn có nút Cài đặt, không có nút nhà; 0 lỗi console. → **Cả 6 project đã ở bản mới nhất.**
