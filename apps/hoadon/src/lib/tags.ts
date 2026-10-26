@@ -1,7 +1,7 @@
 import { fmtDate, fmtDateWords, fromIso } from './dates'
 import { formatMoney, moneyInWords } from './numberToWords'
 import { canThongTinTk, duTruOf, sumInvoices, tongTienChuOf } from './rules'
-import type { Dossier, Invoice, Settings } from './types'
+import type { Dossier, Invoice, Settings, TemplateKind } from './types'
 
 export { sumInvoices }
 
@@ -231,6 +231,31 @@ export function knownTopLevelTags(): Set<string> {
   }
   const s = { hoTen: '', nguongTien: 0 } as Settings
   return new Set(Object.keys(buildTemplateData(dummy, s)))
+}
+
+/**
+ * Ô bắt buộc của từng loại mẫu: [tên dễ hiểu, các ô — có 1 trong số đó là đủ].
+ * Mẫu tải lên mà thiếu (vd file Word ĐÃ ĐIỀN của 1 hồ sơ cũ) thì mỗi lần xuất in y nguyên chữ cũ trong mẫu.
+ */
+const O_BAT_BUOC: Record<TemplateKind, [string, string[]][]> = {
+  toTrinh: [
+    ['nội dung', ['noi_dung']],
+    ['thành phần tham gia', ['thanh_phan']],
+    ['ngày tờ trình', ['ngay_to_trinh', 'ngay_to_trinh_chu', 'ngay_to_trinh_ngay']],
+    ['số tiền dự trù', ['du_tru', 'du_tru_chu']],
+  ],
+  dntt: [
+    ['người đề nghị', ['ho_ten', 'nguoi_de_nghi']],
+    ['nội dung', ['noi_dung']],
+    ['tổng tiền', ['tong_tien', 'tong_tien_chu']],
+    ['hóa đơn', ['ds_hoa_don', 'so_hd', 'chung_tu_kem_theo']],
+  ],
+}
+
+/** Các mục bắt buộc mà mẫu chưa có ô (tags = danh sách ô tìm thấy trong mẫu, từ inspectTemplate). */
+export function oThieu(kind: TemplateKind, tags: string[]): string[] {
+  const co = new Set(tags.map((t) => t.split('.')[0]))
+  return O_BAT_BUOC[kind].filter(([, ds]) => !ds.some((t) => co.has(t))).map(([ten]) => ten)
 }
 
 export const LOOP_INNER_TAGS: Record<string, string[]> = {

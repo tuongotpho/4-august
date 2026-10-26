@@ -3,7 +3,7 @@ import { loadTemplate, TEMPLATE_INFO } from '../lib/hooks'
 import { warningsOf } from '../lib/status'
 import type { BanDoThayThe } from '../lib/thayThe'
 import type { BangRuiRo } from '../lib/ruiRo'
-import { buildTemplateData } from '../lib/tags'
+import { buildTemplateData, oThieu } from '../lib/tags'
 import type { Dossier, Settings, TemplateKind } from '../lib/types'
 
 const docx = () => import('../lib/docx') // docxtemplater + pizzip: chỉ tải khi xuất / xem trước
@@ -43,6 +43,7 @@ export default function PreviewModal({ dossier, settings, initial, onClose, onEx
   const [kind, setKind] = useState<TemplateKind>(initial)
   const [state, setState] = useState<{ loading: boolean; error?: string; missing: number }>({ loading: true, missing: 0 })
   const box = useRef<HTMLDivElement>(null)
+  const [mau, setMau] = useState<{ ten: string; thieu: string[] } | null>(null)
   // chỉ dựng lại khi NỘI DUNG đổi (object mới nhưng y hệt thì bỏ qua)
   const dataKey = JSON.stringify([dossier, settings])
 
@@ -52,7 +53,11 @@ export default function PreviewModal({ dossier, settings, initial, onClose, onEx
     ;(async () => {
       try {
         const [{ renderAsync }, tpl] = await Promise.all([import('docx-preview'), loadTemplate(kind)])
-        const blob = (await docx()).fillTemplate(tpl.buf, buildTemplateData(dossier, settings))
+        const lib = await docx()
+        // mẫu tự up mà thiếu ô bắt buộc -> phần đó in chữ cố định trong mẫu, không theo hồ sơ
+        const thieu = tpl.isDefault ? [] : oThieu(kind, lib.inspectTemplate(tpl.buf).tags)
+        if (!cancelled) setMau({ ten: tpl.name, thieu })
+        const blob = lib.fillTemplate(tpl.buf, buildTemplateData(dossier, settings))
         if (cancelled || !box.current) return
         box.current.innerHTML = ''
         await renderAsync(blob, box.current, undefined, {
@@ -106,6 +111,12 @@ export default function PreviewModal({ dossier, settings, initial, onClose, onEx
             Đóng
           </button>
         </div>
+        {mau && mau.thieu.length > 0 && (
+          <div className="border-b border-red-200 bg-red-50 px-4 py-1.5 text-xs text-red-800">
+            ⛔ Mẫu đang dùng "<b>{mau.ten}</b>" chưa có ô cho: <b>{mau.thieu.join(', ')}</b> — các phần này in y nguyên chữ trong mẫu, KHÔNG theo hồ sơ.
+            Vào trang <b>Mẫu in</b> → "Về mẫu mặc định" để sửa.
+          </div>
+        )}
         {warningsOf(dossier, settings, thayThe, ruiRo).length > 0 && (
           <div className="border-b border-amber-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-900">
             {warningsOf(dossier, settings, thayThe, ruiRo).map((w) => (

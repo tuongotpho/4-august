@@ -3,7 +3,7 @@ import PizZip from 'pizzip'
 import { describe, expect, it } from 'vitest'
 import { fillTemplate, inspectTemplate } from '../src/lib/docx'
 import { emptyDossier, emptyInvoice } from '../src/lib/model'
-import { buildTemplateData } from '../src/lib/tags'
+import { buildTemplateData, oThieu } from '../src/lib/tags'
 import { DEFAULT_SETTINGS } from '../src/lib/types'
 
 // Mẫu in mặc định (public/mau): đọc được, không có ô gõ sai tên, điền ra đúng chữ.
@@ -25,13 +25,20 @@ const hoSo = (invoices: ReturnType<typeof hd>[]) => ({
 })
 
 describe('mẫu mặc định', () => {
-  for (const f of ['to-trinh.docx', 'de-nghi-thanh-toan.docx']) {
-    it(`${f}: đọc được, mọi ô đúng tên`, () => {
+  for (const [f, kind] of [['to-trinh.docx', 'toTrinh'], ['de-nghi-thanh-toan.docx', 'dntt']] as const) {
+    it(`${f}: đọc được, mọi ô đúng tên, đủ ô bắt buộc`, () => {
       const k = inspectTemplate(buf(f))
       expect(k.ok, k.error).toBe(true)
       expect(k.unknown).toEqual([])
+      expect(oThieu(kind, k.tags)).toEqual([])
     })
   }
+
+  it('mẫu tải lên là file ĐÃ ĐIỀN (không còn ô) -> báo thiếu mọi mục', () => {
+    expect(oThieu('dntt', [])).toEqual(['người đề nghị', 'nội dung', 'tổng tiền', 'hóa đơn'])
+    expect(oThieu('toTrinh', ['ngay_to_trinh_ngay', 'ngay_to_trinh_thang', 'noi_dung'])).toEqual(['thành phần tham gia', 'số tiền dự trù'])
+    expect(oThieu('toTrinh', ['thanh_phan.don_vi', 'noi_dung', 'du_tru', 'ngay_to_trinh'])).toEqual([])
+  })
 
   it('đề nghị thanh toán (Mẫu 05-TT, TT 99/2025): điền ngày, người, tiền, từng hóa đơn', async () => {
     const d = hoSo([hd('101', 1_000_000), hd('102', 2_000_000)])

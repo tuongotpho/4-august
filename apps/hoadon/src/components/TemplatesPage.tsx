@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { TemplateCheck } from '../lib/docx'
 import { downloadBlob, loadTemplate, TEMPLATE_INFO } from '../lib/hooks'
 import { store } from '../lib/store'
-import { TAG_GROUPS } from '../lib/tags'
+import { oThieu, TAG_GROUPS } from '../lib/tags'
 import type { TemplateKind } from '../lib/types'
 import FileDrop from './FileDrop'
 import { hoi } from '../lib/dialog'
@@ -29,6 +29,16 @@ function TemplateSlot({ kind }: { kind: TemplateKind }) {
       setMsg({ ok: false, text: `Không dùng được mẫu này:\n${check.error}` })
       return
     }
+    // File đã điền của 1 hồ sơ (không còn ô) mà lưu làm mẫu thì mọi lần xuất in y nguyên chữ cũ — hỏi lại
+    const thieu = oThieu(kind, check.tags)
+    if (
+      thieu.length &&
+      !(await hoi(
+        `File "${f.name}" chưa có ô {…} cho: ${thieu.join(', ')}.\n\nDùng làm mẫu thì các phần đó sẽ in Y NGUYÊN chữ đang có trong file, không theo hồ sơ. Đây có vẻ là file Word đã điền của một hồ sơ, không phải mẫu.\n\nVẫn lưu làm mẫu?`,
+        { okLabel: 'Vẫn lưu', nguyHiem: true },
+      ))
+    )
+      return
     await store.putTemplate({ kind, name: f.name, data: f, uploadedAt: Date.now() })
     const parts = [`Đã lưu mẫu "${f.name}" — tìm thấy ${check.tags.length} ô.`]
     if (check.tags.length === 0) parts.push('Mẫu chưa có ô {…} nào nên in ra sẽ y nguyên. Xem hướng dẫn bên dưới để thêm ô.')
@@ -37,13 +47,15 @@ function TemplateSlot({ kind }: { kind: TemplateKind }) {
     refresh()
   }
 
+  const thieuCur = cur && !cur.isDefault && cur.check.ok ? oThieu(kind, cur.check.tags) : []
+
   async function download() {
     const t = await loadTemplate(kind)
     downloadBlob(new Blob([t.buf]), cur?.isDefault ? `${info.tenFile} - mau mac dinh.docx` : t.name)
   }
 
   async function reset() {
-    if (!(await hoi('Bỏ mẫu đã up, quay về mẫu Hưng Yên đã gắn ô?'))) return
+    if (!(await hoi('Bỏ mẫu đã up, quay về mẫu mặc định của app (đã gắn sẵn ô)?'))) return
     await store.deleteTemplate(kind)
     setMsg(null)
     refresh()
@@ -59,6 +71,12 @@ function TemplateSlot({ kind }: { kind: TemplateKind }) {
             {cur.check.ok ? `${cur.check.tags.length} ô` : 'Mẫu lỗi'}
             {cur.check.unknown.length > 0 && <span className="text-red-600"> · ô lạ: {cur.check.unknown.join(', ')}</span>}
           </div>
+          {thieuCur.length > 0 && (
+            <div className="mt-2 rounded border border-red-200 bg-red-50 p-2 text-xs text-red-800">
+              ⚠ Mẫu đang dùng <b>chưa có ô</b> cho: {thieuCur.join(', ')} — các phần này in <b>y nguyên chữ có sẵn trong mẫu</b>, không lấy theo hồ sơ (sửa ở hồ sơ
+              cũng không thấy đổi). Bấm <b>"Về mẫu mặc định"</b> hoặc up mẫu có đủ ô.
+            </div>
+          )}
         </div>
       )}
       <div className="flex flex-wrap gap-2">
@@ -67,7 +85,7 @@ function TemplateSlot({ kind }: { kind: TemplateKind }) {
         </button>
         {cur && !cur.isDefault && (
           <button className="btn" onClick={reset}>
-            Về mẫu Hưng Yên
+            Về mẫu mặc định
           </button>
         )}
       </div>

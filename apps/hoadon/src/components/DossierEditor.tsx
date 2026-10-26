@@ -11,7 +11,7 @@ import {
   firstInvoiceDate, STATUS_COLOR, STATUS_LABEL, statusOf, suggestDnttDate, suggestToTrinhDate, totalOf, warningsOf,
 } from '../lib/status'
 import { store, type FileInfo } from '../lib/store'
-import { buildTemplateData } from '../lib/tags'
+import { buildTemplateData, oThieu } from '../lib/tags'
 import type { Dossier, Invoice, TemplateKind } from '../lib/types'
 import ChoiceInput from './ChoiceInput'
 import FileDrop from './FileDrop'
@@ -166,9 +166,23 @@ Anh có chắc vẫn xuất tờ trình / đề nghị thanh toán?`,
 
       const data = buildTemplateData(cur, settings)
       const tail = safeFileName([cur.noiDung, cur.invoices.map((i) => i.soHd).filter(Boolean).join('-')].filter(Boolean).join(' - '))
-      for (const k of kinds) {
-        const tpl = await loadTemplate(k)
-        const blob = (await docx()).fillTemplate(tpl.buf, data)
+      const lib = await docx()
+      const mau = await Promise.all(kinds.map(async (k) => ({ k, tpl: await loadTemplate(k) })))
+      // mẫu tự up mà thiếu ô bắt buộc (vd file đã điền của hồ sơ cũ) -> in ra chữ cũ, không theo hồ sơ này
+      const thieu = mau.flatMap(({ k, tpl }) => {
+        const o = tpl.isDefault ? [] : oThieu(k, lib.inspectTemplate(tpl.buf).tags)
+        return o.length ? [`${TEMPLATE_INFO[k].ten} (mẫu "${tpl.name}"): chưa có ô cho ${o.join(', ')}`] : []
+      })
+      if (
+        thieu.length &&
+        !(await hoi(
+          `⛔ ${thieu.join('\n⛔ ')}\n\nCác phần đó sẽ in Y NGUYÊN chữ có sẵn trong mẫu, không theo hồ sơ này. Sửa: trang Mẫu in → "Về mẫu mặc định".\n\nVẫn xuất?`,
+          { okLabel: 'Vẫn xuất', nguyHiem: true },
+        ))
+      )
+        return
+      for (const { k, tpl } of mau) {
+        const blob = lib.fillTemplate(tpl.buf, data)
         downloadBlob(blob, `${TEMPLATE_INFO[k].tenFile}${tail ? ' - ' + tail : ''}.docx`)
       }
     } catch (e) {
