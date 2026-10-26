@@ -32,6 +32,9 @@ export function statusOf(d: Dossier): StatusKey {
   return 'choLamHs'
 }
 
+/** Nhãn trạng thái hiển thị: hồ sơ HĐ cũ chỉ có "đã / chưa thanh toán". */
+export const nhanTrangThai = (d: Dossier, st: StatusKey = statusOf(d)) => (d.hoSoCu && st === 'choKt' ? 'Chưa thanh toán' : STATUS_LABEL[st])
+
 /** Ngày hóa đơn sớm nhất trong hồ sơ. */
 export function firstInvoiceDate(d: Dossier): string {
   return d.invoices.map((i) => i.ngayHd).filter(Boolean).sort()[0] ?? ''

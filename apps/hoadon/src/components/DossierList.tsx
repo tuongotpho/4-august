@@ -8,10 +8,10 @@ import { downloadBlob, useDossiers, useRuiRo, useSettings } from '../lib/hooks'
 import { traHoaDon } from '../lib/ruiRo'
 import { formatMoney } from '../lib/numberToWords'
 import {
-  firstInvoiceDate, STATUS_COLOR, STATUS_LABEL, statusOf, suggestDnttDate, suggestToTrinhDate, totalOf, waitingDays, warningsOf,
+  firstInvoiceDate, nhanTrangThai, STATUS_COLOR, STATUS_LABEL, statusOf, suggestDnttDate, suggestToTrinhDate, totalOf, waitingDays, warningsOf,
   type StatusKey,
 } from '../lib/status'
-import { SuaNgay, SuaNguoiTT, SuaNoiDung, SuaTrangThai } from './SuaNhanh'
+import { SuaNgay, SuaNguoiTT, SuaNoiDung, SuaTrangThai, useSuaNhanh } from './SuaNhanh'
 import { dangLoc, demTag, hopKy, hopTrangThai, hopTuKhoa, LOC_MAC_DINH, locHoSo, namCoHoSo, nhomTheoThang, type BoLoc, type LocTrangThai } from '../lib/locHoSo'
 import { KHONG_TAG, TAG_MAC_DINH } from '../lib/hashtag'
 import { store } from '../lib/store'
@@ -119,20 +119,8 @@ export default function DossierList({ onOpen }: { onOpen: (id: string, ds?: stri
   const nhom = useMemo(() => (xep.theo === 'ngayHd' ? nhomTheoThang(shown) : [{ khoa: '*', nhan: '', ds: shown, tongTien: tongShown }]), [shown, xep.theo, tongShown])
   const moHoSo = (id: string) => onOpen(id, shown.map((d) => d.id))
 
-  // Sửa nhanh ngay trên bảng (ô thả xuống) — lưu thẳng, danh sách tự cập nhật qua subscribe
-  const luuNhanh = async (d: Dossier, p: Partial<Dossier>) => {
-    try {
-      await store.saveDossier({ ...d, ...p, updatedAt: Date.now() })
-    } catch (e) {
-      void bao('Chưa lưu được: ' + (e as Error).message)
-    }
-  }
-  const tagDangDung = useMemo(() => (list ?? []).map((d) => d.tags ?? []), [list])
-  // người đề nghị: danh sách trong Cài đặt + tên đã dùng ở các hồ sơ
-  const dsNguoiTT = useMemo(
-    () => [...new Set([...settings.dsNguoiDeNghi, ...(list ?? []).map((d) => d.nguoiDeNghi.trim())].filter(Boolean))],
-    [settings.dsNguoiDeNghi, list],
-  )
+  // Sửa nhanh ngay trên bảng (ô thả xuống) — dùng chung với Bảng kê ở trang Tổng hợp
+  const { luu: luuNhanh, tagDangDung, dsNguoiTT } = useSuaNhanh(list, settings)
 
   async function createNew(files: File[] = []) {
     setBusy(true)
@@ -235,7 +223,6 @@ Không lấy lại được (trừ khi có bản sao lưu .zip).`,
     </>
   )
 
-  const nhanTrangThai = (d: Dossier, st: StatusKey) => (d.hoSoCu && st === 'choKt' ? 'Chưa thanh toán' : STATUS_LABEL[st])
   const noiDungHs = (d: Dossier) => d.noiDung || (d.hoSoCu ? d.invoices[0]?.tenNguoiBan : '') || <i className="text-slate-400">(chưa đặt nội dung)</i>
 
   return (

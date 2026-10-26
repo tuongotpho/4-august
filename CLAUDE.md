@@ -49,6 +49,13 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
 
 ## Tiến độ (cập nhật cuối mỗi đợt, mới nhất ở trên)
 
+- 26/10/2026 — **Hoá đơn: trang Tổng hợp** (chỉ giao diện, KHÔNG đổi cấu trúc dữ liệu).
+  - Bộ lọc chung cả trang (`hopHoaDon` / `LOC_TONG_HOP` ở `src/lib/summary.ts`): tìm không dấu, năm/tháng, tình trạng (3 nhóm — bấm 3 ô số liệu cũng lọc), người TT, người bán, hashtag. "Cần xử lý" và báo cáo năm không theo bộ lọc.
+  - Bảng kê 8 cột, sửa nhanh nội dung + tag / người TT / trạng thái (hook chung `useSuaNhanh` trong `SuaNhanh.tsx`, dùng cho cả trang Hồ sơ); ngày nộp KT / TT hiện dưới trạng thái; hồ sơ nhiều HĐ có nhãn "HS n HĐ" (sửa 1 dòng = sửa cả hồ sơ).
+  - Nút "📄 Báo cáo năm (PDF)": `BaoCaoNam.tsx` + `src/lib/baoCaoNam.ts`, in qua hộp in trình duyệt (CSS `@media print` `body.in-bao-cao` ở `index.css`). 6 mục + nhận xét tự động + phụ lục bảng kê tuỳ chọn; đầu văn bản / người lập lấy từ Cài đặt.
+  - Sửa 2 lỗi cũ của ô sửa nhanh: bấm ra ngoài để đóng lại mở luôn hồ sơ (portal lan sự kiện); ô sát đáy màn hình lật lên/xuống vô hạn → trắng trang.
+  - Đo: 146 test thường đạt, build đạt; bản thử dữ liệu giả 1440px + 375px (0 tràn ngang); in thử PDF bằng Chrome headless 4 trang A4. **Chưa thử trên dữ liệu thật.**
+
 - 26/10/2026 — **Hoá đơn: giao diện trang Hồ sơ thanh toán dễ quản lý khoản chi** (chỉ sửa giao diện, KHÔNG đổi cấu trúc dữ liệu → bot / MCP không ảnh hưởng).
   - Bộ lọc 1 dòng (máy tính): tìm không dấu nhiều từ, trạng thái, năm/tháng HĐ, cách xếp, nút hashtag kèm số hồ sơ, tổng tiền đang hiện; nhớ bộ lọc trên máy (`localStorage` `hoadon-loc`). Logic ở `src/lib/locHoSo.ts`.
   - Bảng: nhóm theo tháng có cộng tiền, cột Hóa đơn gọn, thêm cột Người TT, nội dung hiện đủ 2–3 dòng; **sửa nhanh dạng thả xuống** ngay trên ô (nội dung + tag, người TT, tờ trình, ĐNTT, nộp KT, KT TT, trạng thái — đổi trạng thái = điền/xoá ngày, xoá thì hỏi lại; `src/lib/suaNhanh.ts`, `src/components/SuaNhanh.tsx`). Cột của hóa đơn đỏ không sửa ở đây.

@@ -1,9 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { fmtDate, today } from '../lib/dates'
 import { bao, hoi } from '../lib/dialog'
 import { rememberOption } from '../lib/hooks'
 import { STATUS_COLOR, statusOf } from '../lib/status'
+import { store } from '../lib/store'
 import { datTrangThai, trangThaiChonDuoc } from '../lib/suaNhanh'
 import type { Dossier, Settings } from '../lib/types'
 import { TagEditor } from './TagChips'
@@ -13,6 +14,25 @@ import { TagEditor } from './TagChips'
  * Hộp gắn vào <body> (vị trí cố định theo ô) để không bị khung cuộn ngang của bảng cắt mất.
  */
 export type Luu = (d: Dossier, p: Partial<Dossier>) => Promise<void>
+
+/** Dùng chung cho trang Hồ sơ và Bảng kê: hàm lưu + gợi ý tag + danh sách người đề nghị. */
+export function useSuaNhanh(list: Dossier[] | null | undefined, settings: Settings) {
+  // lưu thẳng, danh sách tự cập nhật qua subscribe
+  const luu: Luu = useCallback(async (d, p) => {
+    try {
+      await store.saveDossier({ ...d, ...p, updatedAt: Date.now() })
+    } catch (e) {
+      void bao('Chưa lưu được: ' + (e as Error).message)
+    }
+  }, [])
+  const tagDangDung = useMemo(() => (list ?? []).map((d) => d.tags ?? []), [list])
+  // người đề nghị: danh sách trong Cài đặt + tên đã dùng ở các hồ sơ
+  const dsNguoiTT = useMemo(
+    () => [...new Set([...settings.dsNguoiDeNghi, ...(list ?? []).map((d) => d.nguoiDeNghi.trim())].filter(Boolean))],
+    [settings.dsNguoiDeNghi, list],
+  )
+  return { luu, tagDangDung, dsNguoiTT }
+}
 
 function OSua({ hien, rong = 256, tieuDe, children }: { hien: ReactNode; rong?: number; tieuDe: string; children: (dong: () => void) => ReactNode }) {
   const [vt, setVt] = useState<{ top: number; left: number } | null>(null)
@@ -25,6 +45,7 @@ function OSua({ hien, rong = 256, tieuDe, children }: { hien: ReactNode; rong?: 
     if (!vt || !hop.current || !nut.current) return
     const r = nut.current.getBoundingClientRect()
     const h = hop.current.offsetHeight
+    if (vt.top < r.bottom) return // đã lật lên rồi — không lật nữa (ô nằm sát/ngoài đáy màn hình sẽ lặp vô hạn)
     if (vt.top + h > innerHeight - 8 && r.top - h - 4 > 8) setVt({ ...vt, top: r.top - h - 4 })
   }, [vt])
 
@@ -59,7 +80,8 @@ function OSua({ hien, rong = 256, tieuDe, children }: { hien: ReactNode; rong?: 
       </button>
       {vt &&
         createPortal(
-          <div className="fixed inset-0 z-50" onClick={dong}>
+          // portal vẫn lan sự kiện lên cây React -> chặn, kẻo bấm ra ngoài để đóng lại mở luôn hồ sơ của dòng
+          <div className="fixed inset-0 z-50" onClick={(e) => { e.stopPropagation(); dong() }}>
             <div
               ref={hop}
               className="fixed space-y-2 rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-xl"

@@ -8,3 +8,15 @@
   .btn-danger { @apply inline-flex items-center gap-1.5 rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50; }
   .card { @apply rounded-lg border border-slate-200 bg-white p-4 shadow-sm; }
 }
+
+/* Báo cáo năm (BaoCaoNam.tsx): khi in chỉ in khung báo cáo, bỏ nền / bóng / thanh công cụ */
+@media print {
+  @page { size: A4; margin: 15mm 15mm 15mm 20mm; }
+  body.in-bao-cao { background: #fff !important; }
+  body.in-bao-cao > :not(.bao-cao-in) { display: none !important; }
+  body.in-bao-cao .bao-cao-in { position: static !important; display: block !important; background: none !important; }
+  body.in-bao-cao .bao-cao-in .khong-in { display: none !important; }
+  body.in-bao-cao .bao-cao-in .vung-cuon { overflow: visible !important; padding: 0 !important; }
+  body.in-bao-cao .bao-cao-in .trang { width: auto !important; padding: 0 !important; box-shadow: none !important; }
+  body.in-bao-cao * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

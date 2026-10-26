@@ -1,5 +1,6 @@
 import { KHONG_TAG } from './hashtag.js'
 import { daysBetween } from './dates.js'
+import { boDau } from './locHoSo.js'
 import { statusOf, type StatusKey } from './status.js'
 import type { Dossier, Invoice } from './types.js'
 
@@ -157,3 +158,30 @@ export function byTag(rows: InvoiceRow[]): TagStat[] {
 
 /** Hóa đơn có thuộc tag này không (KHONG_TAG = hồ sơ chưa gắn tag nào) */
 export const coTag = (d: Dossier, ma: string) => (ma === KHONG_TAG ? !d.tags?.length : !!d.tags?.includes(ma))
+
+// ───────────── Bộ lọc trang Tổng hợp (theo từng hóa đơn) ─────────────
+
+/** 3 nhóm tình trạng thanh toán như các ô đầu trang Tổng hợp. */
+export type NhomTt = 'daTt' | 'choKt' | 'chuaNop'
+export const nhomTt = (st: StatusKey): NhomTt => (st === 'daTt' ? 'daTt' : st === 'choKt' ? 'choKt' : 'chuaNop')
+
+export interface BoLocTongHop {
+  nam: number | 'all'
+  thang: number | 'all'
+  q: string
+  nhom: NhomTt | 'all'
+  nguoiTT: string | null // '' = hồ sơ chưa ghi người đề nghị
+}
+
+/** Hóa đơn hợp kỳ (năm/tháng ngày HĐ), từ khoá (không dấu, mọi từ), nhóm thanh toán, người đề nghị. */
+export function hopHoaDon(r: InvoiceRow, b: BoLocTongHop): boolean {
+  if (b.nam !== 'all' && Number(r.inv.ngayHd.slice(0, 4)) !== b.nam) return false
+  if (b.nam !== 'all' && b.thang !== 'all' && Number(r.inv.ngayHd.slice(5, 7)) !== b.thang) return false
+  if (b.nhom !== 'all' && nhomTt(r.status) !== b.nhom) return false
+  if (b.nguoiTT != null && r.d.nguoiDeNghi.trim() !== b.nguoiTT) return false
+  const tu = boDau(b.q).split(/\s+/).filter(Boolean)
+  if (!tu.length) return true
+  const chu = boDau([r.inv.soHd, r.inv.kyHieu, r.inv.tenNguoiBan, r.inv.mstNguoiBan, r.d.noiDung, r.d.nguoiDeNghi, ...(r.d.tags ?? []).map((t) => `#${t}`)].join(' '))
+  return tu.every((t) => chu.includes(t))
+}
+export const LOC_TONG_HOP: BoLocTongHop = { nam: 'all', thang: 'all', q: '', nhom: 'all', nguoiTT: null }
