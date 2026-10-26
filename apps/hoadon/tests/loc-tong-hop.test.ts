@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { LOC_MAC_DINH, locHoSo } from '../src/lib/locHoSo'
 import { emptyDossier, emptyInvoice } from '../src/lib/model'
 import { flattenInvoices, hopHoaDon, LOC_TONG_HOP } from '../src/lib/summary'
 
@@ -28,6 +29,15 @@ describe('bộ lọc trang Tổng hợp', () => {
   it('người TT, kể cả hồ sơ chưa ghi', () => {
     expect(loc({ nguoiTT: 'Nguyễn Đình Cường' })).toEqual(['Họp đề tài'])
     expect(loc({ nguoiTT: '' })).toEqual(['Tiếp khách'])
+  })
+  it('tỉnh người bán (suy từ địa chỉ), cả ở trang Hồ sơ', () => {
+    const d = hs('2026-10-01', { noiDung: 'Đi Thái Bình' })
+    d.invoices[0].diaChiNguoiBan = 'Phường Lê Hồng Phong, TP Thái Bình, tỉnh Thái Bình'
+    const r = flattenInvoices([d])[0]
+    expect(hopHoaDon(r, { ...LOC_TONG_HOP, tinh: 'Hưng Yên' })).toBe(true)
+    expect(hopHoaDon(r, { ...LOC_TONG_HOP, tinh: 'Hà Nội' })).toBe(false)
+    expect(hopHoaDon(r, { ...LOC_TONG_HOP, q: 'hung yen' })).toBe(true)
+    expect(locHoSo([d, rows[1].d], { ...LOC_MAC_DINH, trangThai: 'all', tinh: 'Hưng Yên' })).toEqual([d])
   })
   it('tìm không dấu, mọi từ, cả số HĐ / MST / hashtag', () => {
     expect(loc({ q: 'dien luc hung' })).toEqual(['Làm việc với Điện lực Hưng Yên'])

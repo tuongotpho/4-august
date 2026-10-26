@@ -12,6 +12,7 @@ import {
 } from '../lib/summary'
 import BaoCaoNam from './BaoCaoNam'
 import { BieuDoCotChong, BieuDoThanh, trieu } from './BieuDo'
+import { CHUA_RO_TINH, demTinh, tinhCua } from '../lib/tinh'
 import { SuaNguoiTT, SuaNoiDung, SuaTrangThai, useSuaNhanh } from './SuaNhanh'
 import { TagChips } from './TagChips'
 
@@ -53,9 +54,9 @@ export default function SummaryPage({ onOpen }: { onOpen: (id: string) => void }
   // Lọc theo người bán / việc: chọn ở bộ lọc, hoặc bấm vào thanh trong biểu đồ (bấm lại để bỏ)
   const [nguoiBan, setNguoiBan] = useState<string | null>(null)
   const [tag, setTag] = useState<string | null>(null)
-  const dangLocTh = loc.q.trim() !== '' || loc.nhom !== 'all' || loc.nguoiTT != null || month !== 'all' || !!nguoiBan || !!tag
+  const dangLocTh = loc.q.trim() !== '' || loc.nhom !== 'all' || loc.nguoiTT != null || !!loc.tinh || month !== 'all' || !!nguoiBan || !!tag
   const boLoc = () => {
-    setLoc({ q: '', nhom: 'all', nguoiTT: null, thang: 'all' })
+    setLoc({ q: '', nhom: 'all', nguoiTT: null, tinh: null, thang: 'all' })
     setNguoiBan(null)
     setTag(null)
   }
@@ -71,6 +72,8 @@ export default function SummaryPage({ onOpen }: { onOpen: (id: string) => void }
     const ky = allRows.filter((r) => hopHoaDon(r, { ...loc, q: '', nhom: 'all', nguoiTT: null }))
     return [...new Set(ky.map((r) => r.d.nguoiDeNghi.trim()))].sort((a, b) => (a ? b ? a.localeCompare(b, 'vi') : -1 : 1))
   }, [allRows, loc])
+  // tỉnh có trong kỳ đang xem (kèm số HĐ)
+  const dsTinh = useMemo(() => demTinh(allRows.filter((r) => hopHoaDon(r, { ...loc, q: '', tinh: null })).map((r) => r.inv)), [allRows, loc])
   const hopNb = (r: InvoiceRow) => !nguoiBan || khoaNguoiBan(r.inv) === nguoiBan
   const hopTag = (r: InvoiceRow) => !tag || coTag(r.d, tag)
   // Mỗi biểu đồ xếp hạng theo bộ lọc của biểu đồ KIA (không tự lọc chính nó) — để đổi lựa chọn dễ
@@ -182,6 +185,11 @@ export default function SummaryPage({ onOpen }: { onOpen: (id: string) => void }
           {[...new Set([...dsNguoiTTKy, ...(loc.nguoiTT != null ? [loc.nguoiTT] : [])])].map((n) => (
             <option key={n} value={n}>{n || '(chưa ghi người TT)'}</option>
           ))}
+        </select>
+        <select className="inp w-auto max-w-[11rem]" title="Tỉnh của người bán (theo địa chỉ trên hóa đơn)" value={loc.tinh ?? ''} onChange={(e) => setLoc({ tinh: e.target.value || null })}>
+          <option value="">Mọi tỉnh</option>
+          {loc.tinh && !dsTinh.some((t) => t.tinh === loc.tinh) && <option value={loc.tinh}>{loc.tinh}</option>}
+          {dsTinh.map((t) => <option key={t.tinh} value={t.tinh}>{t.tinh} ({t.soHd})</option>)}
         </select>
         <select className="inp w-auto max-w-[14rem]" title="Người bán (xếp theo số tiền)" value={nguoiBan ?? ''} onChange={(e) => setNguoiBan(e.target.value || null)}>
           <option value="">Mọi người bán</option>
@@ -424,6 +432,7 @@ export default function SummaryPage({ onOpen }: { onOpen: (id: string) => void }
               <th className="px-2 py-1.5">Ngày HĐ</th>
               <th className="px-2 py-1.5">Ký hiệu / Số</th>
               <th className="px-2 py-1.5">Người bán</th>
+              <th className="px-2 py-1.5" title="Tỉnh của người bán (theo địa chỉ trên hóa đơn)">Tỉnh</th>
               <th className="px-2 py-1.5 text-right">Tổng tiền</th>
               <th className="px-2 py-1.5">Nội dung</th>
               <th className="px-2 py-1.5" title="Người đề nghị thanh toán của hồ sơ">Người TT</th>
@@ -432,7 +441,7 @@ export default function SummaryPage({ onOpen }: { onOpen: (id: string) => void }
           </thead>
           <tbody>
             {rows.length === 0 && (
-              <tr><td colSpan={8} className="px-2 py-6 text-center text-slate-400">Không có hóa đơn nào trong kỳ này.</td></tr>
+              <tr><td colSpan={9} className="px-2 py-6 text-center text-slate-400">Không có hóa đơn nào trong kỳ này.</td></tr>
             )}
             {/* Sửa nhanh nội dung / người TT / trạng thái: sửa theo HỒ SƠ — các dòng cùng hồ sơ đổi theo */}
             {rows.map((r, i) => (
@@ -441,6 +450,9 @@ export default function SummaryPage({ onOpen }: { onOpen: (id: string) => void }
                 <td className="whitespace-nowrap px-2 py-1.5">{fmtDate(r.inv.ngayHd)}</td>
                 <td className="whitespace-nowrap px-2 py-1.5">{r.inv.kyHieu} / <b>{r.inv.soHd}</b></td>
                 <td className="max-w-[14rem] px-2 py-1.5"><div className="line-clamp-2" title={r.inv.tenNguoiBan}>{r.inv.tenNguoiBan}</div></td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-xs text-slate-600" title={r.inv.diaChiNguoiBan}>
+                  {tinhCua(r.inv) === CHUA_RO_TINH ? <span className="text-slate-300">—</span> : tinhCua(r.inv)}
+                </td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-medium">{formatMoney(r.inv.tongTien)}</td>
                 <td className="min-w-[16rem] max-w-md px-2 py-1.5">
                   <SuaNoiDung d={r.d} luu={luu} dangDung={tagDangDung}>
@@ -473,7 +485,7 @@ export default function SummaryPage({ onOpen }: { onOpen: (id: string) => void }
             ))}
             {rows.length > 0 && (
               <tr className="border-t-2 border-slate-300 font-semibold">
-                <td colSpan={4} className="px-2 py-1.5">Cộng</td>
+                <td colSpan={5} className="px-2 py-1.5">Cộng</td>
                 <td className="px-2 py-1.5 text-right">{formatMoney(totals.tong)}</td>
                 <td colSpan={3} />
               </tr>

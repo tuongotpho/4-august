@@ -1,5 +1,6 @@
 import { chuanTag, KHONG_TAG } from './hashtag.js'
 import { firstInvoiceDate, statusOf, totalOf, type StatusKey } from './status.js'
+import { tinhHoSo } from './tinh.js'
 import type { Dossier } from './types.js'
 
 /** Bộ lọc danh sách hồ sơ (màn Hồ sơ thanh toán). */
@@ -10,8 +11,9 @@ export interface BoLoc {
   nam: number | 'all' // theo ngày hóa đơn sớm nhất
   thang: number | 'all'
   q: string
+  tinh?: string | null // tỉnh của người bán (suy từ địa chỉ, xem tinh.ts)
 }
-export const LOC_MAC_DINH: BoLoc = { trangThai: 'chuaXong', tag: null, nam: 'all', thang: 'all', q: '' }
+export const LOC_MAC_DINH: BoLoc = { trangThai: 'chuaXong', tag: null, nam: 'all', thang: 'all', q: '', tinh: null }
 
 /** "Điện lực" -> "dien luc": tìm không cần gõ dấu. */
 export function boDau(s: string): string {
@@ -28,6 +30,7 @@ function chuTimKiem(d: Dossier): string {
     [
       d.noiDung, d.doiTac, d.ghiChu, d.nguoiDeNghi, d.soToTrinh, d.soDntt,
       ...(d.tags ?? []).map((t) => `#${t}`),
+      ...tinhHoSo(d),
       ...d.invoices.flatMap((i) => [i.soHd, i.tenNguoiBan, i.mstNguoiBan]),
     ].join(' '),
   )
@@ -62,13 +65,15 @@ export function hopTuKhoa(d: Dossier, q: string): boolean {
   return tu.every((t) => chu.includes(t))
 }
 
+export const hopTinh = (d: Dossier, tinh: string | null | undefined) => !tinh || tinhHoSo(d).includes(tinh)
+
 export function locHoSo(list: Dossier[], b: BoLoc): Dossier[] {
-  return list.filter((d) => hopTrangThai(d, b.trangThai) && hopTag(d, b.tag) && hopKy(d, b.nam, b.thang) && hopTuKhoa(d, b.q))
+  return list.filter((d) => hopTrangThai(d, b.trangThai) && hopTag(d, b.tag) && hopKy(d, b.nam, b.thang) && hopTinh(d, b.tinh) && hopTuKhoa(d, b.q))
 }
 
 /** Đang lọc khác mặc định (để hiện nút "Bỏ lọc"). */
 export function dangLoc(b: BoLoc): boolean {
-  return b.trangThai !== LOC_MAC_DINH.trangThai || !!b.tag || b.nam !== 'all' || !!b.q.trim()
+  return b.trangThai !== LOC_MAC_DINH.trangThai || !!b.tag || b.nam !== 'all' || !!b.tinh || !!b.q.trim()
 }
 
 /** Đếm hồ sơ theo tag (hồ sơ nhiều tag được đếm ở mỗi tag) — nhiều nhất trước, "(chưa gắn)" cuối. */

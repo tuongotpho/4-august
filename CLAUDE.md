@@ -49,6 +49,8 @@ Chỗ nào chưa kiểm được thì ghi rõ vào "Tiến độ", không tuyên
 
 ## Tiến độ (cập nhật cuối mỗi đợt, mới nhất ở trên)
 
+- 26/10/2026 — **Hoá đơn: cột Tỉnh + lọc theo tỉnh** ở bảng Hồ sơ và bảng kê Tổng hợp, thêm cột Tỉnh ở 2 file CSV; ô tìm cũng tìm theo tỉnh. Tỉnh **suy từ địa chỉ người bán** (`src/lib/tinh.ts`, không thêm trường dữ liệu), quy về 34 tỉnh sau 01/7/2025 (Thái Bình → Hưng Yên…); không đoán được → "(chưa rõ tỉnh)". Đo: 151 test đạt, build đạt, bản thử dữ liệu giả. **Chưa xem tỷ lệ "(chưa rõ tỉnh)" trên dữ liệu thật.**
+
 - 26/10/2026 — **Hoá đơn: trang Tổng hợp** (chỉ giao diện, KHÔNG đổi cấu trúc dữ liệu).
   - Bộ lọc chung cả trang (`hopHoaDon` / `LOC_TONG_HOP` ở `src/lib/summary.ts`): tìm không dấu, năm/tháng, tình trạng (3 nhóm — bấm 3 ô số liệu cũng lọc), người TT, người bán, hashtag. "Cần xử lý" và báo cáo năm không theo bộ lọc.
   - Bảng kê 8 cột, sửa nhanh nội dung + tag / người TT / trạng thái (hook chung `useSuaNhanh` trong `SuaNhanh.tsx`, dùng cho cả trang Hồ sơ); ngày nộp KT / TT hiện dưới trạng thái; hồ sơ nhiều HĐ có nhãn "HS n HĐ" (sửa 1 dòng = sửa cả hồ sơ).

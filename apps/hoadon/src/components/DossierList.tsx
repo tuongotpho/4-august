@@ -21,6 +21,7 @@ import GanTagHangLoat from './GanTagHangLoat'
 import NhapHoaDonCu from './NhapHoaDonCu'
 import SuaNgayHangLoat from './SuaNgayHangLoat'
 import { banDoThayThe } from '../lib/thayThe'
+import { CHUA_RO_TINH, demTinh, tinhHoSo } from '../lib/tinh'
 import { TagChips } from './TagChips'
 import { bao, hoi } from '../lib/dialog'
 
@@ -112,6 +113,7 @@ export default function DossierList({ onOpen }: { onOpen: (id: string, ds?: stri
     [list, loc],
   )
   const years = useMemo(() => namCoHoSo(list ?? []), [list])
+  const dsTinh = useMemo(() => demTinh((list ?? []).flatMap((d) => d.invoices)), [list])
 
   const shown = useMemo(() => sapXep(locHoSo(list ?? [], loc), xep), [list, loc, xep])
   const tongShown = useMemo(() => shown.reduce((a, d) => a + totalOf(d), 0), [shown])
@@ -303,6 +305,10 @@ Không lấy lại được (trừ khi có bản sao lưu .zip).`,
               {Array.from({ length: 12 }, (_, i) => <option key={i} value={i + 1}>Tháng {i + 1}</option>)}
             </select>
           )}
+          <select className="inp w-auto max-w-[11rem]" title="Tỉnh của người bán (theo địa chỉ trên hóa đơn)" value={loc.tinh ?? ''} onChange={(e) => setLoc({ tinh: e.target.value || null })}>
+            <option value="">Mọi tỉnh</option>
+            {dsTinh.map((t) => <option key={t.tinh} value={t.tinh}>{t.tinh} ({t.soHd})</option>)}
+          </select>
           <select
             className="inp w-auto"
             title="Thứ tự hiển thị"
@@ -491,6 +497,7 @@ Không lấy lại được (trừ khi có bản sao lưu .zip).`,
                 </th>
                 <th className="px-3 py-2">Nội dung</th>
                 <th className="w-32 px-3 py-2">Hóa đơn</th>
+                <th className="px-3 py-2" title="Tỉnh của người bán (theo địa chỉ trên hóa đơn)">Tỉnh</th>
                 <th className="px-3 py-2" title="Người đề nghị thanh toán">Người TT</th>
                 <th className="cursor-pointer select-none px-3 py-2 text-right hover:text-blue-700" title="Bấm để xếp theo tổng tiền" onClick={() => bamCot('tongTien')}>
                   Tổng tiền{muiTen('tongTien')}
@@ -521,7 +528,7 @@ Không lấy lại được (trừ khi có bản sao lưu .zip).`,
                         }}
                       />
                     </td>
-                    <td className="px-3 py-1.5" colSpan={3}>{g.nhan} · {g.ds.length} hồ sơ</td>
+                    <td className="px-3 py-1.5" colSpan={4}>{g.nhan} · {g.ds.length} hồ sơ</td>
                     <td className="px-3 py-1.5 text-right">{formatMoney(g.tongTien)}</td>
                     <td colSpan={6} />
                   </tr>
@@ -559,6 +566,9 @@ Không lấy lại được (trừ khi có bản sao lưu .zip).`,
                         </div>
                         <div className="truncate text-slate-400">{d.invoices[0]?.tenNguoiBan}</div>
                       </td>
+                      <td className="px-3 py-2 text-xs text-slate-600" title={d.invoices.map((i) => i.diaChiNguoiBan).filter(Boolean).join('\n')}>
+                        {tinhHoSo(d).map((t) => <div key={t} className={`whitespace-nowrap ${t === CHUA_RO_TINH ? 'text-slate-300' : ''}`}>{t === CHUA_RO_TINH ? '—' : t}</div>)}
+                      </td>
                       <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-700">
                         <SuaNguoiTT d={d} luu={luuNhanh} ds={dsNguoiTT} />
                       </td>
@@ -591,7 +601,7 @@ Không lấy lại được (trừ khi có bản sao lưu .zip).`,
             <tfoot>
               <tr className="border-t-2 border-slate-300 font-semibold">
                 <td />
-                <td className="px-3 py-2" colSpan={3}>Cộng {shown.length} hồ sơ</td>
+                <td className="px-3 py-2" colSpan={4}>Cộng {shown.length} hồ sơ</td>
                 <td className="px-3 py-2 text-right">{formatMoney(tongShown)}</td>
                 <td colSpan={6} />
               </tr>

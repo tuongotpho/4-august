@@ -2,6 +2,7 @@ import { KHONG_TAG } from './hashtag.js'
 import { daysBetween } from './dates.js'
 import { boDau } from './locHoSo.js'
 import { statusOf, type StatusKey } from './status.js'
+import { tinhCua } from './tinh.js'
 import type { Dossier, Invoice } from './types.js'
 
 /** Một dòng trong bảng kê: hóa đơn + hồ sơ chứa nó. */
@@ -171,6 +172,7 @@ export interface BoLocTongHop {
   q: string
   nhom: NhomTt | 'all'
   nguoiTT: string | null // '' = hồ sơ chưa ghi người đề nghị
+  tinh: string | null // tỉnh người bán (suy từ địa chỉ, xem tinh.ts)
 }
 
 /** Hóa đơn hợp kỳ (năm/tháng ngày HĐ), từ khoá (không dấu, mọi từ), nhóm thanh toán, người đề nghị. */
@@ -179,9 +181,10 @@ export function hopHoaDon(r: InvoiceRow, b: BoLocTongHop): boolean {
   if (b.nam !== 'all' && b.thang !== 'all' && Number(r.inv.ngayHd.slice(5, 7)) !== b.thang) return false
   if (b.nhom !== 'all' && nhomTt(r.status) !== b.nhom) return false
   if (b.nguoiTT != null && r.d.nguoiDeNghi.trim() !== b.nguoiTT) return false
+  if (b.tinh && tinhCua(r.inv) !== b.tinh) return false
   const tu = boDau(b.q).split(/\s+/).filter(Boolean)
   if (!tu.length) return true
-  const chu = boDau([r.inv.soHd, r.inv.kyHieu, r.inv.tenNguoiBan, r.inv.mstNguoiBan, r.d.noiDung, r.d.nguoiDeNghi, ...(r.d.tags ?? []).map((t) => `#${t}`)].join(' '))
+  const chu = boDau([r.inv.soHd, r.inv.kyHieu, r.inv.tenNguoiBan, r.inv.mstNguoiBan, tinhCua(r.inv), r.d.noiDung, r.d.nguoiDeNghi, ...(r.d.tags ?? []).map((t) => `#${t}`)].join(' '))
   return tu.every((t) => chu.includes(t))
 }
-export const LOC_TONG_HOP: BoLocTongHop = { nam: 'all', thang: 'all', q: '', nhom: 'all', nguoiTT: null }
+export const LOC_TONG_HOP: BoLocTongHop = { nam: 'all', thang: 'all', q: '', nhom: 'all', nguoiTT: null, tinh: null }
