@@ -32,6 +32,18 @@ Nhiều công ty: kéo XML của công ty khác vào là có thêm công ty, ch�
 
 Chưa đăng nhập: dữ liệu chỉ xử lý và lưu trên trình duyệt của máy đang dùng. Trang web chỉ được nói chuyện với Firebase/Google (`connect-src` trong `app/vercel.json`), không gửi dữ liệu đi nơi khác.
 
+## Sổ quỹ & chứng từ quỹ (tab 💳 Công nợ) — theo Thông tư 133/2016
+
+Dành cho công ty nhỏ **giám đốc kiêm thủ quỹ**, tài khoản cá nhân của thủ quỹ dùng như két tiền mặt:
+
+1. Ô **Người ký chứng từ** → khai giám đốc, thủ quỹ, kế toán, người lập, và **tên / số TK của thủ quỹ như trên sao kê** (không dấu cũng được).
+2. Mỗi quý: nạp sao kê ngân hàng (Excel/CSV; MB Bank đọc được cột *Phát sinh nợ/có*, *Bút toán*) → chọn quý → **Lập phiếu từ sao kê**:
+   - công ty chuyển cho thủ quỹ → **phiếu thu** "rút tiền gửi nhập quỹ" (Nợ 1111 / Có 1121);
+   - thủ quỹ chuyển vào công ty → **phiếu chi** "nộp tiền mặt vào ngân hàng" (Nợ 1121 / Có 1111).
+   Số phiếu nối tiếp trong năm; nạp lại sao kê không lập trùng. Giao dịch có nội dung nhắc hoá đơn / tạm ứng bị đánh dấu cần xem lại.
+3. **🖨 In phiếu** (mẫu 01-TT, 02-TT, khổ A5 ngang, số tiền bằng chữ) · **⬇ Sổ quỹ S07-DNN** · **⬇ Sổ tiền gửi S08-DNN** (Excel, TK đối ứng tự gợi ý: khách 131, nhà cung cấp 331, thủ quỹ 1111, thuế theo tiểu mục, lãi 515, phí 6422; dòng chưa rõ ghi "?").
+4. App báo **tồn quỹ đầu kỳ tối thiểu** để quỹ không âm ngày nào — nhập tồn thật theo biên bản kiểm kê quỹ.
+
 ## Quy tắc tính (đã đối chiếu với tờ khai nộp thật)
 
 - Bỏ hoá đơn **đã bị thay thế / huỷ**. Cùng một hoá đơn có trong nhiều file thì chỉ tính một lần.

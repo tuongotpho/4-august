@@ -818,7 +818,7 @@ export default function App() {
             {mst && (
               <div className="space-y-2 border-t border-slate-200 pt-4">
                 <h3 className="text-lg font-semibold">💵 Sổ quỹ tiền mặt</h3>
-                <SoQuyDN kho={kho} mst={mst} quy={quy} tt={thaoTacQuy} />
+                <SoQuyDN kho={kho} mst={mst} quy={quy} tt={thaoTacQuy} hoSo={hoSo} dsSaoKe={dsSaoKe} congNo={congNo} />
               </div>
             )}
           </section>

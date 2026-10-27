@@ -30,11 +30,19 @@ export interface PhieuQuy {
   doiTac: string // người nộp / người nhận
   /** Khoá hoá đơn (kho.hoaDon[mst]) mà phiếu này thanh toán */
   hoaDon: string[]
+  /** Phiếu lập từ sao kê: "idSaoKe#idGD" — để nạp lại không lập trùng */
+  nguon?: string
+  tkNo?: string
+  tkCo?: string
+  diaChi?: string // địa chỉ người nộp / nhận
+  kemTheo?: string // "Kèm theo … chứng từ gốc"
 }
 
 export interface CaiDatQuy {
   tonDau: number
   ngayTonDau: string // dd/MM/yyyy — tồn quỹ đầu kỳ tính tới ngày này
+  /** Người ký chứng từ quỹ + nhận diện thủ quỹ trên sao kê (chungTuQuy.ts) */
+  nguoiKy?: import('./chungTuQuy.js').NguoiKyQuy
 }
 
 export interface SoQuy {

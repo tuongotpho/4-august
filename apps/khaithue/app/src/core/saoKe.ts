@@ -22,6 +22,8 @@ export interface GiaoDich {
   noiDung: string
   doiUng: string // tên / số tài khoản đối ứng nếu sao kê có cột riêng
   soDu: number | null
+  /** Số bút toán / mã giao dịch của ngân hàng (số hiệu chứng từ trên sổ tiền gửi) */
+  soCT?: string
 }
 
 export interface SaoKe {
@@ -65,12 +67,13 @@ function ngayGD(o: O): string {
 
 const COT = {
   ngay: [/^ngày (giao dịch|gd|hạch toán|hiệu lực|thực hiện)/, /^ngày$/, /^transaction date/, /^date/, /^ngày/],
-  ra: [/ghi nợ|số tiền nợ|^nợ$|^ps nợ|tiền ra|^rút|debit|withdraw/],
-  vao: [/ghi có|số tiền có|^có$|^ps có|tiền vào|^gửi|credit|deposit/],
+  ra: [/ghi nợ|phát sinh nợ|số tiền nợ|^nợ$|^ps nợ|tiền ra|^rút|debit|withdraw/],
+  vao: [/ghi có|phát sinh có|số tiền có|^có$|^ps có|tiền vào|^gửi|credit|deposit/],
   soTien: [/^số tiền( giao dịch)?$|^amount$/],
   noiDung: [/nội dung|diễn giải|mô tả|chi tiết|description|remark|narrative/],
   doiUng: [/đối ứng|người (chuyển|nhận|hưởng)|tên (tài khoản|tk) đối|beneficiary|counterparty|đơn vị (thụ|chuyển)/],
   soDu: [/số dư|balance/],
+  soCT: [/^bút toán|số bút toán|số (ct|chứng từ|tham chiếu)|mã giao dịch|transaction no|reference|^số gd/],
 }
 
 /** Đọc một sheet sao kê (mảng dòng như sheet_to_json header:1 raw:true). Không nhận ra cột thì null. */
@@ -86,7 +89,7 @@ export function docSaoKe(rows: O[][], tenFile: string): SaoKe | null {
       }
       return -1
     }
-    const thu = { ngay: tim(COT.ngay), ra: tim(COT.ra), vao: tim(COT.vao), soTien: tim(COT.soTien), noiDung: tim(COT.noiDung), doiUng: tim(COT.doiUng), soDu: tim(COT.soDu) }
+    const thu = { ngay: tim(COT.ngay), ra: tim(COT.ra), vao: tim(COT.vao), soTien: tim(COT.soTien), noiDung: tim(COT.noiDung), doiUng: tim(COT.doiUng), soDu: tim(COT.soDu), soCT: tim(COT.soCT) }
     if (thu.ngay >= 0 && thu.noiDung >= 0 && ((thu.ra >= 0 && thu.vao >= 0) || thu.soTien >= 0)) {
       iTd = i
       c = thu
@@ -111,12 +114,13 @@ export function docSaoKe(rows: O[][], tenFile: string): SaoKe | null {
       ra = am ? st : 0
     }
     if (!vao && !ra) return
-    giaoDich.push({ id: `${iTd + 2 + i}`, ngay, vao, ra, noiDung: chuan(r[c!.noiDung]), doiUng: c!.doiUng >= 0 ? chuan(r[c!.doiUng]) : '', soDu: c!.soDu >= 0 ? soTien(r[c!.soDu]) || null : null })
+    giaoDich.push({ id: `${iTd + 2 + i}`, ngay, vao, ra, noiDung: chuan(r[c!.noiDung]), doiUng: c!.doiUng >= 0 ? chuan(r[c!.doiUng]) : '', soDu: c!.soDu >= 0 ? soTien(r[c!.soDu]) || null : null, ...(c!.soCT >= 0 && chuan(r[c!.soCT]) ? { soCT: chuan(r[c!.soCT]) } : {}) })
   })
   if (!giaoDich.length) return null
   const iso = (d: string) => d.split('/').reverse().join('')
   const sx = [...giaoDich].sort((a, b) => iso(a.ngay).localeCompare(iso(b.ngay)))
-  const nh = /(vietcombank|vcb|bidv|agribank|techcombank|vietinbank|mb ?bank|ngân hàng quân đội|acb|vpbank|sacombank|tpbank|shb|hdbank|ocb|msb|seabank|vib|lienvietpostbank|lpbank)/i.exec(dau + ' ' + tenFile)?.[1] ?? ''
+  const nhTho = /(vietcombank|vcb|bidv|agribank|techcombank|vietinbank|mb ?bank|quân đội|military commercial|acb|vpbank|sacombank|tpbank|shb|hdbank|ocb|msb|seabank|vib|lienvietpostbank|lpbank)/i.exec(dau + ' ' + tenFile)?.[1] ?? ''
+  const nh = /quân đội|military|mb ?bank/i.test(nhTho) ? 'MB' : nhTho
   return {
     id: '', tenFile, nganHang: nh.toUpperCase(), soTaiKhoan: /(?:số tài khoản|tài khoản|account (?:no|number))[^\d]{0,20}(\d{6,20})/i.exec(dau)?.[1] ?? '',
     tuNgay: sx[0].ngay, denNgay: sx.at(-1)!.ngay, giaoDich,

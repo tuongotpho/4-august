@@ -71,7 +71,7 @@ export function XemChiaSe({ cs, onDong }: { cs: ChiaSe; onDong: () => void }) {
             <>
               {tab === 'tongQuan' && <TongQuanDN tq={tq} tenCty={hoSo.tenNNT} onMoQuy={() => undefined} layDoiTac={layDoiTac} doiSoat={doiSoat} ruiRo={null} goc={goc} trangThaiRuiRo="loi:Mục soi DN rủi ro chỉ chủ hồ sơ xem được (danh sách nằm ở app hoá đơn của chủ)." />}
               {tab === 'loHang' && loTong && <fieldset disabled><LoHangDN t={loTong} tt={LO_CHI_XEM} dangNhap /></fieldset>}
-              {tab === 'congNo' && congNo && mst && <fieldset disabled className="space-y-4"><CongNoDN k={congNo} dsSaoKe={dsSaoKe} tt={SK_CHI_XEM} /><h3 className="text-lg font-semibold">💵 Sổ quỹ tiền mặt</h3><SoQuyDN kho={kho} mst={mst} quy={quy} tt={QUY_CHI_XEM} /></fieldset>}
+              {tab === 'congNo' && congNo && mst && <fieldset disabled className="space-y-4"><CongNoDN k={congNo} dsSaoKe={dsSaoKe} tt={SK_CHI_XEM} /><h3 className="text-lg font-semibold">💵 Sổ quỹ tiền mặt</h3><SoQuyDN kho={kho} mst={mst} quy={quy} tt={QUY_CHI_XEM} hoSo={hoSo} dsSaoKe={dsSaoKe} congNo={congNo} /></fieldset>}
             </>
           )}
         </>
