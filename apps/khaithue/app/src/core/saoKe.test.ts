@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { khoTrong, napHoaDon, type Kho } from './kho.js'
-import { docSaoKe, tinhCongNo, type SaoKe } from './saoKe.js'
+import { boGiaoDichTrung, docSaoKe, tinhCongNo, type SaoKe } from './saoKe.js'
 import type { HoaDon } from './types.js'
 
 const CTY = '2601102955'
@@ -85,5 +85,56 @@ describe('Sao kê ngân hàng', () => {
     const sk: SaoKe = { ...docSaoKe([['Ngày giao dịch', 'Ghi nợ', 'Ghi có', 'Nội dung'], ['03/09/2025', '10,800,000', '', 'TT HD 0020']], 'x.xlsx')!, id: 's' }
     const tra = Object.fromEntries(tinhCongNo(k0, CTY, [sk]).hoaDon.map((h) => [h.so, h.daTra]))
     expect(tra).toEqual({ '20': 10_800_000, '21': 0 })
+  })
+})
+
+describe('Chống trùng giao dịch giữa các file sao kê (theo số bút toán)', () => {
+  // File kỳ sau bắt đầu lại từ ngày cuối kỳ trước -> lặp FT4, FT5 của file VCB
+  const KY_SAU = [
+    ['NGÂN HÀNG TMCP NGOẠI THƯƠNG VIỆT NAM - VIETCOMBANK'],
+    ['Số tài khoản: 1234567890'],
+    ['STT', 'Ngày giao dịch', 'Số tham chiếu', 'Số tiền ghi nợ', 'Số tiền ghi có', 'Số dư', 'Nội dung chi tiết'],
+    [1, '10/08/2025', 'FT4', '15,000,000', '', '', 'CK BAO KHANH LINH tra mot phan'],
+    [2, '11/08/2025', 'FT5', '2,000,000', '', '', 'PHI DICH VU NGAN HANG'],
+    [3, '12/08/2025', 'FT6', '6,600,000', '', '', 'CK BAO KHANH LINH tra not HD 11'],
+  ]
+  const a = (): SaoKe => ({ ...docSaoKe(VCB, 'vcb-t8a.xlsx')!, id: 'a' })
+  const b = (): SaoKe => ({ ...docSaoKe(KY_SAU, 'vcb-t8b.xlsx')!, id: 'b' })
+
+  it('cùng số bút toán + cùng tiền ở 2 file chỉ tính một lần, giữ bản ở file bắt đầu sớm hơn', () => {
+    const { ds, soTrung } = boGiaoDichTrung([b(), a()])
+    expect(soTrung).toBe(2)
+    expect(ds.find((s) => s.id === 'a')!.giaoDich).toHaveLength(5)
+    expect(ds.find((s) => s.id === 'b')!.giaoDich.map((g) => g.soCT)).toEqual(['FT6'])
+  })
+
+  it('công nợ không bị cộng tiền trả 2 lần', () => {
+    const k = tinhCongNo(kho(), CTY, [a(), b()])
+    expect(k.soTrung).toBe(2)
+    expect(k.soGiaoDich).toBe(6)
+    const tra = Object.fromEntries(k.hoaDon.map((h) => [h.so, h.daTra]))
+    expect(tra['11']).toBe(21_600_000) // 15tr (một lần) + 6,6tr — không phải 15 + 15 + 6,6
+    expect(k.phaiTra).toBe(10_800_000)
+  })
+
+  it('không có số bút toán thì không gộp (2 lần chuyển cùng tiền cùng ngày là chuyện bình thường)', () => {
+    const khongCT = [['Ngày giao dịch', 'Ghi nợ', 'Ghi có', 'Nội dung'], ['10/08/2025', '15,000,000', '', 'CK BAO KHANH LINH']]
+    const x: SaoKe = { ...docSaoKe(khongCT, 'x.xlsx')!, id: 'x' }
+    const y: SaoKe = { ...docSaoKe(khongCT, 'y.xlsx')!, id: 'y' }
+    expect(boGiaoDichTrung([x, y]).soTrung).toBe(0)
+  })
+
+  it('cùng số bút toán nhưng khác số tiền: không phải trùng', () => {
+    const lech = KY_SAU.map((r, i) => (i === 3 ? [1, '10/08/2025', 'FT4', '15,000,001', '', '', 'x'] : r))
+    expect(boGiaoDichTrung([a(), { ...docSaoKe(lech, 'z.xlsx')!, id: 'z' }]).soTrung).toBe(1)
+  })
+
+  it('giữ bản có gán tay, dù ở file sau; sao kê gốc không bị sửa', () => {
+    const goc = b()
+    const coTay: SaoKe = { ...goc, ghepTay: { '4': ['mua|2601066601|C25TKL|11'] } } // dòng 4 = FT4
+    const { ds } = boGiaoDichTrung([a(), coTay])
+    expect(ds.find((s) => s.id === 'b')!.giaoDich.map((g) => g.soCT)).toEqual(['FT4', 'FT6'])
+    expect(ds.find((s) => s.id === 'a')!.giaoDich.map((g) => g.soCT)).not.toContain('FT4')
+    expect(coTay.giaoDich).toHaveLength(3)
   })
 })

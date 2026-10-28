@@ -53,7 +53,7 @@ export function CongNoDN({ k, dsSaoKe, tt }: { k: KetQuaCongNo; dsSaoKe: SaoKe[]
       {dsSaoKe.length > 0 && (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div className="rounded-lg border border-slate-200 p-3">Giao dịch: <b>{k.soGiaoDich}</b><br />đã ghép {k.daGhep}</div>
+            <div className="rounded-lg border border-slate-200 p-3">Giao dịch: <b>{k.soGiaoDich}</b><br />đã ghép {k.daGhep}{k.soTrung > 0 && <><br /><span className="text-slate-500" title="File kỳ sau lặp lại giao dịch đã có ở file kỳ trước (cùng số bút toán) — chỉ tính một lần">bỏ {k.soTrung} trùng giữa các file</span></>}</div>
             <div className="rounded-lg border border-slate-200 p-3">Phải thu: <b>{tien(k.phaiThu)} đ</b></div>
             <div className="rounded-lg border border-slate-200 p-3">Phải trả: <b>{tien(k.phaiTra)} đ</b></div>
             <div className={`rounded-lg border p-3 ${k.muaChuaChuyenKhoan.length ? 'border-amber-300 bg-amber-50' : 'border-slate-200'}`}>HĐ mua ≥ 5tr chưa chuyển khoản: <b>{k.muaChuaChuyenKhoan.length}</b></div>

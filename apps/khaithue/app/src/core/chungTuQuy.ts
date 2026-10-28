@@ -6,7 +6,7 @@
 // Mỗi quý nạp sao kê -> app gợi ý đủ phiếu cho các giao dịch đó (không tạo trùng khi nạp lại), in phiếu, xuất sổ.
 
 import type { HoSoDN } from './types.js'
-import type { GiaoDich, KetQuaCongNo, SaoKe } from './saoKe.js'
+import { boGiaoDichTrung, type GiaoDich, type KetQuaCongNo, type SaoKe } from './saoKe.js'
 import { soPhieuMoi, type KetQuaQuy, type PhieuQuy, type SoQuy } from './soQuy.js'
 import { tienBangChu } from './docSo.js'
 import { tien } from './nhan.js'
@@ -48,14 +48,16 @@ export interface GoiYPhieu {
  */
 export function goiYPhieuTuSaoKe(dsSaoKe: SaoKe[], quy: SoQuy, nguoiKy: NguoiKyQuy, tu = '', den = '', maMoi: () => string = () => Math.random().toString(36).slice(2)): GoiYPhieu {
   const daCoNguon = new Set(Object.values(quy.phieu).map((p) => p.nguon).filter(Boolean))
+  // phiếu đã lập từ một bản sao của cùng giao dịch ở file sao kê khác (nhận theo số bút toán ghi trong nội dung phiếu)
+  const daCoCT = new Set(Object.values(quy.phieu).filter((p) => p.nguon).map((p) => /bút toán ([^)\s]+)\)/.exec(p.noiDung)?.[1]).filter(Boolean))
   const tam: { sk: SaoKe; gd: GiaoDich }[] = []
   let daCo = 0
-  for (const sk of dsSaoKe) {
+  for (const sk of boGiaoDichTrung(dsSaoKe).ds) {
     for (const gd of sk.giaoDich) {
       if (tu && iso(gd.ngay) < iso(tu)) continue
       if (den && iso(gd.ngay) > iso(den)) continue
       if (!laThuQuy(gd, nguoiKy.nhanDien)) continue
-      if (daCoNguon.has(`${sk.id}#${gd.id}`)) {
+      if (daCoNguon.has(`${sk.id}#${gd.id}`) || (gd.soCT && daCoCT.has(gd.soCT))) {
         daCo++
         continue
       }

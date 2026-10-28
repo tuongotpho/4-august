@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx'
 import { tien } from '../core/nhan'
 import { lapSoQuy, phieuTuHoaDon, soPhieuMoi, TEN_NHOM_PHIEU, type CaiDatQuy, type NhomPhieu, type PhieuQuy, type SoQuy } from '../core/soQuy'
 import { bangS07, bangS08, goiYPhieuTuSaoKe, htmlPhieu, loaiGhep, NGUOI_KY_TRONG, soDuTruoc, tonDauToiThieu, type GoiYPhieu, type NguoiKyQuy } from '../core/chungTuQuy'
-import type { KetQuaCongNo, SaoKe } from '../core/saoKe'
+import { boGiaoDichTrung, type KetQuaCongNo, type SaoKe } from '../core/saoKe'
 import type { Kho } from '../core/kho'
 import type { HoSoDN } from '../core/types'
 import { DanhSachCanhBao } from './chung'
@@ -115,7 +115,7 @@ export function SoQuyDN({ kho, mst, quy, tt, hoSo, dsSaoKe, congNo }: { kho: Kho
   const xuatS07 = () => taiExcel(`S07-DNN So quy tien mat ${tenKy(ky)}.xlsx`.replace(/\//g, '-'), [{ ten: 'S07-DNN', bang: bangS07(k, hoSo, nguoiKy, tenKy(ky), ngayKy) }])
   const xuatS08 = () => {
     const ghep = loaiGhep(congNo)
-    const ds = dsSaoKe.filter((s) => !khoang[0] || s.giaoDich.some((g) => isoKy(g.ngay) >= isoKy(khoang[0]) && isoKy(g.ngay) <= isoKy(khoang[1])))
+    const ds = boGiaoDichTrung(dsSaoKe).ds.filter((s) => !khoang[0] || s.giaoDich.some((g) => isoKy(g.ngay) >= isoKy(khoang[0]) && isoKy(g.ngay) <= isoKy(khoang[1])))
     if (!ds.length) return alert('Chưa có sao kê ngân hàng trong kỳ này.')
     const sheets = ds.map((s, i) => {
       const du = soDuTruoc(s, khoang[0])

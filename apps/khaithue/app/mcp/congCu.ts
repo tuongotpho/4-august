@@ -396,7 +396,7 @@ export function congNo(d: DuLieu, a: { mst?: string; gioi_han?: number }) {
     daCoSaoKe: ds.length > 0,
     giaiThich: 'Ghép tự động theo số tiền thanh toán + MST/tên đối tác trong nội dung + ngày; người dùng gán tay trên web app được. conNo = tiền hoá đơn (gồm thuế) − đã ghép được.',
     saoKe: ds.map((s) => ({ file: s.tenFile, nganHang: s.nganHang, soTaiKhoan: s.soTaiKhoan, tuNgay: s.tuNgay, denNgay: s.denNgay, soGiaoDich: s.giaoDich.length })),
-    soGiaoDich: k.soGiaoDich, daGhep: k.daGhep, phaiThu: k.phaiThu, phaiTra: k.phaiTra,
+    soGiaoDich: k.soGiaoDich, daGhep: k.daGhep, giaoDichTrungDaBo: k.soTrung, phaiThu: k.phaiThu, phaiTra: k.phaiTra,
     doiTacConNo: k.doiTac.filter((x) => x.conNo > 1).slice(0, n).map((x) => ({ chieu: x.l === 'ban' ? 'phải thu' : 'phải trả', mst: x.mst, ten: x.ten, tongHoaDon: x.tongHoaDon, daThanhToan: x.daThanhToan, conNo: x.conNo })),
     muaTu5TrieuChuaChuyenKhoan: k.muaChuaChuyenKhoan.slice(0, n).map((h) => ({ so: `${h.kh}-${h.so}`, ngay: h.ng, ten: h.ten, tong: h.tong, daChuyen: h.daTra })),
     giaoDichChuaGhep: k.chuaGhep.slice(0, n).map((x) => ({ file: x.saoKe, ngay: x.gd.ngay, vao: x.gd.vao, ra: x.gd.ra, noiDung: x.gd.noiDung })),

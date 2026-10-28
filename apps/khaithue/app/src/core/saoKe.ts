@@ -164,6 +164,8 @@ export interface KetQuaCongNo {
   /** Hoá đơn mua từ 5 triệu (lập từ 01/07/2025) chưa thấy chuyển khoản */
   muaChuaChuyenKhoan: HoaDonCongNo[]
   canhBao: CanhBao[]
+  /** Giao dịch bị bỏ vì trùng giữa các file sao kê (cùng số bút toán) */
+  soTrung: number
 }
 
 const isoN = (dmy: string) => dmy.split('/').reverse().join('-')
@@ -186,7 +188,40 @@ function nhacToi(gd: GiaoDich, h: HoaDonCongNo): number {
   return diem
 }
 
-export function tinhCongNo(kho: Kho, mst: string, dsSaoKe: SaoKe[], cuaSoNgay = 120, tienMat: Record<string, number> = {}): KetQuaCongNo {
+/**
+ * Bỏ giao dịch trùng giữa các file sao kê: file kỳ sau thường lặp lại ngày cuối của file kỳ trước.
+ * Trùng = cùng số bút toán + cùng tiền vào/ra (giao dịch không có số bút toán thì giữ nguyên — không đủ căn cứ).
+ * Giữ bản ở file có gán tay cho giao dịch đó; không có thì giữ bản ở file bắt đầu sớm hơn.
+ * Trả bản sao — sao kê gốc vẫn lưu đủ để xoá / nạp lại từng file.
+ */
+export function boGiaoDichTrung(dsSaoKe: SaoKe[]): { ds: SaoKe[]; soTrung: number } {
+  const khoa = (g: GiaoDich) => (g.soCT ? `${g.soCT}|${g.vao}|${g.ra}` : '')
+  const thuTu = [...dsSaoKe].sort((a, b) => isoN(a.tuNgay).localeCompare(isoN(b.tuNgay)) || a.tenFile.localeCompare(b.tenFile) || a.id.localeCompare(b.id))
+  const chu = new Map<string, { sk: string; tay: boolean }>() // khoá giao dịch -> sao kê được giữ
+  for (const sk of thuTu) {
+    for (const g of sk.giaoDich) {
+      const k = khoa(g)
+      if (!k) continue
+      const tay = !!sk.ghepTay?.[g.id]
+      const cu = chu.get(k)
+      if (!cu || (tay && !cu.tay)) chu.set(k, { sk: sk.id, tay })
+    }
+  }
+  let soTrung = 0
+  const ds = dsSaoKe.map((sk) => {
+    const giu = sk.giaoDich.filter((g) => {
+      const k = khoa(g)
+      if (!k || chu.get(k)?.sk === sk.id) return true
+      soTrung++
+      return false
+    })
+    return giu.length === sk.giaoDich.length ? sk : { ...sk, giaoDich: giu }
+  })
+  return { ds, soTrung }
+}
+
+export function tinhCongNo(kho: Kho, mst: string, dsSaoKeGoc: SaoKe[], cuaSoNgay = 120, tienMat: Record<string, number> = {}): KetQuaCongNo {
+  const { ds: dsSaoKe, soTrung } = boGiaoDichTrung(dsSaoKeGoc)
   const hoaDon: HoaDonCongNo[] = Object.entries(kho.hoaDon?.[mst] ?? {})
     .filter(([, g]) => conHieuLuc({ trangThai: g.tt ?? '' } as HoaDon))
     .map(([khoa, g]) => ({ khoa, l: g.l, kh: g.kh, so: g.so, ng: g.ng, mst: (g.l === 'mua' ? g.mb : g.mm) ?? '', ten: g.ten, tong: g.v + g.t, daTra: 0, tienMat: 0, giaoDich: [] }))
@@ -275,6 +310,6 @@ export function tinhCongNo(kho: Kho, mst: string, dsSaoKe: SaoKe[], cuaSoNgay = 
     soGiaoDich: soGD, daGhep, chuaGhep, hoaDon, doiTac,
     phaiThu: doiTac.filter((d) => d.l === 'ban').reduce((s, d) => s + d.conNo, 0),
     phaiTra: doiTac.filter((d) => d.l === 'mua').reduce((s, d) => s + d.conNo, 0),
-    muaChuaChuyenKhoan, canhBao,
+    muaChuaChuyenKhoan, canhBao, soTrung,
   }
 }

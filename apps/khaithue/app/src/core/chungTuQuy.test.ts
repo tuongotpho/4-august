@@ -123,3 +123,25 @@ describe('in phiếu 01-TT / 02-TT', () => {
     }
   })
 })
+
+describe('lập phiếu khi 2 file sao kê chồng ngày', () => {
+  // file kỳ sau lặp lại 2 giao dịch cuối của file trước (FT5 thủ quỹ, 389…-20260220 lãi) + 1 giao dịch mới với thủ quỹ
+  const SAU = [MB[0], MB[1], MB[3], MB[4], MB[5],
+    ['7', '21/02/2026 09:00:00', '21/02/2026', '0.0', '7000000.0', '413380632.0', 'NGUYEN VAN A', 'NGUYEN VAN A chuyen tien', 'FT7']]
+  const sau = (): SaoKe => ({ ...docSaoKe(SAU as never, 'mb-sau.xlsx')!, id: 'sk2' })
+
+  it('không lập 2 phiếu cho cùng một giao dịch', () => {
+    const g = goiYPhieuTuSaoKe([sau(), saoKe()], QUY_TRONG(), TQ)
+    expect(g.phieu.map((p) => [p.ngay, p.loai, p.soTien])).toEqual([
+      ['03/02/2026', 'chi', 50_000_000], ['15/02/2026', 'thu', 20_000_000], ['16/02/2026', 'thu', 15_662_900], ['21/02/2026', 'chi', 7_000_000],
+    ])
+  })
+
+  it('phiếu đã lập từ file sau, nạp thêm file trước (bản được giữ đổi file) vẫn không lập lại', () => {
+    const quy = QUY_TRONG()
+    for (const p of goiYPhieuTuSaoKe([sau()], quy, TQ).phieu) quy.phieu[p.id] = p // FT5 + FT7 lập từ file sau
+    const g = goiYPhieuTuSaoKe([saoKe(), sau()], quy, TQ)
+    expect(g.phieu.map((p) => p.ngay)).toEqual(['03/02/2026', '15/02/2026']) // chỉ FT1, FT4 còn thiếu
+    expect(g.daCo).toBe(2)
+  })
+})
