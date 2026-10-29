@@ -37,7 +37,9 @@ export const VIET_TAT: [RegExp, string][] = [
   [/tap doan dien luc viet nam/, 'EVN'],
   [new RegExp(`tong ${CTY} dien luc mien bac`), 'NPC'],
   [new RegExp(`${CTY} cong nghe thong tin dien luc mien bac`), 'NPC IT'],
-  [new RegExp(`${CTY} dien luc hung yen`), 'PC Hưng Yên'],
+  // mọi PC tỉnh: "Công ty Điện lực Tuyên Quang" -> "PC Tuyên Quang" (giữ nguyên tên tỉnh như đã gõ).
+  // Không dính NPC (đã thay ở dòng trên), NPC IT, NPSC ("Công ty Dịch vụ Điện lực…") vì giữa có chữ khác.
+  [new RegExp(`${CTY} dien luc(?= \\S)`), 'PC'],
   [/ky thuat an toan/, 'KTAT'],
   [/ke hoach vat tu/, 'KHVT'],
 ]
@@ -53,9 +55,11 @@ export function vietTat(ten: string): string {
     const re = new RegExp(`(?<![a-z0-9])${mau.source.replace(/ /g, '\\s+')}(?![a-z0-9])`, 'g')
     const khop = [...khongDau(s).matchAll(re)].reverse() // thay từ cuối lên để vị trí phía trước không lệch
     for (const m of khop) s = s.slice(0, m.index) + tat + s.slice(m.index! + m[0].length)
-    s = s.split(`${tat} (${tat})`).join(tat) // "Tổng công ty … (NPC)" -> "NPC (NPC)" -> "NPC"
   }
-  return s.trim()
+  // "Tổng công ty … (NPC)" -> "NPC (NPC)" -> "NPC"; "PC Tuyên Quang (PC Tuyên Quang)" -> "PC Tuyên Quang"
+  return s
+    .replace(/([^,()]+?)\s*\(([^()]+)\)/g, (x, a: string, b: string) => (khongDau(a.trim()).endsWith(khongDau(b.trim())) ? a : x))
+    .trim()
 }
 
 /** Các hồ sơ đã chọn -> dòng lịch, xếp theo ngày tăng dần. diaDiemDaNho: địa điểm đã gõ lần trước (theo id hồ sơ). */
