@@ -22,9 +22,10 @@ describe('Danh sách app ↔ chuyển tiếp trong vercel.json', () => {
     }
   })
 
-  it('?ve= chỉ nhận đường dẫn thuộc 5 app', () => {
+  it('?ve= chỉ nhận đường dẫn thuộc các app trong danh sách', () => {
     expect(duongVeHopLe('/hoa-don/?hs=abc')).toBe('/hoa-don/?hs=abc')
     expect(duongVeHopLe('/lich-giang/?lop=1')).toBe('/lich-giang/?lop=1')
+    expect(duongVeHopLe('/the-visa/')).toBe('/the-visa/')
     expect(duongVeHopLe('https://la.com/hoa-don/')).toBeNull()
     expect(duongVeHopLe('//la.com/hoa-don/')).toBeNull()
     expect(duongVeHopLe('/khong-co/')).toBeNull()

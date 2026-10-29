@@ -60,7 +60,7 @@ export default function App() {
             <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 text-center shadow-sm sm:p-6">
               <h2 className="text-lg font-bold">{appVe ? `Đăng nhập để mở ${appVe.ten}` : 'Đăng nhập để dùng các app'}</h2>
               <p className="mx-auto mt-1 max-w-md text-sm text-slate-600">
-                Đăng nhập Google một lần ở đây là cả 5 app đều nhận. Dữ liệu mỗi app vẫn cất riêng, chỉ tài khoản của anh xem được.
+                Đăng nhập Google một lần ở đây là tất cả các app đều nhận. Dữ liệu mỗi app vẫn cất riêng, chỉ tài khoản của anh xem được.
               </p>
               <button
                 className="mt-4 inline-flex items-center justify-center rounded-lg bg-slate-900 px-5 py-2.5 font-semibold text-white hover:bg-slate-800"
@@ -80,7 +80,7 @@ export default function App() {
         ) : (
           <CaiDat user={user} />
         )}
-        {/* Chân trang chung (mẫu thống nhất trang chủ + 5 app): cuối nội dung, đường kẻ mảnh phía trên, cách 32px, đệm 16px, chữ 12px xám */}
+        {/* Chân trang chung (mẫu thống nhất trang chủ + các app): cuối nội dung, đường kẻ mảnh phía trên, cách 32px, đệm 16px, chữ 12px xám */}
         <footer className="mt-8 w-full border-t border-slate-200 px-4 py-4 text-center text-xs text-slate-500">
           <p>{BAN_QUYEN}</p>
         </footer>
@@ -97,7 +97,7 @@ export default function App() {
   )
 }
 
-/** Lưới 5 app. khoa = chưa đăng nhập: hiện ô mờ, không bấm được */
+/** Lưới các app. khoa = chưa đăng nhập: hiện ô mờ, không bấm được */
 function LuoiApp({ khoa = false }: { khoa?: boolean }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -143,13 +143,13 @@ function CaiDat({ user }: { user: User }) {
           </div>
           <button
             className="ml-auto rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
-            onClick={() => confirm('Đăng xuất khỏi cả 5 app?') && void dangXuat()}
+            onClick={() => confirm('Đăng xuất khỏi tất cả các app?') && void dangXuat()}
           >
             Đăng xuất
           </button>
         </div>
         <p className="mt-3 text-xs text-slate-500">
-          Đăng xuất ở đây là đăng xuất khỏi cả 5 app. Điện thoại: mở trang bằng Chrome / Safari → menu → <b>Thêm vào màn hình chính</b> để dùng như một app.
+          Đăng xuất ở đây là đăng xuất khỏi tất cả các app. Điện thoại: mở trang bằng Chrome / Safari → menu → <b>Thêm vào màn hình chính</b> để dùng như một app.
         </p>
       </section>
 

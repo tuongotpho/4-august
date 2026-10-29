@@ -1,4 +1,4 @@
-// 5 app của 4.August. duongDan = đường dẫn con dưới cổng (vercel.json chuyển tiếp sang diaChiGoc).
+// Các app qua cổng (5 app của 4.August + app riêng the-visa). duongDan = đường dẫn con dưới cổng (vercel.json chuyển tiếp sang diaChiGoc).
 // mau = màu nhận diện (giữ đúng màu chủ đạo app đang dùng — chốt 24/10/2026, báo cáo F:\AI\08-…).
 
 export interface AppCon {
@@ -16,7 +16,7 @@ export interface AppCon {
 }
 
 /** ?ve=<đường dẫn>: app gửi về trang chủ khi chưa đăng nhập; đăng nhập xong mở lại đúng chỗ.
- *  Chỉ nhận đường dẫn thuộc 5 app (không cho chuyển sang trang lạ). */
+ *  Chỉ nhận đường dẫn thuộc các app trong danh sách (không cho chuyển sang trang lạ). */
 export function duongVeHopLe(ve: string | null): string | null {
   if (!ve || !ve.startsWith('/') || ve.startsWith('//')) return null
   return DS_APP.some((a) => ve.startsWith(a.duongDan)) ? ve : null
@@ -76,5 +76,16 @@ export const DS_APP: AppCon[] = [
     duongDan: '/khai-thue/',
     diaChiGoc: 'https://khaithue.vercel.app',
     caiDat: 'Kết nối AI, nhắc hạn nộp qua Telegram, người xem chung',
+  },
+  {
+    // App riêng, mã ở repo tuongotpho/visa (KHÔNG nằm trong apps/ của 4.August) — chỉ nối qua cổng.
+    ma: 'the-visa',
+    ten: 'Chi tiêu thẻ',
+    moTa: 'Sao kê thẻ tín dụng, biểu đồ, nhận xét',
+    kyHieu: 'TV',
+    mau: '#0b8a5f',
+    duongDan: '/the-visa/',
+    diaChiGoc: 'https://the-visa-lethanh.vercel.app',
+    caiDat: 'Tải sao kê PDF, các kỳ đã lưu, đổi nhóm giao dịch',
   },
 ]

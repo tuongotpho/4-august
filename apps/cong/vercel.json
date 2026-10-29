@@ -29,6 +29,11 @@
       "source": "/khai-thue",
       "destination": "/khai-thue/",
       "permanent": false
+    },
+    {
+      "source": "/the-visa",
+      "destination": "/the-visa/",
+      "permanent": false
     }
   ],
   "rewrites": [
@@ -87,6 +92,14 @@
     {
       "source": "/khai-thue/:path*",
       "destination": "https://khaithue.vercel.app/:path*"
+    },
+    {
+      "source": "/the-visa/",
+      "destination": "https://the-visa-lethanh.vercel.app/"
+    },
+    {
+      "source": "/the-visa/:path*",
+      "destination": "https://the-visa-lethanh.vercel.app/:path*"
     }
   ],
   "headers": [
@@ -128,6 +141,15 @@
     },
     {
       "source": "/khai-thue/:path*",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/the-visa/:path*",
       "headers": [
         {
           "key": "x-vercel-enable-rewrite-caching",

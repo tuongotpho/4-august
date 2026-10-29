@@ -1,5 +1,5 @@
-// Chỉ dùng phần ĐĂNG NHẬP của Firebase (project app-from-ai, cùng khoá với 5 app).
-// Cùng tên miền + cùng khoá + app tên mặc định → phiên đăng nhập ở trang chủ được cả 5 app dưới /quy-phong/, /lich-giang/… dùng chung.
+// Chỉ dùng phần ĐĂNG NHẬP của Firebase (project app-from-ai, cùng khoá với các app).
+// Cùng tên miền + cùng khoá + app tên mặc định → phiên đăng nhập ở trang chủ được mọi app dưới /quy-phong/, /lich-giang/… dùng chung.
 
 import { initializeApp } from 'firebase/app'
 import { getAuth, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, type User } from 'firebase/auth'
@@ -31,5 +31,5 @@ export async function dangNhap() {
   }
 }
 
-/** Đăng xuất ở trang chủ = đăng xuất cả 5 app (dùng chung phiên) */
+/** Đăng xuất ở trang chủ = đăng xuất mọi app (dùng chung phiên) */
 export const dangXuat = () => signOut(auth)
