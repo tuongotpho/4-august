@@ -31,6 +31,33 @@ export function thuCua(iso: string): string {
 /** Ngày làm việc của hồ sơ = ngày hóa đơn đầu tiên (chưa có HĐ thì ngày tờ trình). */
 export const ngayLamViec = (d: Dossier) => firstInvoiceDate(d) || d.ngayToTrinh || ''
 
+// Viết tắt tên đơn vị trong cột Thành phần (so không dấu, không phân biệt hoa thường; "công ty" / "cty" như nhau)
+const CTY = '(?:cong ty|cty)'
+export const VIET_TAT: [RegExp, string][] = [
+  [/tap doan dien luc viet nam/, 'EVN'],
+  [new RegExp(`tong ${CTY} dien luc mien bac`), 'NPC'],
+  [new RegExp(`${CTY} cong nghe thong tin dien luc mien bac`), 'NPC IT'],
+  [new RegExp(`${CTY} dien luc hung yen`), 'PC Hưng Yên'],
+  [/ky thuat an toan/, 'KTAT'],
+  [/ke hoach vat tu/, 'KHVT'],
+]
+
+// mỗi ký tự -> đúng 1 ký tự không dấu, chữ thường (để vị trí khớp trên chuỗi không dấu dùng lại được cho chuỗi gốc)
+const khongDau = (s: string) =>
+  [...s.normalize('NFC')].map((c) => (c === 'đ' || c === 'Đ' ? 'd' : c.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().slice(0, 1) || c)).join('')
+
+/** "Tổng công ty Điện lực miền Bắc (NPC), Phòng Kỹ thuật An toàn" -> "NPC, Phòng KTAT" */
+export function vietTat(ten: string): string {
+  let s = ten.normalize('NFC').replace(/\s+/g, ' ')
+  for (const [mau, tat] of VIET_TAT) {
+    const re = new RegExp(`(?<![a-z0-9])${mau.source.replace(/ /g, '\\s+')}(?![a-z0-9])`, 'g')
+    const khop = [...khongDau(s).matchAll(re)].reverse() // thay từ cuối lên để vị trí phía trước không lệch
+    for (const m of khop) s = s.slice(0, m.index) + tat + s.slice(m.index! + m[0].length)
+    s = s.split(`${tat} (${tat})`).join(tat) // "Tổng công ty … (NPC)" -> "NPC (NPC)" -> "NPC"
+  }
+  return s.trim()
+}
+
 /** Các hồ sơ đã chọn -> dòng lịch, xếp theo ngày tăng dần. diaDiemDaNho: địa điểm đã gõ lần trước (theo id hồ sơ). */
 export function dongLichTuan(ds: Dossier[], diaDiemDaNho: Record<string, string> = {}): DongLich[] {
   return ds
@@ -38,7 +65,7 @@ export function dongLichTuan(ds: Dossier[], diaDiemDaNho: Record<string, string>
       id: d.id,
       ngay: ngayLamViec(d),
       noiDung: d.noiDung.trim() || (d.hoSoCu ? d.invoices[0]?.tenNguoiBan ?? '' : ''),
-      thanhPhan: d.thanhPhan.map((t) => t.donVi.trim()).filter(Boolean).join(', '),
+      thanhPhan: d.thanhPhan.map((t) => vietTat(t.donVi)).filter(Boolean).join(', '),
       diaDiem: diaDiemDaNho[d.id] ?? d.doiTac.trim(),
     }))
     .sort((a, b) => (a.ngay || '9999').localeCompare(b.ngay || '9999'))

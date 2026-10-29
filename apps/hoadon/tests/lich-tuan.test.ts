@@ -1,7 +1,7 @@
 import PizZip from 'pizzip'
 import { describe, expect, it } from 'vitest'
 import { emptyDossier, emptyInvoice } from '../src/lib/model'
-import { dongLichTuan, khoangTuan, taoDocxLichTuan, thongTinMacDinh, thuCua } from '../src/lib/lichTuan'
+import { dongLichTuan, khoangTuan, taoDocxLichTuan, thongTinMacDinh, thuCua, vietTat } from '../src/lib/lichTuan'
 import { DEFAULT_SETTINGS } from '../src/lib/types'
 
 const hs = (ngayHd: string, noiDung: string, doiTac: string, donVi: string[]) => ({
@@ -17,6 +17,21 @@ describe('lịch tuần', () => {
       ['2026-06-24', 'Tổng công ty (NPC), Ban GĐ NPSC, phòng KTAT', 'Tổng công ty Điện lực miền Bắc'],
       ['2026-06-26', 'Phòng KTAT', 'Phòng họp NPSC'],
     ])
+  })
+
+  it('viết tắt tên đơn vị: không phân biệt dấu / hoa thường / "cty", bỏ ngoặc trùng', () => {
+    expect(vietTat('Tập đoàn Điện lực Việt Nam')).toBe('EVN')
+    expect(vietTat('Tổng công ty Điện lực miền Bắc (NPC)')).toBe('NPC')
+    expect(vietTat('Tổng cty điện lực Miền Bắc')).toBe('NPC')
+    expect(vietTat('Công ty Công nghệ Thông tin Điện lực miền Bắc')).toBe('NPC IT')
+    expect(vietTat('Công ty Điện lực Hưng Yên')).toBe('PC Hưng Yên')
+    expect(vietTat('Cty  Dien luc Hung Yen')).toBe('PC Hưng Yên')
+    expect(vietTat('Phòng Kỹ thuật An toàn')).toBe('Phòng KTAT')
+    expect(vietTat('Phòng Kế hoạch vật tư')).toBe('Phòng KHVT')
+    expect(vietTat('Ban GĐ NPSC')).toBe('Ban GĐ NPSC')
+    expect(vietTat('Kỹ thuật an toàn và Kế hoạch vật tư')).toBe('KTAT và KHVT')
+    const b2 = hs('2026-06-24', 'x', '', ['Tổng công ty Điện lực miền Bắc', 'Phòng Kỹ thuật An toàn'])
+    expect(dongLichTuan([b2])[0].thanhPhan).toBe('NPC, Phòng KTAT')
   })
 
   it('thứ và khoảng tuần thứ Hai – Chủ nhật', () => {
