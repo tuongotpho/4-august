@@ -86,6 +86,6 @@ export const DS_APP: AppCon[] = [
     mau: '#0b8a5f',
     duongDan: '/the-visa/',
     diaChiGoc: 'https://the-visa-lethanh.vercel.app',
-    caiDat: 'Tải sao kê PDF, các kỳ đã lưu, đổi nhóm giao dịch',
+    caiDat: 'Tải sao kê PDF, các kỳ đã lưu, đổi nhóm giao dịch, Kết nối AI (MCP)',
   },
 ]
