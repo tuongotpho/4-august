@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { dossiersToCsv } from '../lib/csv'
 import { fmtDate, today } from '../lib/dates'
@@ -24,6 +24,8 @@ import { banDoThayThe } from '../lib/thayThe'
 import { CHUA_RO_TINH, demTinh, tinhHoSo } from '../lib/tinh'
 import { TagChips } from './TagChips'
 import { bao, hoi } from '../lib/dialog'
+
+const LichTuan = lazy(() => import('./LichTuan')) // pizzip + docx-preview: chỉ tải khi mở lịch tuần
 
 // Ô trạng thái ở đầu trang (bỏ "Chưa có hóa đơn" theo yêu cầu — hồ sơ chưa có HĐ vẫn hiện ở bộ lọc "Tất cả")
 const ORDER: StatusKey[] = ['choLamHs', 'choNop', 'choKt', 'daTt']
@@ -57,6 +59,7 @@ export default function DossierList({ onOpen }: { onOpen: (id: string, ds?: stri
   const [dangLam, setDangLam] = useState('') // tiến độ xóa / đọc lại
   const [suaNgay, setSuaNgay] = useState(false)
   const [ganTag, setGanTag] = useState(false)
+  const [lichTuan, setLichTuan] = useState(false)
   // cách xếp: mặc định ngày HĐ mới nhất trên cùng; nhớ lựa chọn cho lần mở sau (chỉ trên máy này)
   const [xep, setXepState] = useState<CachXep>(() => {
     try {
@@ -418,6 +421,9 @@ Không lấy lại được (trừ khi có bản sao lưu .zip).`,
                 Bỏ chọn
               </button>
               <div className="ml-auto flex flex-wrap gap-2">
+                <button className="btn !py-1" onClick={() => setLichTuan(true)} title="Xuất file Word đăng ký lịch công tác tuần từ các hồ sơ đã chọn (có xem trước)">
+                  📅 Lịch tuần
+                </button>
                 <button className="btn !py-1" onClick={() => setGanTag(true)}>
                   🏷 Gắn tag
                 </button>
@@ -435,6 +441,11 @@ Không lấy lại được (trừ khi có bản sao lưu .zip).`,
 
       {suaNgay && <SuaNgayHangLoat ids={[...chon]} onClose={() => setSuaNgay(false)} />}
       {ganTag && <GanTagHangLoat ds={daChon} tatCa={list} onClose={() => setGanTag(false)} />}
+      {lichTuan && (
+        <Suspense fallback={null}>
+          <LichTuan ds={daChon} settings={settings} onClose={() => setLichTuan(false)} />
+        </Suspense>
+      )}
 
       {shown.length === 0 && (
         <div className="rounded-lg border border-slate-200 bg-white px-3 py-8 text-center text-sm text-slate-400">
