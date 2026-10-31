@@ -3,9 +3,6 @@
     "site": "app-by-lethanh",
     "public": "public",
     "ignore": ["firebase.json", "**/.*"],
-    "redirects": [
-      { "source": "/hoa-don", "destination": "/hoa-don/", "type": 302 }
-    ],
     "rewrites": [
       { "source": "/hoa-don/mcp", "function": { "functionId": "hoadon", "region": "asia-southeast1" } },
       { "source": "/hoa-don/oauth/**", "function": { "functionId": "hoadon", "region": "asia-southeast1" } },
