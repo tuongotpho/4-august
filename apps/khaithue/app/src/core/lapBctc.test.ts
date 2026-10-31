@@ -140,8 +140,33 @@ describe('lập BCTC từ dữ liệu app', () => {
     expect(n.laoDong).toBe(5)
     expect(n.sieuNho).toBe(true)
     expect(cheDoGoiY(kho, MST, 2027)).toBe('TT58')
-    expect(cheDoGoiY(kho, MST, 2026)).toBe('TT99')
+    expect(cheDoGoiY(kho, MST, 2026)).toBe('TT133')
     expect(cheDoGoiY(kho, MST, 2025)).toBe('TT200')
     expect(nhanDienSieuNho(taoKho(), MST, 2028).sieuNho).toBe(false) // chưa có tờ khai lao động -> không kết luận
+  })
+
+  it('mẫu TT133 (doanh nghiệp nhỏ và vừa): gộp đúng mã B01a/B02/B03-DNN, cân, phép cộng khớp', () => {
+    const kho = taoKho()
+    const chiTiet = lapBctc(kho, MST, 2026, { tonKhoCuoi: 50_000_000 })
+    const r = lapBctcTheoMau(kho, MST, 2026, 'TT133', { tonKhoCuoi: 50_000_000 })
+    const c = r.bctc.cdkt.cuoi
+    const k = r.bctc.kqkd.nay
+    const l = r.bctc.lctt!.nay
+    expect(r.bctc.cheDo).toBe('TT133')
+    expect(c['200']).toBe(chiTiet.bctc.cdkt.cuoi['280'])
+    expect(c['500']).toBe(chiTiet.bctc.cdkt.cuoi['440'])
+    expect(c['417']).toBe(chiTiet.bctc.cdkt.cuoi['420'])
+    expect(c['313']).toBe(chiTiet.bctc.cdkt.cuoi['314'])
+    expect(c['314']).toBe(chiTiet.bctc.cdkt.cuoi['315'])
+    expect(c['181']).toBe(chiTiet.bctc.cdkt.cuoi['162'] ?? 0)
+    expect(r.bctc.cdkt.dau['417']).toBe(40_000_000) // 421 (TT200) -> 420 (TT99) -> 417 (TT133)
+    expect(k['24']).toBe((chiTiet.bctc.kqkd.nay['25'] ?? 0) + chiTiet.bctc.kqkd.nay['26'])
+    expect(k['21']).toBe(chiTiet.bctc.kqkd.nay['22']) // doanh thu tài chính
+    expect(k['60']).toBe(chiTiet.bctc.kqkd.nay['60'])
+    expect(l['25']).toBe(50_000) // lãi tiền gửi: mã 27 -> 25
+    expect(l['70']).toBe(chiTiet.bctc.lctt!.nay['70'])
+    expect(r.chenhLech).toBe(chiTiet.chenhLech)
+    expect(soatBctc(r.bctc).filter((x) => /nhưng cộng các mã|tính lại theo công thức/.test(x.noiDung))).toEqual([])
+    expect(r.nguon['cdkt:417'].moTa).toMatch(/tự tính/)
   })
 })

@@ -6,8 +6,10 @@
 import type { SoLieuBctc } from './bctc.js'
 
 export const TEN_CDKT_TT58: [string, string][] = [
+  ['#ts', 'TÀI SẢN'],
   ['110', '1. Tiền'], ['120', '2. Các khoản nợ phải thu'], ['130', '3. Hàng tồn kho'], ['140', '4. Tài sản cố định'], ['150', '5. Tài sản khác'],
   ['200', 'TỔNG CỘNG TÀI SẢN (200 = 110 + 120 + 130 + 140 + 150)'],
+  ['#nv', 'NGUỒN VỐN'],
   ['300', 'I. Nợ phải trả'], ['310', '1. Các khoản nợ phải trả'], ['320', '2. Thuế và các khoản phải nộp Nhà nước'],
   ['400', 'II. Vốn chủ sở hữu'], ['410', '1. Vốn đầu tư của chủ sở hữu'], ['420', '2. Lợi nhuận sau thuế chưa phân phối'], ['430', '3. Các quỹ thuộc vốn chủ sở hữu'],
   ['500', 'TỔNG CỘNG NGUỒN VỐN (500 = 300 + 400)'],

@@ -6,6 +6,7 @@
 import type { SoLieuBctc } from './bctc.js'
 import { cdktTT200SangTT99, kqkdTT200SangTT99 } from './mauBctc99.js'
 import { sangTT58 } from './mauBctc58.js'
+import { sangTT133 } from './mauBctc133.js'
 import { nhomHoaDon } from './hoaDonGoc.js'
 import { tinhTrangKy, type Kho } from './kho.js'
 import { boGiaoDichTrung, tinhCongNo, type GiaoDich, type SaoKe } from './saoKe.js'
@@ -91,7 +92,7 @@ export function xepGiaoDich(gd: Pick<GiaoDich, 'noiDung' | 'doiUng' | 'vao' | 'r
 /** Chế độ mẫu BCTC theo năm tài chính: TT99 áp dụng cho năm tài chính bắt đầu từ 01/01/2026 */
 export const cheDoTheoNam = (namLap: number) => (namLap >= 2026 ? 'TT99' : 'TT200')
 
-export type CheDoBctc = 'TT200' | 'TT99' | 'TT58'
+export type CheDoBctc = 'TT200' | 'TT133' | 'TT99' | 'TT58'
 
 export interface NhanDienSieuNho {
   sieuNho: boolean
@@ -120,17 +121,37 @@ export function nhanDienSieuNho(kho: Kho, mst: string, namLap: number): NhanDien
   return { sieuNho, laoDong, doanhThu, nguonVon, giaiThich }
 }
 
-/** Mẫu gợi ý: TT58 từ năm 2027 nếu là doanh nghiệp siêu nhỏ (TT58 áp dụng cho năm tài chính bắt đầu từ 01/07/2026); 2026: TT99; trước 2026: TT200 */
+/**
+ * Mẫu gợi ý (chủ doanh nghiệp chốt 01/11/2026): trước 2026 TT200 như các năm đã nộp; năm 2026 TT133 (chế độ doanh nghiệp nhỏ và vừa,
+ * TT58 chưa áp dụng cho năm tài chính bắt đầu 01/01/2026); từ 2027 TT58 nếu là doanh nghiệp siêu nhỏ, không thì TT133.
+ */
 export function cheDoGoiY(kho: Kho, mst: string, namLap: number): CheDoBctc {
+  if (namLap < 2026) return 'TT200'
   if (namLap >= 2027 && nhanDienSieuNho(kho, mst, namLap).sieuNho) return 'TT58'
-  return cheDoTheoNam(namLap)
+  return 'TT133'
 }
 
 /** Lập BCTC theo mẫu chọn: TT58 = lập chi tiết theo năm (TT200/TT99) rồi gộp sang 9 + 5 chỉ tiêu của doanh nghiệp siêu nhỏ */
 export function lapBctcTheoMau(kho: Kho, mst: string, namLap: number, mau: CheDoBctc, nhap: NhapTayBctc = {}): BanLapBctc {
   const ban = lapBctc(kho, mst, namLap, nhap)
-  if (mau !== 'TT58') return ban
   const coSo = ban.bctc.cheDo
+  if (mau === 'TT133') {
+    const b = sangTT133(ban.bctc)
+    const n = (k: string) => ban.nguon[k]
+    const nguon: Record<string, NguonSo> = {
+      'cdkt:110': n('cdkt:110'), 'cdkt:131': n('cdkt:131'), 'cdkt:141': n('cdkt:141'), 'cdkt:181': n(`cdkt:${coSo === 'TT99' ? '162' : '152'}`),
+      'cdkt:311': n('cdkt:311'), 'cdkt:313': n(`cdkt:${coSo === 'TT99' ? '314' : '313'}`), 'cdkt:314': n(`cdkt:${coSo === 'TT99' ? '315' : '314'}`),
+      'cdkt:411': n('cdkt:411'), 'cdkt:417': n(`cdkt:${coSo === 'TT99' ? '420' : '421'}`),
+      'kqkd:01': n('kqkd:01'), 'kqkd:11': n('kqkd:11'), 'kqkd:21': n(`kqkd:${coSo === 'TT99' ? '22' : '21'}`),
+      'kqkd:24': { moTa: `Chi phí bán hàng + chi phí quản lý (TT133 gộp thành chi phí quản lý kinh doanh). ${n('kqkd:26')?.moTa ?? ''}`, thieu: n('kqkd:26')?.thieu },
+      'kqkd:51': n('kqkd:51'),
+      'lctt:01': n('lctt:01'), 'lctt:02': n('lctt:02'), 'lctt:03': n('lctt:03'), 'lctt:06': n('lctt:06'), 'lctt:07': n('lctt:07'),
+      'lctt:25': { moTa: 'Lãi tiền gửi nhận được (TT133: mã 25 hoạt động đầu tư).' }, 'lctt:31': n('lctt:31'), 'lctt:70': n('lctt:70'),
+    }
+    for (const k of Object.keys(nguon)) if (!nguon[k]) delete nguon[k]
+    return { ...ban, bctc: b, nguon, chenhLech: b.cdkt.cuoi['200'] - b.cdkt.cuoi['500'] }
+  }
+  if (mau !== 'TT58') return ban
   const b = sangTT58(ban.bctc)
   const nguon: Record<string, NguonSo> = {
     'cdkt:110': ban.nguon['cdkt:110'],

@@ -2,6 +2,7 @@
 // Giai đoạn A (báo cáo 19): chỉ đọc và soát, chưa lập BCTC. Bảng cân đối (B01-DN), kết quả kinh doanh (B02-DN),
 // lưu chuyển tiền tệ (B03-DN, trực tiếp hoặc gián tiếp). Mã chỉ tiêu giữ nguyên như trên mẫu ("ct411a" -> "411a").
 import { docCayXml, type GhiChuKiem, type NutXml } from './xemHoaDon.js'
+import { CONG_CDKT_TT133, CONG_KQKD_TT133, CONG_LCTT_TT133, TEN_CDKT_TT133, TEN_KQKD_TT133, TEN_LCTT_TT133 } from './mauBctc133.js'
 import { CONG_CDKT_TT58, CONG_KQKD_TT58, TEN_CDKT_TT58, TEN_KQKD_TT58 } from './mauBctc58.js'
 import { CONG_CDKT_TT99, CONG_KQKD_TT99, TEN_CDKT_TT99, TEN_KQKD_TT99, TEN_LCTT_TT99 } from './mauBctc99.js'
 
@@ -188,25 +189,35 @@ export interface MauBctc {
   maLnst: string
   /** Bộ BCTC của mẫu có lưu chuyển tiền tệ và thuyết minh không (TT58 doanh nghiệp siêu nhỏ: không) */
   coLcttVaThuyetMinh: boolean
+  tongNguonVon: string
+  congLctt: [string, string[]][]
+  /** Mã chi phí bán hàng / quản lý trên kết quả kinh doanh (TT133 gộp thành "chi phí quản lý kinh doanh" 24) */
+  cpQuanLy: string[]
 }
 
 export const MAU_BCTC: Record<string, MauBctc> = {
   TT200: {
     ten: 'Thông tư 200/2014/TT-BTC', tenB01: 'Bảng cân đối kế toán', tenCdkt: TEN_CDKT, tenKqkd: TEN_KQKD, tenLctt: TEN_LCTT_TRUC_TIEP,
     congCdkt: CONG_CDKT, congKqkd: CONG_KQKD, tongTaiSan: '270', lnChuaPP: '421', lnKyNay: '421b', dtTaiChinh: '21', cpTaiChinh: '22', dongTong: DONG_TONG,
-    maLntt: '50', maTndn: '51', maLnst: '60', coLcttVaThuyetMinh: true,
+    maLntt: '50', maTndn: '51', maLnst: '60', coLcttVaThuyetMinh: true, tongNguonVon: '440', congLctt: CONG_LCTT_TT, cpQuanLy: ['25', '26'],
   },
   TT99: {
     ten: 'Thông tư 99/2025/TT-BTC', tenB01: 'Báo cáo tình hình tài chính', tenCdkt: TEN_CDKT_TT99, tenKqkd: TEN_KQKD_TT99, tenLctt: TEN_LCTT_TT99,
     congCdkt: CONG_CDKT_TT99, congKqkd: CONG_KQKD_TT99, tongTaiSan: '280', lnChuaPP: '420', lnKyNay: '420b', dtTaiChinh: '22', cpTaiChinh: '23',
     dongTong: new Set(['100', '200', '280', '300', '400', '440', '10', '20', '30', '50', '60']),
-    maLntt: '50', maTndn: '51', maLnst: '60', coLcttVaThuyetMinh: true,
+    maLntt: '50', maTndn: '51', maLnst: '60', coLcttVaThuyetMinh: true, tongNguonVon: '440', congLctt: CONG_LCTT_TT, cpQuanLy: ['25', '26'],
+  },
+  TT133: {
+    ten: 'Thông tư 133/2016/TT-BTC (doanh nghiệp nhỏ và vừa)', tenB01: 'Báo cáo tình hình tài chính', tenCdkt: TEN_CDKT_TT133, tenKqkd: TEN_KQKD_TT133, tenLctt: TEN_LCTT_TT133,
+    congCdkt: CONG_CDKT_TT133, congKqkd: CONG_KQKD_TT133, tongTaiSan: '200', lnChuaPP: '417', lnKyNay: '', dtTaiChinh: '21', cpTaiChinh: '22',
+    dongTong: new Set(['200', '300', '400', '500', '10', '20', '30', '50', '60']),
+    maLntt: '50', maTndn: '51', maLnst: '60', coLcttVaThuyetMinh: true, tongNguonVon: '500', congLctt: CONG_LCTT_TT133, cpQuanLy: ['24'],
   },
   TT58: {
     ten: 'Thông tư 58/2026/TT-BTC (doanh nghiệp siêu nhỏ)', tenB01: 'Báo cáo tình hình tài chính', tenCdkt: TEN_CDKT_TT58, tenKqkd: TEN_KQKD_TT58, tenLctt: [],
     congCdkt: CONG_CDKT_TT58, congKqkd: CONG_KQKD_TT58, tongTaiSan: '200', lnChuaPP: '420', lnKyNay: '', dtTaiChinh: '', cpTaiChinh: '',
     dongTong: new Set(['200', '300', '400', '500', '03', '20']),
-    maLntt: '03', maTndn: '10', maLnst: '20', coLcttVaThuyetMinh: false,
+    maLntt: '03', maTndn: '10', maLnst: '20', coLcttVaThuyetMinh: false, tongNguonVon: '500', congLctt: [], cpQuanLy: [],
   },
 }
 export const mauCua = (cheDo: string) => MAU_BCTC[cheDo] ?? MAU_BCTC.TT200
@@ -238,8 +249,8 @@ export function soatBctc(b: SoLieuBctc): GhiChuKiem[] {
     const s = phan.reduce((a, [m, dau]) => a + dau * k(m), 0)
     if (!gan(s, k(tong))) kq.push({ muc: 'canhBao', noiDung: `Kết quả kinh doanh: mã ${tong} = ${tien(k(tong))} nhưng tính lại theo công thức = ${tien(s)}.` })
   }
-  if (b.lctt?.phuongPhap === 'trucTiep') soatCong('Lưu chuyển tiền tệ', b.lctt.nay, CONG_LCTT_TT, kq)
-  const tongNV = b.cheDo === 'TT58' ? '500' : '440'
+  if (b.lctt?.phuongPhap === 'trucTiep') soatCong('Lưu chuyển tiền tệ', b.lctt.nay, mau.congLctt, kq)
+  const tongNV = mau.tongNguonVon
   if (!gan(c(mau.tongTaiSan), c(tongNV))) kq.push({ muc: 'canhBao', noiDung: `${mau.tenB01} không cân: tổng tài sản ${tien(c(mau.tongTaiSan))} ≠ tổng nguồn vốn ${tien(c(tongNV))}.` })
 
   // 2. Lợi nhuận năm phải vào vốn chủ (mã 421 theo TT200, 420 theo TT99)
@@ -286,7 +297,7 @@ export function soatBctc(b: SoLieuBctc): GhiChuKiem[] {
       }
       const hangMua = k('11') + coDu('141')
       const traMin = hangMua - coDu('311') + coDu('132')
-      const traMax = (hangMua + k(mau.cpTaiChinh) + k('25') + k('26') + k('32')) * 1.1 - coDu('311') + coDu('132')
+      const traMax = (hangMua + k(mau.cpTaiChinh) + mau.cpQuanLy.reduce((a, m) => a + k(m), 0) + k('32')) * 1.1 - coDu('311') + coDu('132')
       const tra = -l('02')
       if (hangMua > 0 && (tra < traMin * 0.97 || tra > traMax * 1.03)) {
         kq.push({
@@ -308,7 +319,8 @@ export function soatBctc(b: SoLieuBctc): GhiChuKiem[] {
     kq.push({ muc: 'thongTin', noiDung: `Thuế TNDN ${tien(thueTN)} không bằng ${suat.map((x) => `${x * 100}%`).join(' / ')} lợi nhuận trước thuế ${tien(lntt)} — đúng nếu có ưu đãi, chi phí không được trừ hay lỗ chuyển sang; đối chiếu tờ khai quyết toán TNDN.` })
   }
   // 7. Số tròn — dấu hiệu số ước, không lấy từ sổ
-  const dsTron: [string, string, number][] = b.cheDo === 'TT58' ? [] : [['25', 'Chi phí bán hàng', k('25')], ['26', 'Chi phí quản lý doanh nghiệp', k('26')], ['03', 'Tiền trả người lao động (lưu chuyển tiền)', -l('03')]]
+  const tenCp: Record<string, string> = { '24': 'Chi phí quản lý kinh doanh', '25': 'Chi phí bán hàng', '26': 'Chi phí quản lý doanh nghiệp' }
+  const dsTron: [string, string, number][] = b.cheDo === 'TT58' ? [] : [...mau.cpQuanLy.map((m): [string, string, number] => [m, tenCp[m], k(m)]), ['03', 'Tiền trả người lao động (lưu chuyển tiền)', -l('03')]]
   const tron = dsTron.filter(([, , v]) => v >= 10_000_000 && v % 1_000_000 === 0)
   if (tron.length) {
     kq.push({

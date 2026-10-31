@@ -7,6 +7,7 @@ import type { Kho, ToKhaiKhac } from '../core/kho'
 import { mauCua, soatBctc, type SoLieuBctc } from '../core/bctc'
 import { cheDoGoiY, lapBctcTheoMau, nhanDienSieuNho, type CheDoBctc, type NguonSo, type NhapTayBctc } from '../core/lapBctc'
 import type { GhiChuKiem } from '../core/xemHoaDon'
+import { dienMauWord } from '../core/xuatWordBctc'
 import { VungThaFile } from './chung'
 
 const tien = (v: number | undefined) => (v == null ? '' : Math.round(v).toLocaleString('vi-VN'))
@@ -16,6 +17,7 @@ type Bang = 'cdkt' | 'kqkd' | 'lctt'
 
 const GIAI_THICH_MAU: Record<CheDoBctc, string> = {
   TT200: 'Thông tư 200/2014/TT-BTC — dùng cho BCTC năm 2025 trở về trước (như các năm đã nộp).',
+  TT133: 'Thông tư 133/2016/TT-BTC — chế độ doanh nghiệp nhỏ và vừa (vẫn còn hiệu lực, TT99 không thay thế). Bắt buộc: B01a-DNN Báo cáo tình hình tài chính, B02-DNN, B09-DNN thuyết minh; gửi cơ quan thuế kèm F01-DNN bảng cân đối tài khoản. B03-DNN lưu chuyển tiền tệ không bắt buộc.',
   TT99: 'Thông tư 99/2025/TT-BTC (thay TT200) — áp dụng cho năm tài chính bắt đầu từ 01/01/2026: B01-DN Báo cáo tình hình tài chính, B02-DN, B03-DN.',
   TT58: 'Thông tư 58/2026/TT-BTC — doanh nghiệp siêu nhỏ, áp dụng cho năm tài chính bắt đầu từ 01/07/2026 (công ty theo năm dương lịch: từ năm 2027). Nộp thuế TNDN theo thu nhập: lập và nộp B01-DNSN + B02-DNSN trong 90 ngày.',
 }
@@ -63,7 +65,7 @@ function BangSo({ ten, a, b, cotA, cotB, tong, nguon, tienTo }: {
   ten: [string, string][]; a: Record<string, number>; b: Record<string, number>; cotA: string; cotB: string; tong: Set<string>; nguon?: Record<string, NguonSo>; tienTo?: string
 }) {
   const [mo, setMo] = useState<string | null>(null)
-  const dong = ten.filter(([m]) => tong.has(m) || a[m] || b[m])
+  const dong = ten.filter(([m]) => m.startsWith('#') || tong.has(m) || a[m] || b[m])
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200">
       <table className="w-full">
@@ -73,6 +75,8 @@ function BangSo({ ten, a, b, cotA, cotB, tong, nguon, tienTo }: {
         <tbody>
           {dong.map(([m, t]) => {
             const n = nguon?.[`${tienTo}:${m}`]
+            // Dòng tiêu đề nhóm của mẫu ("TÀI SẢN", "NGUỒN VỐN"): không mã, không số
+            if (m.startsWith('#')) return <tr key={m} className="border-t border-slate-200 bg-slate-100/70"><td /><td colSpan={3} className="p-2 font-bold uppercase">{t}</td></tr>
             return (
               <Fragment key={m}>
                 <tr onClick={() => n && setMo(mo === m ? null : m)} className={`border-t border-slate-100 ${tong.has(m) ? 'bg-slate-50 font-semibold' : ''} ${n ? 'cursor-pointer hover:bg-emerald-50' : ''}`}>
@@ -130,6 +134,28 @@ function docNhap(mst: string, nam: number): NhapTayBctc {
   }
 }
 
+/** Mẫu Word của Thông tư đã có trong app (public/mau/bctc) — điền số vào đúng ô, giữ nguyên khổ mẫu */
+const MAU_WORD: Partial<Record<CheDoBctc, { tep: string; ten: string; bang: 'cdkt' | 'kqkd' }[]>> = {
+  TT58: [{ tep: 'B01-DNSN.docx', ten: 'Mau-B01-DNSN', bang: 'cdkt' }, { tep: 'B02-DNSN.docx', ten: 'Mau-B02-DNSN', bang: 'kqkd' }],
+}
+
+async function xuatWord(b: SoLieuBctc, mau: CheDoBctc, hoSo: { tenNNT: string; dchiNNT: string; nguoiKy: string; mst: string }) {
+  for (const m of MAU_WORD[mau] ?? []) {
+    const r = await fetch(`mau/bctc/${m.tep}`)
+    if (!r.ok) throw new Error(`Không tải được mẫu ${m.tep}`)
+    const [cot1, cot2] = m.bang === 'cdkt' ? [b.cdkt.cuoi, b.cdkt.dau] : [b.kqkd.nay, b.kqkd.truoc]
+    const { docx } = dienMauWord(new Uint8Array(await r.arrayBuffer()), cot1, cot2, {
+      donVi: hoSo.tenNNT, diaChi: hoSo.dchiNNT, taiNgay: b.denNgay, nam: b.nam, nguoiDaiDien: hoSo.nguoiKy || undefined,
+    })
+    const url = URL.createObjectURL(new Blob([docx as Uint8Array<ArrayBuffer>], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${m.ten}-${b.nam}-${hoSo.mst}.docx`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 2000)
+  }
+}
+
 export function LapBaoCaoTaiChinh({ kho, mst }: { kho: Kho; mst: string }) {
   const [homNay] = useState(() => new Date())
   const nayNam = homNay.getFullYear()
@@ -155,7 +181,7 @@ export function LapBaoCaoTaiChinh({ kho, mst }: { kho: Kho; mst: string }) {
   // Bản nháp chưa có thuyết minh: bỏ lưu ý "file không có thuyết minh" (dành cho BCTC đã nộp), ghi chú riêng bên dưới
   const kiem = useMemo(() => soatBctc(r.bctc).filter((x) => !/thuyết minh báo cáo tài chính/.test(x.noiDung)), [r])
   const cacNam = Array.from({ length: nayNam - 2023 }, (_, i) => nayNam - i)
-  const mauHopLe: CheDoBctc[] = nam >= 2026 ? ['TT99', 'TT58'] : ['TT200', 'TT58']
+  const mauHopLe: CheDoBctc[] = nam >= 2026 ? ['TT133', 'TT58', 'TT99'] : ['TT200', 'TT133', 'TT58']
 
   return (
     <div className="space-y-4 text-sm">
@@ -211,6 +237,15 @@ export function LapBaoCaoTaiChinh({ kho, mst }: { kho: Kho; mst: string }) {
             </div>
           )}
           <DsKiem kiem={kiem} />
+          {MAU_WORD[mau] ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => { const h = kho.congTy[mst]?.hoSo; if (h) xuatWord(r.bctc, mau, h).catch((e) => alert((e as Error).message)) }}
+                className="rounded-lg bg-emerald-700 px-3 py-1.5 font-medium text-white"
+              >⬇ Xuất Word đúng mẫu ({(MAU_WORD[mau] ?? []).map((m) => m.tep.replace('.docx', '')).join(' + ')})</button>
+              <span className="text-xs text-slate-500">Điền số vào chính mẫu Word của Thông tư: đơn vị, địa chỉ, ngày, đơn vị tính, người đại diện; chữ ký để trống.</span>
+            </div>
+          ) : <p className="text-xs text-slate-500">Mẫu {mau}: chưa có file mẫu Word trong app — gửi mẫu Word (như đã gửi cho TT58) để xuất đúng mẫu.</p>}
           {mau !== 'TT58' && <p className="text-xs text-slate-500">Thuyết minh báo cáo tài chính (B09-DN) app chưa lập — người lập soạn riêng.</p>}
           <BaBang b={r.bctc} nguon={r.nguon} />
           {r.chuaPhanLoai.length > 0 && (
