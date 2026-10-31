@@ -1,11 +1,17 @@
-// Mục "Hoá đơn điện tử XML" ở tab Kho hồ sơ: tải XML / ZIP lên là lưu kho luôn (chống trùng), danh sách đã lưu,
+// Mục "Hoá đơn điện tử XML" ở tab Kho hồ sơ: tải XML / ZIP lên là lưu kho luôn (chống trùng); quản lý danh sách đã lưu
+// (thẻ tổng mua / bán, lọc theo tháng, loại, tình trạng, thuế suất, đối tác; nhóm; xếp; xuất Excel);
 // mở xem như bản in (thay iTax Viewer — vốn không đọc được hoá đơn), tải lại file XML gốc.
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import * as XLSX from 'xlsx'
 import type { Kho } from '../core/kho'
 import { tien } from '../core/nhan'
-import { khoaCuaGoc, parseInvoice, TINH_CHAT_LQ, tienXem, type BenHoaDon, type ChuKy, type HoaDonXem } from '../core/xemHoaDon'
+import { parseInvoice, TINH_CHAT_LQ, tienXem, type BenHoaDon, type ChuKy, type HoaDonXem } from '../core/xemHoaDon'
 import { VungThaFile } from './chung'
+import {
+  congTheoChieu, demTheo, dongExcel, lapDanhSach, locDanhSach, LOC_TRONG, nhomDanhSach, TEN_CAN_XEM, TEN_LOAI, TEN_TINH_TRANG, xepDanhSach,
+  type BoLoc, type Cong, type CotXep, type KieuNhom, type LoaiHd, type TinhTrang,
+} from '../core/quanLyXml'
 
 export interface DongNapXml {
   ten: string
@@ -20,8 +26,6 @@ export interface BaoCaoNapXml {
   loiMay: number
 }
 
-const boDau = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase()
-const ngayXep = (dmy: string) => dmy.split('/').reverse().join('')
 const ngayIn = (iso: string) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso)
   return m ? `${m[3]}/${m[2]}/${m[1]}` : iso
@@ -53,27 +57,31 @@ export function HoaDonXmlDN({ kho, mst, dangNhap, coFileGoc, onNap, layXml }: {
   const [dang, setDang] = useState(false)
   const [bc, setBc] = useState<BaoCaoNapXml | null>(null)
   const [xemDaCo, setXemDaCo] = useState(false)
-  const [tim, setTim] = useState('')
-  const [chieu, setChieu] = useState<'' | 'mua' | 'ban'>('')
-  const [thang, setThang] = useState('')
+  const [moNap, setMoNap] = useState(false)
+  const [loc, setLoc] = useState<BoLoc>(LOC_TRONG)
+  const [nhom, setNhom] = useState<KieuNhom>('')
+  const [xep, setXep] = useState<{ cot: CotXep; giam: boolean }>({ cot: 'ngay', giam: true })
+  const [dong, setDong] = useState<Set<string>>(new Set())
   const [mo, setMo] = useState<string | null>(null)
+  const datLoc = (x: Partial<BoLoc>) => setLoc((l) => ({ ...l, ...x }))
 
-  const ds = useMemo(() => Object.values(kho.goc?.[mst] ?? {})
-    .filter((g) => g.nguon === 'xml')
-    .map((g) => ({ g, khoa: khoaCuaGoc(g), ban: g.mstBan === mst }))
-    .sort((a, b) => ngayXep(b.g.ngay).localeCompare(ngayXep(a.g.ngay)) || (Number(b.g.so) || 0) - (Number(a.g.so) || 0)), [kho, mst])
-  const cacThang = useMemo(() => [...new Set(ds.map((x) => x.g.ngay.slice(3)))].filter(Boolean).sort((a, b) => ngayXep(b).localeCompare(ngayXep(a))), [ds])
-  const loc = useMemo(() => {
-    const tu = boDau(tim).split(/\s+/).filter(Boolean)
-    return ds.filter((x) => {
-      if (chieu && (chieu === 'ban') !== x.ban) return false
-      if (thang && x.g.ngay.slice(3) !== thang) return false
-      const chu = boDau([x.g.kyHieu, x.g.so, x.g.tenBan, x.g.mstBan, x.g.tenMua, x.g.mstMua, x.g.tenFile].join(' '))
-      return tu.every((t) => chu.includes(t))
-    })
-  }, [ds, tim, chieu, thang])
-  const cong = loc.reduce((a, x) => ({ v: a.v + x.g.chuaThue, t: a.t + x.g.thue, tong: a.tong + x.g.tong }), { v: 0, t: 0, tong: 0 })
-  const viTri = mo ? loc.findIndex((x) => x.khoa === mo) : -1
+  const ds = useMemo(() => lapDanhSach(kho.goc?.[mst], mst, dangNhap ? coFileGoc : undefined), [kho, mst, dangNhap, coFileGoc])
+  const cacThang = useMemo(() => [...demTheo(ds, (x) => x.thang)].sort((a, b) => b[0].split('/').reverse().join('').localeCompare(a[0].split('/').reverse().join(''))), [ds])
+  const cacThueSuat = useMemo(() => [...demTheo(ds, (x) => x.thueSuat)].sort((a, b) => b[1] - a[1]), [ds])
+  const cacLoai = useMemo(() => demTheo(ds, (x) => x.loai), [ds])
+  const cacTinhTrang = useMemo(() => demTheo(ds, (x) => x.tinhTrang), [ds])
+  // Thẻ tổng: theo mọi bộ lọc trừ chiều (để thấy cả mua lẫn bán)
+  const theoChieu = useMemo(() => {
+    const d = locDanhSach(ds, { ...loc, chieu: '', canXem: false })
+    return { ...congTheoChieu(d), canXem: d.filter((x) => x.canXem.length).length }
+  }, [ds, loc])
+  const daLoc = useMemo(() => xepDanhSach(locDanhSach(ds, loc), xep.cot, xep.giam), [ds, loc, xep])
+  const cacNhom = useMemo(() => nhomDanhSach(daLoc, nhom), [daLoc, nhom])
+  // Thứ tự Trước / Sau trong hộp xem: theo đúng thứ tự đang hiện (bỏ nhóm đang thu gọn)
+  const thuTu = useMemo(() => cacNhom.filter((n) => !dong.has(n.khoa)).flatMap((n) => n.ds.map((x) => x.khoa)), [cacNhom, dong])
+  const viTri = mo ? thuTu.indexOf(mo) : -1
+  const tenDoiTac = loc.doiTac ? ds.find((x) => x.doiTac.mst === loc.doiTac)?.doiTac.ten : ''
+  const coLoc = JSON.stringify(loc) !== JSON.stringify(LOC_TRONG)
 
   async function nap(f: File[]) {
     if (!f.length || dang) return
@@ -81,39 +89,68 @@ export function HoaDonXmlDN({ kho, mst, dangNhap, coFileGoc, onNap, layXml }: {
     setXemDaCo(false)
     try {
       setBc(await onNap(f))
+      setMoNap(false)
     } finally {
       setDang(false)
     }
   }
 
+  function xuatExcel() {
+    const ws = XLSX.utils.json_to_sheet(dongExcel(daLoc))
+    ws['!cols'] = [10, 9, 8, 9, 8, 13, 16, 13, 40, 10, 15, 13, 15, 30, 26, 40].map((wch) => ({ wch }))
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Hoa don XML')
+    XLSX.writeFile(wb, `hoa-don-xml-${mst}${loc.thang ? `-${loc.thang.replace('/', '-')}` : ''}.xlsx`)
+  }
+
   const dem = (kq: DongNapXml['kq']) => bc?.dong.filter((d) => d.kq === kq).length ?? 0
+  const vungNap = (
+    <VungThaFile
+      accept=".xml,.zip"
+      onFiles={(f) => void nap(f)}
+      nhan={
+        <>
+          <div className="font-medium">{dang ? 'Đang đọc và lưu…' : 'Kéo thả file hoá đơn XML vào đây, hoặc bấm để chọn'}</div>
+          <div className="mt-1 text-slate-600">Một hay nhiều file <b>.xml</b>, hoặc nguyên gói <b>.zip</b> (kể cả gói của tiện ích tải hoá đơn hàng loạt). Hoá đơn đã có trong kho thì báo “đã có”, không ghi đè.</div>
+        </>
+      }
+    />
+  )
+  const nutXep = (cot: CotXep, chu: string, phai = false) => (
+    <button onClick={() => setXep((x) => ({ cot, giam: x.cot === cot ? !x.giam : cot !== 'doiTac' }))} className={`inline-flex items-center gap-0.5 hover:text-slate-900 ${phai ? 'flex-row-reverse' : ''}`}>
+      {chu}<span className="w-3 text-xs">{xep.cot === cot ? (xep.giam ? '▼' : '▲') : ''}</span>
+    </button>
+  )
+
   return (
     <div className="space-y-3 text-sm">
-      <p className="rounded-lg bg-amber-50 px-3 py-2 text-amber-900">
-        App đọc file XML hoá đơn, hiện như bản in và <b>cộng lại các con số</b> (dòng hàng, thuế, tổng tiền). App <b>KHÔNG kiểm chữ ký số</b> — muốn biết
-        hoá đơn thật hay giả, tra trên <b>hoadondientu.gdt.gov.vn</b>.
-      </p>
-      <VungThaFile
-        accept=".xml,.zip"
-        onFiles={(f) => void nap(f)}
-        nhan={
-          <>
-            <div className="font-medium">{dang ? 'Đang đọc và lưu…' : 'Kéo thả file hoá đơn XML vào đây, hoặc bấm để chọn'}</div>
-            <div className="mt-1 text-slate-600">Một hay nhiều file <b>.xml</b>, hoặc nguyên gói <b>.zip</b> (kể cả gói của tiện ích tải hoá đơn hàng loạt). Hoá đơn đã có trong kho thì báo “đã có”, không ghi đè.</div>
-          </>
-        }
-      />
+      {ds.length === 0 || moNap ? vungNap : (
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => setMoNap(true)} className="rounded-lg bg-emerald-700 px-3 py-1.5 font-medium text-white">＋ Tải thêm hoá đơn XML / ZIP</button>
+          <span className="text-xs text-slate-500">App cộng lại các con số trên hoá đơn, <b>không kiểm chữ ký số</b>. Muốn biết thật / giả: tra hoadondientu.gdt.gov.vn.</span>
+        </div>
+      )}
+      {(ds.length === 0 || moNap) && (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-amber-900">
+          App đọc file XML hoá đơn, hiện như bản in và <b>cộng lại các con số</b> (dòng hàng, thuế, tổng tiền). App <b>KHÔNG kiểm chữ ký số</b> — muốn biết
+          hoá đơn thật hay giả, tra trên <b>hoadondientu.gdt.gov.vn</b>.
+          {moNap && ds.length > 0 && <button onClick={() => setMoNap(false)} className="ml-2 underline">Đóng ô tải lên</button>}
+        </p>
+      )}
       {!dangNhap && <p className="text-slate-500">Chưa đăng nhập: hoá đơn chỉ vào sổ trên máy này, file XML gốc chưa được lưu lên mây.</p>}
 
       {bc && (
         <div className="rounded-xl border border-slate-200 p-3">
-          <p>
-            <b className="text-emerald-700">{dem('moi')} hoá đơn mới{bc.dangNhap ? ' đã lưu vào kho' : ' đã vào sổ trên máy'}</b>
-            {' · '}<b>{dem('daCo')} đã có</b> (không ghi đè)
-            {' · '}<b className={dem('loi') ? 'text-red-700' : ''}>{dem('loi')} lỗi</b>
-            {' '}— tổng {bc.dong.length} file.
-          </p>
-          <ul className="mt-2 space-y-1">
+          <div className="flex items-start gap-2">
+            <p className="flex-1">
+              <b className="text-emerald-700">{dem('moi')} hoá đơn mới{bc.dangNhap ? ' đã lưu vào kho' : ' đã vào sổ trên máy'}</b>
+              {' · '}<b>{dem('daCo')} đã có</b> (không ghi đè)
+              {' · '}<b className={dem('loi') ? 'text-red-700' : ''}>{dem('loi')} lỗi</b>
+              {' '}— tổng {bc.dong.length} file.
+            </p>
+            <button onClick={() => setBc(null)} className="text-slate-400 hover:text-slate-700" title="Ẩn kết quả">✕</button>
+          </div>
+          <ul className="mt-2 max-h-48 space-y-1 overflow-auto">
             {bc.dong.filter((d) => d.kq === 'loi').map((d, i) => (
               <li key={`l${i}`} className="rounded bg-red-50 px-2 py-1 text-red-800">⛔ <b>{d.ten}</b>: {d.moTa}</li>
             ))}
@@ -125,7 +162,7 @@ export function HoaDonXmlDN({ kho, mst, dangNhap, coFileGoc, onNap, layXml }: {
             <>
               <button className="mt-1 text-emerald-700 underline" onClick={() => setXemDaCo(!xemDaCo)}>{xemDaCo ? 'Ẩn' : 'Xem'} {dem('daCo')} hoá đơn đã có</button>
               {xemDaCo && (
-                <ul className="mt-1 space-y-0.5 text-slate-600">
+                <ul className="mt-1 max-h-48 space-y-0.5 overflow-auto text-slate-600">
                   {bc.dong.filter((d) => d.kq === 'daCo').map((d, i) => <li key={`d${i}`}>↺ {d.moTa}</li>)}
                 </ul>
               )}
@@ -137,58 +174,111 @@ export function HoaDonXmlDN({ kho, mst, dangNhap, coFileGoc, onNap, layXml }: {
       {ds.length === 0 ? (
         <p className="text-slate-500">Chưa có hoá đơn XML nào trong kho của công ty này.</p>
       ) : (
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <input value={tim} onChange={(e) => setTim(e.target.value)} placeholder="Tìm: tên, MST, ký hiệu, số…" className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-1.5" />
-            <select value={chieu} onChange={(e) => setChieu(e.target.value as typeof chieu)} className="rounded-lg border border-slate-300 px-2 py-1.5">
-              <option value="">Mua vào + bán ra</option>
-              <option value="mua">Mua vào</option>
-              <option value="ban">Bán ra</option>
-            </select>
-            <select value={thang} onChange={(e) => setThang(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5">
-              <option value="">Mọi tháng</option>
-              {cacThang.map((t) => <option key={t} value={t}>Tháng {t}</option>)}
-            </select>
+        <div className="space-y-3">
+          {/* Thẻ tổng: bấm để lọc */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" data-the-tong-xml>
+            <TheTong mau="sky" chu="Mua vào" phu="thuế đầu vào" c={theoChieu.mua} chon={loc.chieu === 'mua'} onClick={() => datLoc({ chieu: loc.chieu === 'mua' ? '' : 'mua' })} />
+            <TheTong mau="emerald" chu="Bán ra" phu="thuế đầu ra" c={theoChieu.ban} chon={loc.chieu === 'ban'} onClick={() => datLoc({ chieu: loc.chieu === 'ban' ? '' : 'ban' })} />
+            <button onClick={() => datLoc({ canXem: !loc.canXem })} className={`col-span-2 rounded-xl border p-3 text-left transition sm:col-span-1 ${loc.canXem ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-300' : 'border-slate-200 bg-white hover:border-amber-400'}`}>
+              <div className="text-slate-500">⚠️ Cần xem lại</div>
+              <div className="text-2xl font-bold text-amber-700">{theoChieu.canXem}</div>
+              <div className="text-xs text-slate-500">thiếu mã CQT, không chữ ký số, chưa có file gốc trên mây</div>
+            </button>
           </div>
-          <p className="text-slate-600" data-tong-xml>
-            {loc.length}/{ds.length} hoá đơn — trước thuế <b>{tien(cong.v)}</b> · thuế <b>{tien(cong.t)}</b> · tổng thanh toán <b>{tien(cong.tong)}</b> đ
-          </p>
-          <div className="max-h-[32rem] overflow-auto rounded-xl border border-slate-200">
-            <table className="w-full">
-              <thead className="sticky top-0 bg-slate-50 text-left text-slate-500">
-                <tr>
-                  <th className="p-2">Ngày</th>
-                  <th className="p-2">Chiều</th>
-                  <th className="p-2">Ký hiệu – số</th>
-                  <th className="p-2">Đối tác</th>
-                  <th className="hidden p-2 text-right sm:table-cell">Trước thuế</th>
-                  <th className="hidden p-2 text-right sm:table-cell">Thuế</th>
-                  <th className="p-2 text-right">Tổng</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loc.map((x) => (
-                  <tr key={x.khoa} onClick={() => setMo(x.khoa)} className="cursor-pointer border-t border-slate-100 hover:bg-emerald-50">
-                    <td className="whitespace-nowrap p-2">{x.g.ngay}</td>
-                    <td className="p-2">{x.ban ? 'Bán ra' : 'Mua vào'}</td>
-                    <td className="whitespace-nowrap p-2">
-                      {x.g.kyHieu}-{x.g.so}
-                      {!x.g.mccqt && /^C/i.test(x.g.kyHieu) && <span title="Thiếu mã của cơ quan thuế" className="ml-1 text-red-600">⚠</span>}
-                      {dangNhap && !coFileGoc(x.khoa) && <span title="Chưa có file XML gốc trên mây" className="ml-1 text-slate-400">☁̸</span>}
-                    </td>
-                    <td className="p-2">
-                      <div className="line-clamp-2">{x.ban ? x.g.tenMua : x.g.tenBan}</div>
-                      <div className="text-xs text-slate-500">{x.ban ? x.g.mstMua : x.g.mstBan}</div>
-                    </td>
-                    <td className="hidden p-2 text-right sm:table-cell">{tien(x.g.chuaThue)}</td>
-                    <td className="hidden p-2 text-right sm:table-cell">{tien(x.g.thue)}</td>
-                    <td className="p-2 text-right font-medium">{tien(x.g.tong)}</td>
+
+          {/* Tháng */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            <Chip chon={!loc.thang} onClick={() => datLoc({ thang: '' })}>Mọi tháng <i>{ds.length}</i></Chip>
+            {cacThang.map(([t, n]) => <Chip key={t} chon={loc.thang === t} onClick={() => datLoc({ thang: loc.thang === t ? '' : t })}>Th {t} <i>{n}</i></Chip>)}
+          </div>
+
+          {/* Lọc + nhóm */}
+          <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 p-2">
+            <input value={loc.tim} onChange={(e) => datLoc({ tim: e.target.value })} placeholder="🔍 Tìm: tên, MST, ký hiệu, số, tên hàng…" className="min-w-48 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5" />
+            <Chon value={loc.loai} onChange={(v) => datLoc({ loai: v as BoLoc['loai'] })} tatCa="Mọi loại HĐ" muc={(Object.keys(TEN_LOAI) as LoaiHd[]).filter((k) => cacLoai.has(k)).map((k) => [k, `${TEN_LOAI[k]} (${cacLoai.get(k)})`])} />
+            <Chon value={loc.tinhTrang} onChange={(v) => datLoc({ tinhTrang: v as BoLoc['tinhTrang'] })} tatCa="Mọi tình trạng" muc={(Object.keys(TEN_TINH_TRANG) as TinhTrang[]).filter((k) => cacTinhTrang.has(k)).map((k) => [k, `${TEN_TINH_TRANG[k]} (${cacTinhTrang.get(k)})`])} />
+            <Chon value={loc.thueSuat} onChange={(v) => datLoc({ thueSuat: v })} tatCa="Mọi thuế suất" muc={cacThueSuat.map(([k, n]) => [k, `Thuế ${k} (${n})`])} />
+            <span className="mx-1 hidden h-6 w-px bg-slate-300 sm:block" />
+            <Chon value={nhom} onChange={(v) => (setNhom(v as KieuNhom), setDong(new Set()))} tatCa="Không nhóm" muc={[['thang', 'Nhóm theo tháng'], ['doiTac', 'Nhóm theo đối tác'], ['loai', 'Nhóm theo loại HĐ'], ['thueSuat', 'Nhóm theo thuế suất']]} />
+            <button onClick={xuatExcel} disabled={!daLoc.length} className="rounded-lg border border-emerald-600 bg-white px-3 py-1.5 text-emerald-700 disabled:opacity-40">⬇ Excel</button>
+          </div>
+
+          {(coLoc || loc.doiTac) && (
+            <div className="flex flex-wrap items-center gap-2 text-slate-600">
+              <span>Đang xem <b>{daLoc.length}</b>/{ds.length} hoá đơn</span>
+              {loc.doiTac && (
+                <button onClick={() => datLoc({ doiTac: '' })} className="max-w-full truncate rounded-full bg-emerald-700 px-3 py-1 text-xs text-white">
+                  ✕ Đối tác: {tenDoiTac || loc.doiTac}
+                </button>
+              )}
+              <button onClick={() => setLoc(LOC_TRONG)} className="text-emerald-700 underline">Bỏ mọi bộ lọc</button>
+            </div>
+          )}
+
+          {/* Danh sách */}
+          {daLoc.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-slate-500">Không có hoá đơn nào khớp bộ lọc.</p>
+          ) : (
+            <div className="max-h-[40rem] overflow-auto rounded-xl border border-slate-200">
+              <table className="w-full">
+                <thead className="sticky top-0 z-10 bg-slate-100 text-left text-xs uppercase text-slate-500">
+                  <tr>
+                    <th className="p-2">{nutXep('ngay', 'Ngày')}</th>
+                    <th className="p-2">Hoá đơn</th>
+                    <th className="p-2">{nutXep('doiTac', 'Đối tác')}</th>
+                    <th className="hidden p-2 md:table-cell">Thuế suất</th>
+                    <th className="hidden p-2 text-right sm:table-cell">Trước thuế</th>
+                    <th className="hidden p-2 text-right sm:table-cell">{nutXep('thue', 'Thuế', true)}</th>
+                    <th className="p-2 text-right">{nutXep('tong', 'Tổng', true)}</th>
                   </tr>
+                </thead>
+                {cacNhom.map((n) => (
+                  <tbody key={n.khoa || 'tat-ca'}>
+                    {nhom && (
+                      <tr className="cursor-pointer border-t border-slate-200 bg-slate-50 hover:bg-slate-100" onClick={() => setDong((s) => { const m = new Set(s); if (m.has(n.khoa)) m.delete(n.khoa); else m.add(n.khoa); return m })}>
+                        <td colSpan={4} className="p-2">
+                          <span className="mr-1 inline-block w-3 text-slate-400">{dong.has(n.khoa) ? '▸' : '▾'}</span>
+                          <b>{n.ten}</b> <span className="text-slate-500">· {n.cong.so} HĐ{n.phu ? ` · ${n.phu}` : ''}</span>
+                        </td>
+                        <td className="hidden p-2 text-right font-medium sm:table-cell">{tien(n.cong.chuaThue)}</td>
+                        <td className="hidden p-2 text-right font-medium sm:table-cell">{tien(n.cong.thue)}</td>
+                        <td className="p-2 text-right font-semibold">{tien(n.cong.tong)}</td>
+                      </tr>
+                    )}
+                    {!dong.has(n.khoa) && n.ds.map((x) => (
+                      <tr key={x.khoa} onClick={() => setMo(x.khoa)} className={`cursor-pointer border-t border-slate-100 hover:bg-emerald-50 ${mo === x.khoa ? 'bg-emerald-50' : ''}`}>
+                        <td className={`whitespace-nowrap border-l-4 p-2 ${x.chieu === 'ban' ? 'border-emerald-500' : 'border-sky-500'}`}>
+                          {x.g.ngay}
+                          <div className={`text-xs ${x.chieu === 'ban' ? 'text-emerald-700' : 'text-sky-700'}`}>{x.chieu === 'ban' ? 'Bán ra' : 'Mua vào'}</div>
+                        </td>
+                        <td className="whitespace-nowrap p-2">
+                          <b>{x.g.kyHieu}</b>-{x.g.so}
+                          <div className="mt-0.5 flex flex-wrap gap-1">
+                            {x.loai !== 'coMa' && <Nhan mau="slate">{TEN_LOAI[x.loai]}</Nhan>}
+                            {x.tinhTrang !== 'goc' && <Nhan mau="violet">{x.tinhTrang === 'thayThe' ? 'Thay thế' : 'Điều chỉnh'}</Nhan>}
+                            {x.canXem.map((c) => <Nhan key={c} mau="amber" title={TEN_CAN_XEM[c]}>{c === 'thieuMa' ? '⚠ thiếu mã' : c === 'khongKy' ? '⚠ không ký' : '☁̸ chưa có file'}</Nhan>)}
+                          </div>
+                        </td>
+                        <td className="p-2">
+                          <div className="line-clamp-2">{x.doiTac.ten}</div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); datLoc({ doiTac: loc.doiTac === x.doiTac.mst ? '' : x.doiTac.mst }) }}
+                            title="Chỉ xem hoá đơn của đối tác này"
+                            className="text-xs text-slate-500 hover:text-emerald-700 hover:underline"
+                          >{x.doiTac.mst}</button>
+                        </td>
+                        <td className="hidden p-2 text-slate-600 md:table-cell">{x.thueSuat.join(', ')}</td>
+                        <td className="hidden p-2 text-right sm:table-cell">{tien(x.g.chuaThue)}</td>
+                        <td className="hidden p-2 text-right sm:table-cell">{tien(x.g.thue)}</td>
+                        <td className="p-2 text-right font-medium">{tien(x.g.tong)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
                 ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-xs text-slate-500">Bấm một dòng để xem bản hoá đơn. Danh sách gồm hoá đơn XML đã nạp (cả từ ô “Nạp toàn bộ hồ sơ thuế”).</p>
+              </table>
+            </div>
+          )}
+          <p className="text-xs text-slate-500">Bấm một dòng để xem bản hoá đơn (phím ← → để lật). Bấm MST để lọc theo đối tác. Bấm tiêu đề cột để xếp. Danh sách gồm hoá đơn XML đã nạp (cả từ ô “Nạp toàn bộ hồ sơ thuế”).</p>
         </div>
       )}
 
@@ -197,12 +287,53 @@ export function HoaDonXmlDN({ kho, mst, dangNhap, coFileGoc, onNap, layXml }: {
           khoa={mo}
           layXml={layXml}
           dong={() => setMo(null)}
-          truoc={viTri > 0 ? () => setMo(loc[viTri - 1].khoa) : undefined}
-          sau={viTri >= 0 && viTri < loc.length - 1 ? () => setMo(loc[viTri + 1].khoa) : undefined}
+          truoc={viTri > 0 ? () => setMo(thuTu[viTri - 1]) : undefined}
+          sau={viTri >= 0 && viTri < thuTu.length - 1 ? () => setMo(thuTu[viTri + 1]) : undefined}
         />
       )}
     </div>
   )
+}
+
+const MAU_THE = {
+  sky: { vien: 'border-sky-500 bg-sky-50 ring-2 ring-sky-300', chu: 'text-sky-700' },
+  emerald: { vien: 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-300', chu: 'text-emerald-700' },
+}
+
+function TheTong({ mau, chu, phu, c, chon, onClick }: { mau: keyof typeof MAU_THE; chu: string; phu: string; c: Cong; chon: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} disabled={!c.so} className={`min-w-0 rounded-xl border p-2 text-left transition disabled:opacity-50 sm:p-3 ${chon ? MAU_THE[mau].vien : 'border-slate-200 bg-white hover:border-slate-400'}`}>
+      <div className="flex items-baseline justify-between text-slate-500"><span>{chu}</span><span><b className={`text-2xl ${MAU_THE[mau].chu}`}>{c.so}</b> HĐ</span></div>
+      <div className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 text-xs text-slate-600">
+        <span>Tiền hàng</span><span className="text-right">{tien(c.chuaThue)}</span>
+        <span>Thuế ({phu})</span><span className="text-right font-medium text-slate-800">{tien(c.thue)}</span>
+        <span>Tổng thanh toán</span><span className="text-right font-semibold text-slate-900">{tien(c.tong)}</span>
+      </div>
+    </button>
+  )
+}
+
+function Chip({ chon, onClick, children }: { chon: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button onClick={onClick} className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-xs [&_i]:ml-1 [&_i]:not-italic [&_i]:opacity-60 ${chon ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-emerald-500'}`}>
+      {children}
+    </button>
+  )
+}
+
+function Chon({ value, onChange, tatCa, muc }: { value: string; onChange: (v: string) => void; tatCa: string; muc: [string, string][] }) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} className={`rounded-lg border px-2 py-1.5 ${value ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-slate-300 bg-white'}`}>
+      <option value="">{tatCa}</option>
+      {muc.map(([k, t]) => <option key={k} value={k}>{t}</option>)}
+    </select>
+  )
+}
+
+const MAU_NHAN = { slate: 'bg-slate-100 text-slate-700', violet: 'bg-violet-100 text-violet-800', amber: 'bg-amber-100 text-amber-800' }
+
+function Nhan({ mau, title, children }: { mau: keyof typeof MAU_NHAN; title?: string; children: ReactNode }) {
+  return <span title={title} className={`rounded px-1.5 py-0.5 text-[11px] font-normal ${MAU_NHAN[mau]}`}>{children}</span>
 }
 
 /** Hộp xem một hoá đơn: tải file XML gốc (phiên này / mây), đọc, hiện như bản in */
