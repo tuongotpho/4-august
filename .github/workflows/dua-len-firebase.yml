@@ -1,0 +1,59 @@
+# Đưa lên Firebase Hosting (https://app-by-lethanh.web.app) mỗi lần đẩy main — thay cho Vercel tự build trước đây.
+# Chạy test của 6 app trước; test đỏ là dừng, không đưa bản lỗi lên. Dựng bằng hosting/build.mjs như trên máy.
+# CHỈ đưa phần GIAO DIỆN (hosting). Máy chủ (hàm nhóm "lethanh": Kết nối AI, Telegram, nhắc lịch) vẫn deploy trên máy:
+#   cd hosting && firebase deploy --only functions:lethanh --project app-from-ai
+# vì tài khoản dịch vụ FIREBASE_SERVICE_ACCOUNT_APP_FROM_AI (tạo bằng firebase init hosting:github) chỉ có quyền hosting.
+# App chi tiêu thẻ ở repo riêng tuongotpho/visa: sửa bên đó xong thì bấm "Run workflow" ở đây (hoặc: gh workflow run dua-len-firebase.yml).
+name: Đưa lên Firebase
+
+on:
+  push:
+    branches: [main]
+    paths: ['apps/**', 'hosting/**', '.github/workflows/dua-len-firebase.yml']
+  workflow_dispatch:
+
+# Hai lần đẩy sát nhau: lần sau chờ lần trước xong (không chạy chồng, không huỷ giữa chừng)
+concurrency:
+  group: dua-len-firebase
+  cancel-in-progress: false
+
+jobs:
+  dung-va-dua-len:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: tuongotpho/visa
+          path: _visa
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Cài thư viện (6 app + cổng + công cụ dựng)
+        run: |
+          for d in apps/cong apps/hoadon apps/khaithue/app apps/quyphong/webapp apps/antoan apps/tuongot-si _visa hosting; do
+            echo "::group::npm ci $d"; (cd "$d" && npm ci --no-audit --no-fund); echo "::endgroup::"
+          done
+
+      - name: Chạy test (bài cần máy giả lập Firebase tự bỏ qua)
+        run: |
+          for d in apps/cong apps/hoadon apps/khaithue/app apps/quyphong/webapp apps/antoan apps/tuongot-si _visa; do
+            echo "::group::test $d"; (cd "$d" && npx vitest run); echo "::endgroup::"
+          done
+
+      - name: Dựng cổng + 6 app
+        env:
+          VISA_DIR: _visa
+        run: node hosting/build.mjs
+
+      - name: Đưa giao diện lên Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_APP_FROM_AI }}
+          projectId: app-from-ai
+          channelId: live
+          entryPoint: hosting
+          target: app-by-lethanh

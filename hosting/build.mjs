@@ -41,8 +41,9 @@ const APP = [
       VITE_ADMIN_EMAILS: 'vietthanh228@gmail.com',
     },
   },
-  // App chi tiêu thẻ: mã ở repo riêng tuongotpho/visa (máy: F:\AI\VISA\webapp), cạnh thư mục 4.August
-  { ma: 'thevisa', thuMuc: '../VISA/webapp', duong: 'the-visa', mayChu: 'api/_lib/tatCa.ts' },
+  // App chi tiêu thẻ: mã ở repo riêng tuongotpho/visa (máy: F:\AI\VISA\webapp, cạnh thư mục 4.August;
+  // GitHub Actions lấy về thư mục con, chỉ bằng biến VISA_DIR — đường dẫn tính từ gốc 4.August)
+  { ma: 'thevisa', thuMuc: process.env.VISA_DIR || '../VISA/webapp', duong: 'the-visa', mayChu: 'api/_lib/tatCa.ts' },
 ]
 
 const chay = (lenh, cwd, env = {}) => {
