@@ -144,6 +144,12 @@ describe('cửa vào OAuth (web.ts)', () => {
     expect(r.headers.get('www-authenticate')).toContain('/.well-known/oauth-protected-resource')
   })
 
+  it('GET /mcp (luồng chờ tin) -> 405 ngay, không giữ hàm chạy', async () => {
+    const r = await goiWeb('/mcp', { method: 'GET', headers: { Accept: 'text/event-stream', Authorization: 'Bearer ve-gia' } })
+    expect(r.status).toBe(405)
+    expect(r.body).toBeNull()
+  })
+
   it('đăng ký: nơi nhận lạ bị chặn, claude.ai được', async () => {
     const xau = await goiWeb('/oauth/dang-ky', { method: 'POST', body: JSON.stringify({ redirect_uris: ['https://evil.example/cb'] }) })
     expect(xau.status).toBe(400)

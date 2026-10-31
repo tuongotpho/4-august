@@ -147,6 +147,9 @@ export async function xuLyMcp(req: Request, duong: string, bc: BoiCanhMcp): Prom
 
   // ---------- Gọi công cụ ----------
   async function mcp(r: Request) {
+    // Không mở luồng chờ tin (GET → SSE): trên Vercel nó giữ hàm chạy tới hết giờ, mỗi máy AI đang mở là một hàm chạy suốt
+    // (đã ngốn hết hạn mức bộ nhớ miễn phí 10/2026). Máy chủ này không gửi tin chủ động nên trả 405 — đúng chuẩn MCP, máy AI tự bỏ qua.
+    if (r.method === 'GET') return new Response(null, { status: 405, headers: { Allow: 'POST, DELETE' } })
     // Header HTTP chỉ chứa được chữ không dấu -> lời giải thích tiếng Việt để ở phần thân
     const chuaVao = (moTa: string) => jsonRes({ error: 'invalid_token', error_description: moTa }, 401, {
       'WWW-Authenticate': `Bearer error="invalid_token", resource_metadata="${goc}/.well-known/oauth-protected-resource"`,

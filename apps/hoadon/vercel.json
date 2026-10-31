@@ -3,6 +3,7 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": { "api/mcp.ts": { "maxDuration": 60 } },
   "rewrites": [
     { "source": "/mcp", "destination": "/api/mcp?duong=/mcp" },
     { "source": "/oauth/:buoc", "destination": "/api/mcp?duong=/oauth/:buoc" },

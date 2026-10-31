@@ -62,6 +62,12 @@ describe('Cổng OAuth + /mcp (không cần Firebase)', () => {
     expect(gia.status).toBe(401)
   })
 
+  it('GET /mcp (luồng chờ tin) -> 405 ngay, không giữ hàm chạy', async () => {
+    const r = await goi('/mcp', { method: 'GET', headers: { Accept: 'text/event-stream', Authorization: 'Bearer ve-gia' } })
+    expect(r.status).toBe(405)
+    expect(r.body).toBeNull()
+  })
+
   it('đăng ký: từ chối trang lạ, nhận Claude Code trên máy', async () => {
     expect((await dangKy(['https://ke-gian.example/cb'])).status).toBe(400)
     const r = await dangKy(['http://localhost:5555/callback'])
