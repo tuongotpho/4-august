@@ -122,3 +122,42 @@ describe('Storage: file tờ khai / hoá đơn', () => {
     await assertFails(uploadBytes(ref(env.authenticatedContext('anh').storage(), 'nguoiDung/anh/to.xlsx'), to))
   })
 })
+
+describe('Hoá đơn điện tử XML (tải lên là lưu kho): file gốc + bản tóm tắt', () => {
+  const XML = new TextEncoder().encode('﻿<HDon><DLHDon/></HDon>')
+  const FILE = 'nguoiDung/anh/0100000000/hoaDon/abc/1-C26TAA-17.xml'
+  const BAN_GHI = 'nguoiDung/anh/congTy/0100000000/tepHoaDon/abc'
+  const TOM_TAT = { ten: '1-C26TAA-17.xml', ky: '2026-Q4', soBan: 0, soMua: 1, duongDan: FILE, khoaHD: '0109999991|1|C26TAA|17', goc: { nguon: 'xml', mstBan: '0109999991', mstMua: '0100000000', kyHieu: 'C26TAA', so: '17', tong: 21_600_000 } }
+  const GD = { email: 'giamdoc@vidu.vn', email_verified: true }
+  it('chủ: lưu file XML nguyên văn + bản tóm tắt, đọc lại được', async () => {
+    const chu = env.authenticatedContext('anh')
+    await assertSucceeds(uploadBytes(ref(chu.storage(), FILE), XML, { contentType: 'application/xml' }))
+    await assertSucceeds(setDoc(doc(chu.firestore(), BAN_GHI), TOM_TAT))
+    await assertSucceeds(getBytes(ref(chu.storage(), FILE)))
+    await assertSucceeds(getDocs(collection(chu.firestore(), 'nguoiDung/anh/congTy/0100000000/tepHoaDon')))
+  })
+  it('người lạ: không đọc, không ghi, không xoá file hoá đơn / bản tóm tắt của người khác', async () => {
+    const chu = env.authenticatedContext('anh')
+    await uploadBytes(ref(chu.storage(), FILE), XML)
+    await setDoc(doc(chu.firestore(), BAN_GHI), TOM_TAT)
+    const la = env.authenticatedContext('nguoi-la')
+    await assertFails(getBytes(ref(la.storage(), FILE)))
+    await assertFails(uploadBytes(ref(la.storage(), FILE), XML))
+    await assertFails(deleteObject(ref(la.storage(), FILE)))
+    await assertFails(getDoc(doc(la.firestore(), BAN_GHI)))
+    await assertFails(setDoc(doc(la.firestore(), BAN_GHI), TOM_TAT))
+    await assertFails(getBytes(ref(env.unauthenticatedContext().storage(), FILE)))
+  })
+  it('giám đốc chỉ xem: đọc được bản tóm tắt, KHÔNG ghi; không tải được file gốc trên Storage', async () => {
+    const chu = env.authenticatedContext('anh')
+    await uploadBytes(ref(chu.storage(), FILE), XML)
+    await env.withSecurityRulesDisabled(async (c) => {
+      await setDoc(doc(c.firestore(), BAN_GHI), TOM_TAT)
+      await setDoc(doc(c.firestore(), 'nguoiDung/anh/nguoiXem/giamdoc@vidu.vn'), { them: 1 })
+    })
+    const gd = env.authenticatedContext('gd', GD)
+    await assertSucceeds(getDoc(doc(gd.firestore(), BAN_GHI)))
+    await assertFails(setDoc(doc(gd.firestore(), BAN_GHI), { ...TOM_TAT, goc: { ...TOM_TAT.goc, tong: 1 } }))
+    await assertFails(getBytes(ref(gd.storage(), FILE)))
+  })
+})

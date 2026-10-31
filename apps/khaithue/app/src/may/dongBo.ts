@@ -11,6 +11,7 @@
 // Mã bản ghi = mã băm SHA-256 của nội dung file: nạp lại cùng một file không sinh bản trùng.
 
 import type { HoaDonGoc } from '../core/hoaDonGoc'
+import { khoaCuaGoc } from '../core/xemHoaDon'
 import type { GiayTo, LoHang } from '../core/loHang'
 import type { SaoKe } from '../core/saoKe'
 import type { CaiDatQuy, PhieuQuy } from '../core/soQuy'
@@ -65,7 +66,13 @@ export interface TepHoaDonMay {
   phu?: { ban: string[]; mua: string[] }
   /** File là hoá đơn GỐC (XML/PDF một hoá đơn): phần đọc được — dòng hàng, mã CQT, chữ ký */
   goc?: HoaDonGoc
+  /** Khoá chống trùng của hoá đơn gốc: MST bán|mẫu|ký hiệu|số (thêm 31/10/2026; bản ghi cũ không có thì tính từ goc) */
+  khoaHD?: string
 }
+
+/** Khoá chống trùng của một file hoá đơn gốc trên mây (bản ghi cũ chưa có khoaHD thì tính từ phần đã đọc) */
+export const khoaTepGoc = (t: Pick<TepHoaDonMay, 'goc' | 'khoaHD'>) =>
+  t.khoaHD ?? (t.goc ? khoaCuaGoc(t.goc) : '')
 
 export async function luuTepHoaDon(
   uid: string, mst: string, ten: string, du: ArrayBuffer, ky: KyKeKhai | null, soBan: number, soMua: number,
@@ -74,7 +81,7 @@ export async function luuTepHoaDon(
   const id = await maBam(du)
   const duongDan = `nguoiDung/${uid}/${mst}/hoaDon/${id}/${tenAnToan(ten)}`
   await uploadBytes(ref(luuTru, duongDan), new Uint8Array(du))
-  const ghi: Omit<TepHoaDonMay, 'id'> = { ten, ky: ky ? khoaKy(ky) : '', soBan, soMua, kichThuoc: du.byteLength, duongDan, hd, phu, ...(goc ? { goc } : {}) }
+  const ghi: Omit<TepHoaDonMay, 'id'> = { ten, ky: ky ? khoaKy(ky) : '', soBan, soMua, kichThuoc: du.byteLength, duongDan, hd, phu, ...(goc ? { goc, khoaHD: khoaTepGoc({ goc }) } : {}) }
   await setDoc(doc(db, `${nhanhCongTy(uid, mst)}/tepHoaDon/${id}`), { ...ghi, napLuc: serverTimestamp() })
 }
 

@@ -6,11 +6,13 @@ import { tinhTNCN, NHAP_TNCN_TRONG, type NhapTNCN } from './core/tncn'
 import { docToKhai } from './core/docToKhai'
 import { tenFileXML, xmlGTGT, xmlTNCN } from './core/xml'
 import { denNgay, hanNop, ngayISO, quyCanKhai, tuNgay } from './core/ky'
-import { boCongTy, dauKy, datKhongChapNhan, ghiAppXuat, ghiPhuSong, gopTuMay, kyTruoc, datLo, datPhieuQuy, datSaoKe, datTonDauQuy, napGoc, napHoaDon, napTaiLieu, napToKhai, xoaLo, xoaSaoKe, rutGonHoaDon, suaHoSo, tncnGanNhat, type Kho } from './core/kho'
+import { boCongTy, congTyCuaGoc, dauKy, datKhongChapNhan, ghiAppXuat, ghiPhuSong, gopTuMay, kyTruoc, datLo, datPhieuQuy, datSaoKe, datTonDauQuy, napGoc, napHoaDon, napTaiLieu, napToKhai, xoaLo, xoaSaoKe, rutGonHoaDon, suaHoSo, tncnGanNhat, type Kho } from './core/kho'
 import { docTaiLieu, khoaChungTu } from './core/taiLieu'
 import { tinhDoiSoat, tinhDoiTac, tinhTongQuan } from './core/tongQuan'
 import { soiRuiRo, type DsRuiRo } from './core/ruiRo'
-import { canhBaoGoc, docPdfGoc, docXmlGoc, tongHopGoc } from './core/hoaDonGoc'
+import { canhBaoGoc, docPdfGoc, docXmlGoc, gocThanhHoaDon, tongHopGoc } from './core/hoaDonGoc'
+import { chieuHoaDon, khoaCuaGoc, parseInvoice } from './core/xemHoaDon'
+import { HoaDonXmlDN, type BaoCaoNapXml, type DongNapXml } from './ui/HoaDonXml'
 import { tongHopLo, type LoHang } from './core/loHang'
 import { LoHangDN, type ThaoTacLo } from './ui/LoHang'
 import { docSaoKe, tinhCongNo, type SaoKe } from './core/saoKe'
@@ -27,7 +29,7 @@ import { NapHangLoat, TongQuanDN } from './ui/TongQuan'
 import type { ToKhaiDaNop } from './core/docToKhai'
 import { coMay } from './may/firebase'
 import { dangNhap, dangXuat, useNguoiDung } from './may/useMay'
-import { boSungHoaDonTep, boSungPhuLuc, datCoTraVe, xoaCongTyTrenMay, xoaTaiLieu, type NhomTaiLieu, luuChungTu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, type DuLieuMay, luuLoHang, xoaLoHang, taiLenGiayTo, xoaGiayTo, luuSaoKe, luuGhepTay, xoaSaoKeMay, maBam, taiChiaSeChoToi, type ChiaSe, luuPhieuQuy, xoaPhieuQuy, luuTonDauQuy } from './may/dongBo'
+import { khoaTepGoc, boSungHoaDonTep, boSungPhuLuc, datCoTraVe, xoaCongTyTrenMay, xoaTaiLieu, type NhomTaiLieu, luuChungTu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, type DuLieuMay, luuLoHang, xoaLoHang, taiLenGiayTo, xoaGiayTo, luuSaoKe, luuGhepTay, xoaSaoKeMay, maBam, taiChiaSeChoToi, type ChiaSe, luuPhieuQuy, xoaPhieuQuy, luuTonDauQuy } from './may/dongBo'
 import { KhoHoSo } from './ui/KhoHoSo'
 import { MO_CAI_DAT, QUA_CONG, TRANG_CHU, veTrangChuDangNhap } from './ui/cong'
 import { Logo, TaiKhoan } from './ui/DauTrang'
@@ -333,7 +335,7 @@ export default function App() {
    * đã đăng nhập thì lưu cả file gốc lên mây. Không đụng tới phần "Kê khai quý" đang làm dở.
    */
   async function napHangLoat(ds0: File[]) {
-    const dem = { toKhai: 0, chungTu: 0, hoaDon: 0, pdf: 0, pdfKhongDoc: 0, excel: 0, boQua: 0, loiMay: 0, trung: 0, zip: 0, rar: 0 }
+    const dem = { toKhai: 0, chungTu: 0, hoaDon: 0, pdf: 0, pdfKhongDoc: 0, excel: 0, boQua: 0, loiMay: 0, trung: 0, hdTrung: 0, zip: 0, rar: 0 }
     // Gói ZIP: mở ngay trên máy, lấy các file đọc được (kể cả ZIP lồng trong ZIP). RAR/7Z trình duyệt không mở được
     const ds: File[] = []
     for (const f of ds0) {
@@ -357,6 +359,8 @@ export default function App() {
     const viec: (() => Promise<unknown>)[] = []
     // Chứng từ đã có trên mây (cùng số + ngày lập) thì không lưu thêm bản nữa, kể cả khi file tải lại khác vài byte
     const ctDaCo = new Set((may?.chungTu ?? []).map((c) => `${c.mst}|${khoaChungTu(c)}`))
+    // Hoá đơn XML đã có file gốc trên mây (cùng MST bán + mẫu + ký hiệu + số) thì không lưu thêm, không ghi đè
+    const hdDaCo = new Set(Object.values(may?.tepHoaDon ?? {}).flat().filter((t) => t.goc?.nguon === 'xml').map(khoaTepGoc))
     const buoc = (ten: string) => setTienDo({ xong: ++xong, tong, dangLam: ten })
     setKetQuaNap('')
     setTienDo({ xong: 0, tong, dangLam: 'bắt đầu…' })
@@ -388,7 +392,9 @@ export default function App() {
               viec.push(() => luuChungTu(uid, tl.ct, text, f.name))
             }
           }
-          if (tl.loai === 'hoaDon') {
+          if (tl.loai === 'hoaDon' && goc && hdDaCo.has(khoaCuaGoc(goc))) dem.hdTrung++
+          else if (tl.loai === 'hoaDon') {
+            if (goc) hdDaCo.add(khoaCuaGoc(goc))
             const mstCty = k.congTy[tl.hd.mstBan] ? tl.hd.mstBan : tl.hd.mstMua
             const loai = mstCty === tl.hd.mstBan ? 'ban' : 'mua'
             const du = new TextEncoder().encode(text).buffer as ArrayBuffer
@@ -481,9 +487,111 @@ export default function App() {
         (dem.pdfKhongDoc ? ` ${dem.pdfKhongDoc} file PDF không phải hoá đơn của công ty / không đọc được chữ (ảnh scan, báo cáo...).` : '') +
         (dem.rar ? ` ⚠️ ${dem.rar} file RAR/7Z: trình duyệt không mở được — giải nén ra thư mục rồi chọn cả thư mục, hoặc nén lại thành ZIP.` : '') +
         (dem.trung ? ` ${dem.trung} chứng từ đã có sẵn trên mây (cùng số, cùng ngày) — không lưu thêm.` : '') +
+        (dem.hdTrung ? ` ${dem.hdTrung} hoá đơn XML đã có sẵn trên mây (cùng MST bán, ký hiệu, số) — không lưu thêm.` : '') +
         (uid ? (dem.loiMay ? ` ⚠️ ${dem.loiMay} file chưa lưu được lên mây — nạp lại sau.` : ' ☁️ Đã lưu hết lên mây.') : ' (Chưa đăng nhập: chỉ lưu trên máy này.)'),
     )
   }
+
+  /** Nội dung file XML hoá đơn vừa tải trong phiên này (theo khoá chống trùng) — để xem ngay cả khi chưa đăng nhập */
+  const xmlPhien = useRef(new Map<string, { ten: string; du: Uint8Array }>())
+
+  /**
+   * Hoá đơn điện tử XML (một / nhiều file .xml, hoặc gói .zip): đọc, kiểm số học, nạp vào sổ và lưu NGUYÊN VĂN file gốc lên mây.
+   * Chống trùng theo MST bán + mẫu + ký hiệu + số: đã có thì báo "đã có", không ghi đè. File hỏng / không phải <HDon>: báo lỗi, không lưu.
+   */
+  async function napHoaDonXml(ds0: File[]): Promise<BaoCaoNapXml> {
+    const dong: DongNapXml[] = []
+    const tep: { ten: string; du: Uint8Array }[] = []
+    for (const f of ds0) {
+      if (/\.zip$/i.test(f.name)) {
+        try {
+          const trong = moZip(new Uint8Array(await f.arrayBuffer())).filter((t) => /\.xml$/i.test(t.ten))
+          if (!trong.length) dong.push({ ten: f.name, kq: 'loi', moTa: 'Trong gói ZIP không có file .xml nào.' })
+          tep.push(...trong.map((t) => ({ ten: t.ten.split('/').pop()!, du: t.du })))
+        } catch (e) {
+          dong.push({ ten: f.name, kq: 'loi', moTa: `Không mở được gói ZIP: ${(e as Error).message}` })
+        }
+      } else if (/\.xml$/i.test(f.name)) tep.push({ ten: f.name, du: new Uint8Array(await f.arrayBuffer()) })
+      else dong.push({ ten: f.name, kq: 'loi', moTa: 'Chỉ nhận file .xml hoặc .zip.' })
+    }
+    const uid = user?.uid
+    // Đã đăng nhập: "đã có" = đã có file gốc XML trên mây. Chưa đăng nhập: đã có trong sổ trên máy.
+    // Bản PDF của cùng hoá đơn không tính là "đã có": XML là bản gốc, nạp vào để thay.
+    const daCo = new Set(uid
+      ? Object.values(may?.tepHoaDon ?? {}).flat().filter((t) => t.goc?.nguon === 'xml').map(khoaTepGoc)
+      : Object.values(kho.goc ?? {}).flatMap((m) => Object.values(m)).filter((g) => g.nguon === 'xml').map(khoaCuaGoc))
+    let k = kho
+    const viec: { i: number; mst: string; chay: () => Promise<unknown> }[] = []
+    setTienDo({ xong: 0, tong: tep.length, dangLam: 'bắt đầu…' })
+    for (const [n, t] of tep.entries()) {
+      setTienDo({ xong: n + 1, tong: tep.length, dangLam: t.ten })
+      try {
+        const text = new TextDecoder().decode(t.du)
+        const inv = parseInvoice(text, t.ten)
+        const g = docXmlGoc(text, t.ten)
+        if (!g) throw new Error('Không đọc được phần thông tin chung của hoá đơn.')
+        const khoa = khoaCuaGoc(g)
+        const moTa = `${g.kyHieu}-${g.so} ngày ${g.ngay} — ${tien(inv.tong ?? g.tong)} đ`
+        if (daCo.has(khoa)) {
+          dong.push({ ten: t.ten, kq: 'daCo', moTa: `${moTa}: đã có trong kho, không ghi đè.`, khoa })
+          continue
+        }
+        const mstCty = congTyCuaGoc(k, g)
+        if (!mstCty) {
+          dong.push({ ten: t.ten, kq: 'loi', moTa: `${moTa}: không phải hoá đơn của công ty nào trong sổ (MST bán ${g.mstBan || '?'}, mua ${g.mstMua || '?'}) — thêm / chọn đúng công ty trước.` })
+          continue
+        }
+        daCo.add(khoa)
+        k = napGoc(k, g).kho
+        xmlPhien.current.set(khoa, t)
+        const canh = inv.kiem.filter((x) => x.muc === 'canhBao').length
+        dong.push({ ten: t.ten, kq: 'moi', moTa: `${moTa} (${chieuHoaDon(g, mstCty) === 'ban' ? 'bán ra' : 'mua vào'})${canh ? ` ⚠️ ${canh} điểm lệch số học — mở xem` : ''}`, khoa })
+        if (uid) {
+          const loai = chieuHoaDon(g, mstCty)!
+          const hd = gocThanhHoaDon(g, mstCty)
+          const i = dong.length - 1
+          viec.push({ i, mst: mstCty, chay: () => luuTepHoaDon(uid, mstCty, t.ten, t.du.slice().buffer as ArrayBuffer, quyNhieuNhat([hd]), loai === 'ban' ? 1 : 0, loai === 'mua' ? 1 : 0, rutGonHoaDon([hd], true), undefined, g) })
+        }
+      } catch (e) {
+        dong.push({ ten: t.ten, kq: 'loi', moTa: (e as Error).message })
+      }
+    }
+    if (k !== kho) setKho(k)
+    let loiMay = 0
+    if (uid && viec.length) {
+      try {
+        await Promise.all([...new Set(viec.map((v) => v.mst))].map((m) => luuCongTy(uid, k.congTy[m])))
+        let xong = 0
+        const hang = [...viec]
+        const chay = async () => {
+          while (hang.length) {
+            const v = hang.shift()!
+            await v.chay().catch((e) => {
+              loiMay++
+              dong[v.i] = { ...dong[v.i], kq: 'loi', moTa: `${dong[v.i].moTa} — CHƯA lưu được lên mây: ${(e as Error).message}` }
+            })
+            setTienDo({ xong: ++xong, tong: viec.length, dangLam: 'lưu lên mây…' })
+          }
+        }
+        await Promise.all([chay(), chay(), chay(), chay()])
+        await lamMoiMay(uid)
+      } catch (e) {
+        loiMay = viec.length
+        setTrangThaiMay(`⚠️ Chưa lưu được lên mây: ${(e as Error).message}`)
+      }
+    }
+    setTienDo(null)
+    return { dong, dangNhap: !!uid, loiMay }
+  }
+
+  /** Nội dung file XML gốc của một hoá đơn: trong phiên này, hoặc tải từ mây */
+  const layXmlGoc = useCallback(async (khoa: string): Promise<{ ten: string; du: Uint8Array } | null> => {
+    const o = xmlPhien.current.get(khoa)
+    if (o) return o
+    const t = Object.values(may?.tepHoaDon ?? {}).flat().find((x) => x.goc?.nguon === 'xml' && khoaTepGoc(x) === khoa)
+    return t ? { ten: t.ten, du: new Uint8Array(await taiTep(t.duongDan)) } : null
+  }, [may])
+  const khoaGocTrenMay = useMemo(() => new Set(Object.values(may?.tepHoaDon ?? {}).flat().filter((t) => t.goc?.nguon === 'xml').map(khoaTepGoc)), [may])
 
   /** Từ bảng tổng quan bấm "Kê khai" một quý: chuyển sang tab kê khai đúng quý đó */
   function moQuyKeKhai(khoa: string) {
@@ -856,6 +964,11 @@ export default function App() {
                 <div>
                   <h3 className="mb-1 font-semibold">Sổ theo dõi tờ khai 01/GTGT (kiểm đầu kỳ – cuối kỳ)</h3>
                   <SoTheoDoi kho={kho} mst={hoSo.mst} onKhongChapNhan={(khoa, i, gt) => datTraVe(hoSo.mst, khoa, i, gt)} />
+                </div>
+                <div>
+                  <h3 className="mb-1 font-semibold">🧾 Hoá đơn điện tử XML — tải lên là lưu kho, xem như bản in</h3>
+                  <HoaDonXmlDN kho={kho} mst={hoSo.mst} dangNhap={!!user} coFileGoc={(k) => khoaGocTrenMay.has(k)} onNap={napHoaDonXml} layXml={layXmlGoc} />
+                  {tienDo && <p className="mt-1 text-sm text-slate-600">Đang xử lý {tienDo.xong}/{tienDo.tong}: {tienDo.dangLam}</p>}
                 </div>
                 <div>
                   <h3 className="mb-1 font-semibold">☁️ File đã lưu trên mây, theo quý</h3>

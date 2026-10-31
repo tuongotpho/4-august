@@ -2,11 +2,14 @@
 import { describe, expect, it } from 'vitest'
 import { GoogleAuthProvider, signInAnonymously, signInWithCredential, signOut } from 'firebase/auth'
 import { auth } from '../src/may/firebase'
-import { datCoTraVe, luuChungTu, xoaCongTyTrenMay, xoaTaiLieu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, luuLoHang, taiLenGiayTo, xoaLoHang, luuSaoKe, luuGhepTay, xoaSaoKeMay, themNguoiXem, boNguoiXem, taiNguoiXem, taiChiaSeChoToi, luuPhieuQuy, xoaPhieuQuy, luuTonDauQuy } from '../src/may/dongBo'
+import { khoaTepGoc, datCoTraVe, luuChungTu, xoaCongTyTrenMay, xoaTaiLieu, luuCongTy, luuDaXuat, luuTepHoaDon, luuToKhai, taiDuLieuMay, taiTep, luuLoHang, taiLenGiayTo, xoaLoHang, luuSaoKe, luuGhepTay, xoaSaoKeMay, themNguoiXem, boNguoiXem, taiNguoiXem, taiChiaSeChoToi, luuPhieuQuy, xoaPhieuQuy, luuTonDauQuy } from '../src/may/dongBo'
 import { docTaiLieu } from '../src/core/taiLieu'
 import { tinhTongQuan } from '../src/core/tongQuan'
 import { docToKhai } from '../src/core/docToKhai'
 import { dauKy, gopTuMay, khoTrong } from '../src/core/kho'
+import { docXmlGoc, gocThanhHoaDon } from '../src/core/hoaDonGoc'
+import { khoaCuaXem, parseInvoice } from '../src/core/xemHoaDon'
+import { rutGonHoaDon } from '../src/core/kho'
 
 const xml = (ky: string, ct43: number, ct22 = 0) => `<?xml version="1.0" encoding="UTF-8"?><HSoThueDTu xmlns="http://kekhaithue.gdt.gov.vn/TKhaiThue"><HSoKhaiThue id="ID_1"><TTinChung><TTinTKhaiThue><TKhaiThue><maTKhai>842</maTKhai><loaiTKhai>C</loaiTKhai><soLan>0</soLan><KyKKhaiThue><kyKKhai>${ky}</kyKKhai></KyKKhaiThue><maCQTNoiNop>21701</maCQTNoiNop><tenCQTNoiNop>CQT</tenCQTNoiNop><nguoiKy>A</nguoiKy></TKhaiThue><NNT><mst>0100000000</mst><tenNNT>Cty Mẫu</tenNNT><dchiNNT>X</dchiNNT><maTinhNNT>217</maTinhNNT><tenTinhNNT>PT</tenTinhNNT></NNT></TTinTKhaiThue></TTinChung><CTieuTKhaiChinh><ct22>${ct22}</ct22><ct43>${ct43}</ct43></CTieuTKhaiChinh></HSoKhaiThue></HSoThueDTu>`
 
@@ -178,5 +181,26 @@ describe('Đồng bộ hồ sơ lên mây (máy giả lập)', () => {
     await xoaCongTyTrenMay(uid, M)
     may = await taiDuLieuMay(uid)
     expect(may.soQuy).toEqual([])
+  })
+
+  it('hoá đơn XML: lưu NGUYÊN VĂN file gốc (từng byte, kể cả BOM) + tóm tắt có khoá chống trùng; dựng lại sổ', async () => {
+    await signOut(auth)
+    const { user } = await signInAnonymously(auth)
+    const uid = user.uid
+    const M = '0100000007'
+    const hd = `﻿<?xml version="1.0" encoding="UTF-8"?><HDon><DLHDon><TTChung><KHMSHDon>1</KHMSHDon><KHHDon>C26TAA</KHHDon><SHDon>00000017</SHDon><NLap>2026-10-08</NLap></TTChung><NDHDon><NBan><Ten>NCC thử</Ten><MST>0109999991</MST></NBan><NMua><Ten>Cty thử</Ten><MST>${M}</MST></NMua><DSHHDVu><HHDVu><TChat>1</TChat><THHDVu>Hàng</THHDVu><ThTien>1000</ThTien><TSuat>8%</TSuat></HHDVu></DSHHDVu><TToan><TgTCThue>1000</TgTCThue><TgTThue>80</TgTThue><TgTTTBSo>1080</TgTTTBSo></TToan></NDHDon></DLHDon><MCCQT>00AB</MCCQT></HDon>`
+    const du = new TextEncoder().encode(hd)
+    const g = docXmlGoc(new TextDecoder().decode(du), 'hd.xml')!
+    await luuCongTy(uid, { hoSo: { mst: M, tenNNT: 'Cty thử' } as never, kyNguon: '', suaTay: false })
+    await luuTepHoaDon(uid, M, 'hd.xml', du.slice().buffer as ArrayBuffer, { quy: 4, nam: 2026 }, 0, 1, rutGonHoaDon([gocThanhHoaDon(g, M)], true), undefined, g)
+    const may = await taiDuLieuMay(uid)
+    const t = may.tepHoaDon[M][0]
+    expect(t).toMatchObject({ ten: 'hd.xml', ky: '2026-Q4', soMua: 1, khoaHD: `0109999991|1|C26TAA|17`, goc: { mstBan: '0109999991', mstMua: M, kyHieuMau: '1', kyHieu: 'C26TAA', so: '17', ngay: '08/10/2026', chuaThue: 1000, thue: 80, tong: 1080, mccqt: '00AB' } })
+    expect(khoaTepGoc(t)).toBe(khoaCuaXem(parseInvoice(hd)))
+    expect([...new Uint8Array(await taiTep(t.duongDan))]).toEqual([...du])
+    const kho = gopTuMay(khoTrong(), may.congTy, may.toKhai, may.chungTu, Object.entries(may.tepHoaDon).flatMap(([m, ds]) => ds.map((d) => ({ mst: m, hd: d.hd ?? [], goc: d.goc }))))
+    expect(Object.keys(kho.goc![M])).toHaveLength(1)
+    expect(kho.hoaDon![M]['mua|0109999991|C26TAA|17']).toMatchObject({ l: 'mua', v: 1000, t: 80 })
+    await xoaCongTyTrenMay(uid, M)
   })
 })

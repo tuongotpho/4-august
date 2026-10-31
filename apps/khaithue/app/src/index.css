@@ -6,3 +6,21 @@
   --series-1: #2a78d6;
   --series-2: #eb6834;
 }
+
+/* In một hoá đơn XML (nút "In / Lưu PDF" ở hộp xem hoá đơn): chỉ in tờ hoá đơn */
+@media print {
+  body.in-hoa-don #root,
+  body.in-hoa-don .khong-in {
+    display: none !important;
+  }
+  body.in-hoa-don .hop-hoa-don {
+    position: static !important;
+    overflow: visible !important;
+    background: none !important;
+    padding: 0 !important;
+  }
+  body.in-hoa-don .ban-in-hd {
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+}
