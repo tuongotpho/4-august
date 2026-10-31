@@ -1,0 +1,34 @@
+{
+  "hosting": {
+    "site": "app-by-lethanh",
+    "public": "public",
+    "ignore": ["firebase.json", "**/.*"],
+    "redirects": [
+      { "source": "/hoa-don", "destination": "/hoa-don/", "type": 302 }
+    ],
+    "rewrites": [
+      { "source": "/hoa-don/mcp", "function": { "functionId": "hoadon", "region": "asia-southeast1" } },
+      { "source": "/hoa-don/oauth/**", "function": { "functionId": "hoadon", "region": "asia-southeast1" } },
+      { "source": "/hoa-don/telegram/**", "function": { "functionId": "hoadon", "region": "asia-southeast1" } },
+      { "source": "/hoa-don/.well-known/**", "function": { "functionId": "hoadon", "region": "asia-southeast1" } },
+      { "source": "/.well-known/oauth-protected-resource/hoa-don/**", "function": { "functionId": "hoadon", "region": "asia-southeast1" } },
+      { "source": "/.well-known/oauth-authorization-server/hoa-don", "function": { "functionId": "hoadon", "region": "asia-southeast1" } },
+      { "source": "/.well-known/openid-configuration/hoa-don", "function": { "functionId": "hoadon", "region": "asia-southeast1" } },
+      { "source": "/hoa-don/**", "destination": "/hoa-don/index.html" }
+    ],
+    "headers": [
+      { "source": "**/*.html", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+      { "source": "/", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+      { "source": "**/assets/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] }
+    ]
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "lethanh",
+      "runtime": "nodejs22",
+      "ignore": ["node_modules", ".git", "*.log"]
+    }
+  ],
+  "emulators": { "hosting": { "port": 5050 }, "functions": { "port": 5051 }, "ui": { "enabled": false }, "singleProjectMode": true }
+}

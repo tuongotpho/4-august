@@ -94,7 +94,7 @@ export async function xuLyTelegram(req: Request, duong: string, bc: BoiCanhTele)
   const token = env.HOADON_TELE_TOKEN?.trim()
   const apiGoc = (env.HOADON_TELE_API || 'https://api.telegram.org').replace(/\/$/, '')
   // Link trong tin bot: địa chỉ chung app-by-lethanh (điện thoại bấm là mở trong app đã cài)
-  const appUrl = (env.HOADON_APP_URL || 'https://app-by-lethanh.vercel.app/hoa-don').replace(/\/$/, '')
+  const appUrl = (env.HOADON_APP_URL || 'https://app-by-lethanh.web.app/hoa-don').replace(/\/$/, '')
 
   // Web app (tên miền khác) gọi /bat, /ghep -> cho phép đúng các tên miền của app
   const nguon = req.headers.get('origin') ?? ''

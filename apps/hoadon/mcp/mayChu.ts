@@ -16,7 +16,7 @@ const HUONG_DAN = `Máy chủ quản lý hóa đơn đỏ (hóa đơn GTGT) đi 
 - Hashtag công việc (tags): KHCN (đề tài/kế hoạch KHCN), SANGKIEN, CBM, BTBD (bảo trì bảo dưỡng TBA 110kV), PCCC, SCL (sửa chữa lớn), MBA, ATLD, CNTT (phần mềm, an toàn thông tin), TRUYENTHONG — người dùng thêm tag mới được. Một hồ sơ có thể nhiều tag. Thống kê theo tag ở tong_hop.theoViec.
 - Công cụ ghi (sua_ho_so, sua_nhieu_ho_so, gan_tag, sua_hoa_don, tao_ho_so, xoa_ho_so) thay đổi dữ liệu THẬT — chỉ gọi khi người dùng yêu cầu rõ. Mọi lần ghi/xoá được ghi nhật ký; người dùng xem và thu hồi quyền của máy này trên web app (Cài đặt).
 - xoa_ho_so không hoàn tác được: phải hỏi người dùng, nêu đúng tên hồ sơ, được đồng ý rồi mới gửi xac_nhan.
-- In tờ trình / ĐNTT ra Word làm trên web app (https://hoadon-npsc.vercel.app), không làm qua đây.`
+- In tờ trình / ĐNTT ra Word làm trên web app (https://app-by-lethanh.web.app/hoa-don/), không làm qua đây.`
 
 const json = (x: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(x, null, 1) }] })
 type KetQua = { content: { type: 'text'; text: string }[]; isError?: boolean }

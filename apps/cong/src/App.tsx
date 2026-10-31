@@ -163,7 +163,7 @@ function CaiDat({ user }: { user: User }) {
 
 function CaiDatApp({ a }: { a: AppCon }) {
   const [daChep, setDaChep] = useState(false)
-  const mcp = `${a.diaChiGoc}/mcp`
+  const mcp = a.mcp ?? `${a.diaChiGoc}/mcp`
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm" style={{ borderLeft: `4px solid ${a.mau}` }}>
       <div className="flex flex-wrap items-center gap-3">

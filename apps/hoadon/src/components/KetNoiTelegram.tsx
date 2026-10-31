@@ -5,10 +5,11 @@ import { useState } from 'react'
  * Máy chủ làm việc bằng quyền của chính tài khoản này (giống "Kết nối AI"), thu hồi ở mục "Quyền của AI".
  * Mã bot (HOADON_TELE_TOKEN) chỉ nằm trên Vercel — trang này không bao giờ thấy nó.
  */
-// Mở qua cổng app-by-lethanh/hoa-don/: gọi đường dẫn tương đối ('.') — cổng chuyển tiếp về hoadon-npsc, cùng tên miền nên không vướng CORS
+// Mở qua cổng chung …/hoa-don/ (Firebase app-by-lethanh.web.app, trước là Vercel): gọi đường dẫn tương đối ('.') — máy chủ ở cùng
+// tên miền nên không vướng CORS
 const MAY_CHU =
   import.meta.env.VITE_MAY_CHU_URL ||
-  (location.hostname === 'app-by-lethanh.vercel.app' ? '.' : location.hostname.endsWith('vercel.app') ? location.origin : 'https://hoadon-npsc.vercel.app')
+  (location.pathname.startsWith('/hoa-don/') ? '.' : location.hostname.endsWith('vercel.app') ? location.origin : 'https://app-by-lethanh.web.app/hoa-don')
 
 async function goi<T>(duong: string, than: Record<string, string>): Promise<T> {
   const { auth } = await import('../lib/firebase')

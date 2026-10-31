@@ -1,0 +1,7 @@
+# Sinh ra khi chạy build.mjs — không đưa lên GitHub
+public/
+functions/lib/
+functions/node_modules/
+functions/.env*
+.firebase/
+functions/.secret.local

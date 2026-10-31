@@ -9,6 +9,8 @@ export interface AppCon {
   mau: string
   duongDan: string
   diaChiGoc: string
+  /** Địa chỉ Kết nối AI khi app đã chuyển sang Firebase (cùng tên miền với cổng); chưa có thì dùng diaChiGoc + '/mcp' */
+  mcp?: string
   /** Trong "cài đặt riêng" của app có gì (mở bằng duongDan + ?cai-dat) */
   caiDat: string
   /** File khai báo app (manifest) của app; qua cổng được thay bằng manifest chung để cài từ trang nào cũng ra một app phạm vi "/" */
@@ -64,6 +66,7 @@ export const DS_APP: AppCon[] = [
     mau: '#2563eb',
     duongDan: '/hoa-don/',
     diaChiGoc: 'https://hoadon-npsc.vercel.app',
+    mcp: 'https://app-by-lethanh.web.app/hoa-don/mcp',
     caiDat: 'Danh sách lựa chọn, hàng cấm, quy tắc tiền, thông tin mẫu Word, sao lưu, bot Telegram, quyền của AI',
     manifest: 'site.webmanifest',
   },
