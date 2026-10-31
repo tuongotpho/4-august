@@ -1,5 +1,5 @@
 {
   "mcpServers": {
-    "quyphong": { "type": "http", "url": "https://quyphong.vercel.app/mcp" }
+    "quyphong": { "type": "http", "url": "https://app-by-lethanh.web.app/quy-phong/mcp" }
   }
 }

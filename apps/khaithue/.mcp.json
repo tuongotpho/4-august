@@ -2,7 +2,7 @@
   "mcpServers": {
     "khaithue": {
       "type": "http",
-      "url": "https://khaithue.vercel.app/mcp"
+      "url": "https://app-by-lethanh.web.app/khai-thue/mcp"
     },
     "khaithue-thu-muc": {
       "command": "node",
