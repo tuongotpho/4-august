@@ -6,6 +6,7 @@
 
 import { docToKhai, layThe, type ToKhaiDaNop } from './docToKhai.js'
 import type { HoaDon } from './types.js'
+import { docBctc, laBctc, type SoLieuBctc } from './bctc.js'
 
 export interface DongChungTu {
   ndkt: string // tiểu mục (1701 = thuế GTGT ...)
@@ -39,7 +40,7 @@ export function datChungTu(nhom: Record<string, ChungTu>, ct: ChungTu) {
 }
 
 export type TaiLieu =
-  | { loai: 'toKhai'; tk: ToKhaiDaNop; tenTKhai: string; kieuKy: string; kyChu: string }
+  | { loai: 'toKhai'; tk: ToKhaiDaNop; tenTKhai: string; kieuKy: string; kyChu: string; bctc?: SoLieuBctc }
   | { loai: 'chungTu'; ct: ChungTu }
   | { loai: 'hoaDon'; hd: Omit<HoaDon, 'loai'> }
   | { loai: 'khac'; goc: string }
@@ -63,7 +64,9 @@ export function docTaiLieu(xml: string): TaiLieu {
   if (goc === 'HSoThueDTu') {
     const tk = docToKhai(xml)
     const kieuKy = the(xml, 'kieuKy')
-    return { loai: 'toKhai', tk, tenTKhai: the(xml, 'tenTKhai'), kieuKy, kyChu: kyDangChu(kieuKy, the(xml, 'kyKKhai')) }
+    // Báo cáo tài chính: đọc thêm 3 bảng để xem + soát (core/bctc.ts)
+    const bctc = laBctc(tk.maTKhai) ? docBctc(xml) ?? undefined : undefined
+    return { loai: 'toKhai', tk, tenTKhai: the(xml, 'tenTKhai'), kieuKy, kyChu: kyDangChu(kieuKy, the(xml, 'kyKKhai')), ...(bctc ? { bctc } : {}) }
   }
 
   if (goc === 'CHUNGTU') {

@@ -13,6 +13,7 @@ import { soiRuiRo, type DsRuiRo } from './core/ruiRo'
 import { canhBaoGoc, docPdfGoc, docXmlGoc, gocThanhHoaDon, tongHopGoc } from './core/hoaDonGoc'
 import { chieuHoaDon, khoaCuaGoc, parseInvoice } from './core/xemHoaDon'
 import { HoaDonXmlDN, type BaoCaoNapXml, type DongNapXml } from './ui/HoaDonXml'
+import { BaoCaoTaiChinhDN } from './ui/BaoCaoTaiChinh'
 import { tongHopLo, type LoHang } from './core/loHang'
 import { LoHangDN, type ThaoTacLo } from './ui/LoHang'
 import { docSaoKe, tinhCongNo, type SaoKe } from './core/saoKe'
@@ -383,7 +384,7 @@ export default function App() {
         if (tl.loai === 'chungTu') dem.chungTu++
         if (tl.loai === 'hoaDon') dem.hoaDon++
         if (uid) {
-          if (tl.loai === 'toKhai') viec.push(() => luuToKhai(uid, tl.tk, text, f.name, { tenTKhai: tl.tenTKhai, kyChu: tl.kyChu }))
+          if (tl.loai === 'toKhai') viec.push(() => luuToKhai(uid, tl.tk, text, f.name, { tenTKhai: tl.tenTKhai, kyChu: tl.kyChu, bctc: tl.bctc }))
           if (tl.loai === 'chungTu') {
             const khoa = `${tl.ct.mst}|${khoaChungTu(tl.ct)}`
             if (ctDaCo.has(khoa)) dem.trung++
@@ -969,6 +970,10 @@ export default function App() {
                   <h3 className="mb-1 font-semibold">🧾 Hoá đơn điện tử XML — tải lên là lưu kho, xem như bản in</h3>
                   <HoaDonXmlDN kho={kho} mst={hoSo.mst} dangNhap={!!user} coFileGoc={(k) => khoaGocTrenMay.has(k)} onNap={napHoaDonXml} layXml={layXmlGoc} />
                   {tienDo && <p className="mt-1 text-sm text-slate-600">Đang xử lý {tienDo.xong}/{tienDo.tong}: {tienDo.dangLam}</p>}
+                </div>
+                <div>
+                  <h3 className="mb-1 font-semibold">📑 Báo cáo tài chính — đọc và soát chéo</h3>
+                  <BaoCaoTaiChinhDN kho={kho} mst={hoSo.mst} onFiles={(f) => void napHangLoat(f)} />
                 </div>
                 <div>
                   <h3 className="mb-1 font-semibold">☁️ File đã lưu trên mây, theo quý</h3>

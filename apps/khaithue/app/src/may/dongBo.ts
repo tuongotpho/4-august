@@ -19,6 +19,7 @@ import { collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, ser
 import { deleteObject, getBytes, ref, uploadBytes } from 'firebase/storage'
 import { db, luuTru } from './firebase'
 import type { CongTyLuu, HoaDonGon, ToKhaiMay } from '../core/kho'
+import type { SoLieuBctc } from '../core/bctc'
 import type { ChungTu } from '../core/taiLieu'
 import type { ToKhaiDaNop } from '../core/docToKhai'
 import type { KyKeKhai } from '../core/types'
@@ -39,7 +40,7 @@ export async function luuCongTy(uid: string, c: CongTyLuu) {
 }
 
 /** Lưu tờ khai XML đã nộp (mọi mẫu): file gốc lên Storage, số liệu lên Firestore. Trả về mã bản ghi. */
-export async function luuToKhai(uid: string, tk: ToKhaiDaNop, xml: string, tenFile: string, them: { tenTKhai?: string; kyChu?: string } = {}): Promise<string> {
+export async function luuToKhai(uid: string, tk: ToKhaiDaNop, xml: string, tenFile: string, them: { tenTKhai?: string; kyChu?: string; bctc?: SoLieuBctc } = {}): Promise<string> {
   const id = await maBam(xml)
   const mst = tk.hoSo.mst
   const duongDan = `nguoiDung/${uid}/${mst}/toKhai/${id}.xml`
@@ -48,6 +49,7 @@ export async function luuToKhai(uid: string, tk: ToKhaiDaNop, xml: string, tenFi
   await setDoc(doc(db, `${nhanhCongTy(uid, mst)}/toKhai/${id}`), {
     mst, maTKhai: tk.maTKhai, tenTKhai: them.tenTKhai ?? '', ky: them.kyChu ?? (tk.ky ? khoaKy(tk.ky) : ''), loaiTKhai: tk.loaiTKhai, soLan: tk.soLan, ngayLap: tk.ngayLap,
     ct: tk.ct, plMua: tk.plMua.filter((d) => d.ten), plBan: tk.plBan.filter((d) => d.ten), tenFile, duongDan, napLuc: serverTimestamp(),
+    ...(them.bctc ? { bctc: them.bctc } : {}),
   }, { merge: true })
   return id
 }

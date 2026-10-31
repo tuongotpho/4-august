@@ -13,6 +13,7 @@ import type { SaoKe } from './saoKe.js'
 import type { CaiDatQuy, PhieuQuy, SoQuy } from './soQuy.js'
 import type { HoaDon, HoSoDN, KyKeKhai } from './types.js'
 import type { ToKhaiDaNop } from './docToKhai.js'
+import type { SoLieuBctc } from './bctc.js'
 import { datChungTu, daXacNhan, type ChungTu, type TaiLieu } from './taiLieu.js'
 import { conHieuLuc } from './excel.js'
 
@@ -57,6 +58,8 @@ export interface ToKhaiKhac {
   soLan: number
   ngayLap: string
   tenFile: string
+  /** Báo cáo tài chính (mẫu 402): số liệu 3 bảng đã đọc để xem + soát — thêm 31/10/2026, bản ghi cũ không có */
+  bctc?: SoLieuBctc
 }
 
 /** Hoá đơn rút gọn để làm tổng quan (đối chiếu doanh thu tờ khai với hoá đơn) */
@@ -280,6 +283,8 @@ export interface ToKhaiMay {
   ct: Record<string, number>
   tenFile: string
   khongChapNhan?: boolean
+  /** Báo cáo tài chính: số liệu 3 bảng (thêm 31/10/2026) */
+  bctc?: SoLieuBctc
 }
 
 /** Gộp dữ liệu trên mây vào sổ trên máy (hợp nhất, không xoá gì của máy) */
@@ -299,7 +304,7 @@ export function gopTuMay(
     if (!hoSo) continue
     if (t.maTKhai !== '842' && t.maTKhai !== '864') {
       kho = structuredClone(kho)
-      ;((kho.toKhaiKhac ??= {})[t.mst] ??= {})[khoaKhac(t.maTKhai, t.ky, t.loaiTKhai, t.soLan)] = { maTKhai: t.maTKhai, tenTKhai: t.tenTKhai ?? '', ky: t.ky, loaiTKhai: t.loaiTKhai, soLan: t.soLan, ngayLap: t.ngayLap, tenFile: t.tenFile }
+      ;((kho.toKhaiKhac ??= {})[t.mst] ??= {})[khoaKhac(t.maTKhai, t.ky, t.loaiTKhai, t.soLan)] = { maTKhai: t.maTKhai, tenTKhai: t.tenTKhai ?? '', ky: t.ky, loaiTKhai: t.loaiTKhai, soLan: t.soLan, ngayLap: t.ngayLap, tenFile: t.tenFile, ...(t.bctc ? { bctc: t.bctc } : {}) }
       continue
     }
     const m = /^(\d{4})-Q(\d)$/.exec(t.ky)
@@ -402,9 +407,9 @@ export function napTaiLieu(kho0: Kho, tl: TaiLieu, tenFile: string, id?: string)
     // Cùng mẫu + kỳ + loại + lần = cùng một tờ khai (dù nạp từ file hay từ mây)
     const khoa = khoaKhac(tl.tk.maTKhai, tl.kyChu, tl.tk.loaiTKhai, tl.tk.soLan)
     ;((kho.toKhaiKhac ??= {})[mst] ??= {})[khoa] = {
-      maTKhai: tl.tk.maTKhai, tenTKhai: tl.tenTKhai, ky: tl.kyChu, loaiTKhai: tl.tk.loaiTKhai, soLan: tl.tk.soLan, ngayLap: tl.tk.ngayLap, tenFile,
+      maTKhai: tl.tk.maTKhai, tenTKhai: tl.tenTKhai, ky: tl.kyChu, loaiTKhai: tl.tk.loaiTKhai, soLan: tl.tk.soLan, ngayLap: tl.tk.ngayLap, tenFile, ...(tl.bctc ? { bctc: tl.bctc } : {}),
     }
-    return { kho, moTa: `${tl.tenTKhai || 'Tờ khai mã ' + tl.tk.maTKhai} — kỳ ${tl.kyChu} (lưu trữ)` }
+    return { kho, moTa: `${tl.tenTKhai || 'Tờ khai mã ' + tl.tk.maTKhai} — kỳ ${tl.kyChu} (${tl.bctc ? 'đã đọc số liệu, xem ở mục Báo cáo tài chính' : 'lưu trữ'})` }
   }
   if (tl.loai === 'chungTu') {
     const mst = tl.ct.mst
