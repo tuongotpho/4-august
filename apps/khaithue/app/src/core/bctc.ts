@@ -2,6 +2,8 @@
 // Giai đoạn A (báo cáo 19): chỉ đọc và soát, chưa lập BCTC. Bảng cân đối (B01-DN), kết quả kinh doanh (B02-DN),
 // lưu chuyển tiền tệ (B03-DN, trực tiếp hoặc gián tiếp). Mã chỉ tiêu giữ nguyên như trên mẫu ("ct411a" -> "411a").
 import { docCayXml, type GhiChuKiem, type NutXml } from './xemHoaDon.js'
+import { CONG_CDKT_TT58, CONG_KQKD_TT58, TEN_CDKT_TT58, TEN_KQKD_TT58 } from './mauBctc58.js'
+import { CONG_CDKT_TT99, CONG_KQKD_TT99, TEN_CDKT_TT99, TEN_KQKD_TT99, TEN_LCTT_TT99 } from './mauBctc99.js'
 
 /** Mẫu tờ khai là BCTC mà app đọc được */
 export const MA_BCTC: Record<string, string> = { '402': 'TT200' }
@@ -165,6 +167,50 @@ const CONG_LCTT_TT: [string, string[]][] = [
   ['50', ['20', '30', '40']], ['70', ['50', '60', '61']],
 ]
 
+/** Khác biệt giữa các mẫu BCTC: danh mục chỉ tiêu, công thức cộng, và mã của các chỉ tiêu dùng để soát chéo */
+export interface MauBctc {
+  ten: string
+  tenB01: string
+  tenCdkt: [string, string][]
+  tenKqkd: [string, string][]
+  tenLctt: [string, string][]
+  congCdkt: [string, string[]][]
+  congKqkd: [string, [string, number][]][]
+  tongTaiSan: string
+  lnChuaPP: string
+  lnKyNay: string
+  dtTaiChinh: string
+  cpTaiChinh: string
+  dongTong: Set<string>
+  /** Mã trên báo cáo kết quả kinh doanh: lợi nhuận trước thuế, thuế TNDN, lợi nhuận sau thuế */
+  maLntt: string
+  maTndn: string
+  maLnst: string
+  /** Bộ BCTC của mẫu có lưu chuyển tiền tệ và thuyết minh không (TT58 doanh nghiệp siêu nhỏ: không) */
+  coLcttVaThuyetMinh: boolean
+}
+
+export const MAU_BCTC: Record<string, MauBctc> = {
+  TT200: {
+    ten: 'Thông tư 200/2014/TT-BTC', tenB01: 'Bảng cân đối kế toán', tenCdkt: TEN_CDKT, tenKqkd: TEN_KQKD, tenLctt: TEN_LCTT_TRUC_TIEP,
+    congCdkt: CONG_CDKT, congKqkd: CONG_KQKD, tongTaiSan: '270', lnChuaPP: '421', lnKyNay: '421b', dtTaiChinh: '21', cpTaiChinh: '22', dongTong: DONG_TONG,
+    maLntt: '50', maTndn: '51', maLnst: '60', coLcttVaThuyetMinh: true,
+  },
+  TT99: {
+    ten: 'Thông tư 99/2025/TT-BTC', tenB01: 'Báo cáo tình hình tài chính', tenCdkt: TEN_CDKT_TT99, tenKqkd: TEN_KQKD_TT99, tenLctt: TEN_LCTT_TT99,
+    congCdkt: CONG_CDKT_TT99, congKqkd: CONG_KQKD_TT99, tongTaiSan: '280', lnChuaPP: '420', lnKyNay: '420b', dtTaiChinh: '22', cpTaiChinh: '23',
+    dongTong: new Set(['100', '200', '280', '300', '400', '440', '10', '20', '30', '50', '60']),
+    maLntt: '50', maTndn: '51', maLnst: '60', coLcttVaThuyetMinh: true,
+  },
+  TT58: {
+    ten: 'Thông tư 58/2026/TT-BTC (doanh nghiệp siêu nhỏ)', tenB01: 'Báo cáo tình hình tài chính', tenCdkt: TEN_CDKT_TT58, tenKqkd: TEN_KQKD_TT58, tenLctt: [],
+    congCdkt: CONG_CDKT_TT58, congKqkd: CONG_KQKD_TT58, tongTaiSan: '200', lnChuaPP: '420', lnKyNay: '', dtTaiChinh: '', cpTaiChinh: '',
+    dongTong: new Set(['200', '300', '400', '500', '03', '20']),
+    maLntt: '03', maTndn: '10', maLnst: '20', coLcttVaThuyetMinh: false,
+  },
+}
+export const mauCua = (cheDo: string) => MAU_BCTC[cheDo] ?? MAU_BCTC.TT200
+
 function soatCong(ten: string, b: Record<string, number>, cong: [string, string[]][], kq: GhiChuKiem[]) {
   for (const [tong, phan] of cong) {
     // Mẫu cũ không có dòng con (vd 411a) thì không soát dòng đó
@@ -181,36 +227,39 @@ export function soatBctc(b: SoLieuBctc): GhiChuKiem[] {
   const d = (m: string) => b.cdkt.dau[m] ?? 0
   const k = (m: string) => b.kqkd.nay[m] ?? 0
   const l = (m: string) => b.lctt?.nay[m] ?? 0
+  const mau = mauCua(b.cheDo)
+  const ln = mau.lnChuaPP
 
   // 1. Phép cộng trong từng bảng
-  soatCong('Bảng cân đối (cuối năm)', b.cdkt.cuoi, CONG_CDKT, kq)
-  soatCong('Bảng cân đối (đầu năm)', b.cdkt.dau, CONG_CDKT, kq)
-  for (const [tong, phan] of CONG_KQKD) {
+  soatCong(`${mau.tenB01} (cuối năm)`, b.cdkt.cuoi, mau.congCdkt, kq)
+  soatCong(`${mau.tenB01} (đầu năm)`, b.cdkt.dau, mau.congCdkt, kq)
+  for (const [tong, phan] of mau.congKqkd) {
     if (!(tong in b.kqkd.nay)) continue
     const s = phan.reduce((a, [m, dau]) => a + dau * k(m), 0)
     if (!gan(s, k(tong))) kq.push({ muc: 'canhBao', noiDung: `Kết quả kinh doanh: mã ${tong} = ${tien(k(tong))} nhưng tính lại theo công thức = ${tien(s)}.` })
   }
   if (b.lctt?.phuongPhap === 'trucTiep') soatCong('Lưu chuyển tiền tệ', b.lctt.nay, CONG_LCTT_TT, kq)
-  if (!gan(c('270'), c('440'))) kq.push({ muc: 'canhBao', noiDung: `Bảng cân đối không cân: tổng tài sản ${tien(c('270'))} ≠ tổng nguồn vốn ${tien(c('440'))}.` })
+  const tongNV = b.cheDo === 'TT58' ? '500' : '440'
+  if (!gan(c(mau.tongTaiSan), c(tongNV))) kq.push({ muc: 'canhBao', noiDung: `${mau.tenB01} không cân: tổng tài sản ${tien(c(mau.tongTaiSan))} ≠ tổng nguồn vốn ${tien(c(tongNV))}.` })
 
-  // 2. Lợi nhuận năm phải vào vốn chủ (mã 421)
-  const lnst = k('60')
-  const tang421 = c('421') - d('421')
+  // 2. Lợi nhuận năm phải vào vốn chủ (mã 421 theo TT200, 420 theo TT99)
+  const lnst = k(mau.maLnst)
+  const tang421 = c(ln) - d(ln)
   if (!gan(tang421, lnst)) {
     kq.push({
       muc: 'canhBao',
-      noiDung: `Lợi nhuận sau thuế năm nay ${tien(lnst)} (kết quả kinh doanh mã 60) nhưng "Lợi nhuận chưa phân phối" (mã 421) chỉ ${tang421 >= 0 ? 'tăng' : 'giảm'} ${tien(Math.abs(tang421))}, lệch ${tien(lnst - tang421)}. ` +
+      noiDung: `Lợi nhuận sau thuế năm nay ${tien(lnst)} (kết quả kinh doanh mã ${mau.maLnst}) nhưng "Lợi nhuận chưa phân phối" (mã ${ln}) chỉ ${tang421 >= 0 ? 'tăng' : 'giảm'} ${tien(Math.abs(tang421))}, lệch ${tien(lnst - tang421)}. ` +
         `Nếu năm nay không chia lợi nhuận thì hai số phải bằng nhau. Bảng vẫn cân nghĩa là đang có một khoản khác lệch đúng số này (thường là công nợ bị ép cho cân).`,
     })
   }
-  if ('421b' in b.cdkt.cuoi && lnst && !gan(c('421b'), lnst) && gan(tang421, lnst)) {
-    kq.push({ muc: 'thongTin', noiDung: `Mã 421b (lợi nhuận kỳ này) = ${tien(c('421b'))}, khác lợi nhuận sau thuế ${tien(lnst)} — xem lại cách tách 421a / 421b.` })
+  if (mau.lnKyNay && mau.lnKyNay in b.cdkt.cuoi && lnst && !gan(c(mau.lnKyNay), lnst) && gan(tang421, lnst)) {
+    kq.push({ muc: 'thongTin', noiDung: `Mã ${mau.lnKyNay} (lợi nhuận kỳ này) = ${tien(c(mau.lnKyNay))}, khác lợi nhuận sau thuế ${tien(lnst)} — xem lại cách tách ${ln}a / ${ln}b.` })
   }
 
   if (b.lctt) {
     // 3. Tiền cuối kỳ trên lưu chuyển tiền = tiền trên bảng cân đối
-    if (!gan(l('70'), c('110'))) kq.push({ muc: 'canhBao', noiDung: `Tiền cuối kỳ trên lưu chuyển tiền (mã 70) ${tien(l('70'))} ≠ tiền trên bảng cân đối (mã 110) ${tien(c('110'))}.` })
-    if (!gan(l('60'), d('110'))) kq.push({ muc: 'canhBao', noiDung: `Tiền đầu kỳ trên lưu chuyển tiền (mã 60) ${tien(l('60'))} ≠ tiền đầu năm trên bảng cân đối (mã 110) ${tien(d('110'))}.` })
+    if (!gan(l('70'), c('110'))) kq.push({ muc: 'canhBao', noiDung: `Tiền cuối kỳ trên lưu chuyển tiền (mã 70) ${tien(l('70'))} ≠ tiền trên ${mau.tenB01.toLowerCase()} (mã 110) ${tien(c('110'))}.` })
+    if (!gan(l('60'), d('110'))) kq.push({ muc: 'canhBao', noiDung: `Tiền đầu kỳ trên lưu chuyển tiền (mã 60) ${tien(l('60'))} ≠ tiền đầu năm trên ${mau.tenB01.toLowerCase()} (mã 110) ${tien(d('110'))}.` })
 
     if (b.lctt.phuongPhap === 'trucTiep') {
       // 4. Vốn góp tăng thì phải có tiền nhận vốn góp
@@ -227,7 +276,7 @@ export function soatBctc(b: SoLieuBctc): GhiChuKiem[] {
       const coDu = (m: string) => c(m) - d(m)
       const dt = k('10')
       const thuMin = dt - coDu('131') + coDu('312')
-      const thuMax = (dt + k('21') + k('31')) * 1.1 - coDu('131') + coDu('312')
+      const thuMax = (dt + k(mau.dtTaiChinh) + k('31')) * 1.1 - coDu('131') + coDu('312')
       if (dt > 0 && (l('01') < thuMin * 0.97 || l('01') > thuMax * 1.03)) {
         kq.push({
           muc: 'canhBao',
@@ -237,7 +286,7 @@ export function soatBctc(b: SoLieuBctc): GhiChuKiem[] {
       }
       const hangMua = k('11') + coDu('141')
       const traMin = hangMua - coDu('311') + coDu('132')
-      const traMax = (hangMua + k('22') + k('25') + k('26') + k('32')) * 1.1 - coDu('311') + coDu('132')
+      const traMax = (hangMua + k(mau.cpTaiChinh) + k('25') + k('26') + k('32')) * 1.1 - coDu('311') + coDu('132')
       const tra = -l('02')
       if (hangMua > 0 && (tra < traMin * 0.97 || tra > traMax * 1.03)) {
         kq.push({
@@ -251,21 +300,25 @@ export function soatBctc(b: SoLieuBctc): GhiChuKiem[] {
   }
 
   // 6. Thuế TNDN so với 20% lợi nhuận trước thuế
-  if (k('50') > 0 && !gan(k('51'), k('50') * 0.2)) {
-    kq.push({ muc: 'thongTin', noiDung: `Thuế TNDN hiện hành ${tien(k('51'))} khác 20% lợi nhuận trước thuế (${tien(Math.round(k('50') * 0.2))}) — đúng nếu có ưu đãi, chi phí không được trừ hay lỗ chuyển sang; đối chiếu tờ khai quyết toán TNDN.` })
+  const lntt = k(mau.maLntt)
+  const thueTN = k(mau.maTndn)
+  // Từ kỳ tính thuế 2025: 15% (doanh thu ≤ 3 tỷ), 17% (≤ 50 tỷ), 20%; trước đó 20%
+  const suat = Number(b.nam) >= 2025 ? [0.15, 0.17, 0.2] : [0.2]
+  if (lntt > 0 && !suat.some((x) => gan(thueTN, lntt * x))) {
+    kq.push({ muc: 'thongTin', noiDung: `Thuế TNDN ${tien(thueTN)} không bằng ${suat.map((x) => `${x * 100}%`).join(' / ')} lợi nhuận trước thuế ${tien(lntt)} — đúng nếu có ưu đãi, chi phí không được trừ hay lỗ chuyển sang; đối chiếu tờ khai quyết toán TNDN.` })
   }
   // 7. Số tròn — dấu hiệu số ước, không lấy từ sổ
-  const tron = ([['25', 'Chi phí bán hàng', k('25')], ['26', 'Chi phí quản lý doanh nghiệp', k('26')], ['03', 'Tiền trả người lao động (lưu chuyển tiền)', -l('03')]] as const)
-    .filter(([, , v]) => v >= 10_000_000 && v % 1_000_000 === 0)
+  const dsTron: [string, string, number][] = b.cheDo === 'TT58' ? [] : [['25', 'Chi phí bán hàng', k('25')], ['26', 'Chi phí quản lý doanh nghiệp', k('26')], ['03', 'Tiền trả người lao động (lưu chuyển tiền)', -l('03')]]
+  const tron = dsTron.filter(([, , v]) => v >= 10_000_000 && v % 1_000_000 === 0)
   if (tron.length) {
     kq.push({
       muc: 'thongTin',
       noiDung: `Số tròn triệu: ${tron.map(([m, t, v]) => `${t} (mã ${m}) ${tien(v)}`).join('; ')}. Hay là số ước — muốn được trừ khi tính thuế phải có chứng từ (hợp đồng, bảng lương, tờ khai thuế TNCN khớp tổng lương).`,
     })
   }
-  if (!b.coThuyetMinh) kq.push({ muc: 'thongTin', noiDung: 'File không có thuyết minh báo cáo tài chính (B09-DN) — bộ BCTC theo TT200 gồm 4 mẫu B01, B02, B03, B09.' })
-  if (!b.lctt) kq.push({ muc: 'thongTin', noiDung: 'File không có báo cáo lưu chuyển tiền tệ — không soát được tiền và vốn góp.' })
-  else if (b.lctt.phuongPhap === 'gianTiep') kq.push({ muc: 'thongTin', noiDung: 'Lưu chuyển tiền lập theo phương pháp gián tiếp — app mới soát kỹ phương pháp trực tiếp.' })
+  if (!b.coThuyetMinh && mau.coLcttVaThuyetMinh) kq.push({ muc: 'thongTin', noiDung: 'File không có thuyết minh báo cáo tài chính (B09-DN) — bộ BCTC theo TT200 gồm 4 mẫu B01, B02, B03, B09.' })
+  if (!b.lctt && mau.coLcttVaThuyetMinh) kq.push({ muc: 'thongTin', noiDung: 'File không có báo cáo lưu chuyển tiền tệ — không soát được tiền và vốn góp.' })
+  else if (b.lctt?.phuongPhap === 'gianTiep') kq.push({ muc: 'thongTin', noiDung: 'Lưu chuyển tiền lập theo phương pháp gián tiếp — app mới soát kỹ phương pháp trực tiếp.' })
 
   kq.sort((a, b2) => (a.muc === b2.muc ? 0 : a.muc === 'canhBao' ? -1 : b2.muc === 'canhBao' ? 1 : 0))
   if (!kq.some((x) => x.muc === 'canhBao')) kq.unshift({ muc: 'dat', noiDung: 'Các phép cộng và đối chiếu chéo giữa ba bảng đều khớp.' })

@@ -13,7 +13,7 @@ import { soiRuiRo, type DsRuiRo } from './core/ruiRo'
 import { canhBaoGoc, docPdfGoc, docXmlGoc, gocThanhHoaDon, tongHopGoc } from './core/hoaDonGoc'
 import { chieuHoaDon, khoaCuaGoc, parseInvoice } from './core/xemHoaDon'
 import { HoaDonXmlDN, type BaoCaoNapXml, type DongNapXml } from './ui/HoaDonXml'
-import { BaoCaoTaiChinhDN } from './ui/BaoCaoTaiChinh'
+import { BaoCaoTaiChinhDN, LapBaoCaoTaiChinh } from './ui/BaoCaoTaiChinh'
 import { tongHopLo, type LoHang } from './core/loHang'
 import { LoHangDN, type ThaoTacLo } from './ui/LoHang'
 import { docSaoKe, tinhCongNo, type SaoKe } from './core/saoKe'
@@ -196,7 +196,7 @@ export default function App() {
   const [ngayLap, setNgayLap] = useState(ngayISO())
   const [hienItDung, setHienItDung] = useState(false)
   const [daXuat, setDaXuat] = useState(false)
-  const [tab, setTab] = useState<'tongQuan' | 'keKhai' | 'loHang' | 'congNo' | 'kho'>(() => (Object.keys(docKho(null).gtgt).length ? 'tongQuan' : 'keKhai'))
+  const [tab, setTab] = useState<'tongQuan' | 'keKhai' | 'loHang' | 'congNo' | 'bctc' | 'kho'>(() => (Object.keys(docKho(null).gtgt).length ? 'tongQuan' : 'keKhai'))
   const [tienDo, setTienDo] = useState<{ xong: number; tong: number; dangLam: string } | null>(null)
   const [ketQuaNap, setKetQuaNap] = useState('')
 
@@ -824,7 +824,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100 pb-20 text-slate-800 sm:pb-0">
       <header className="sticky top-0 z-40 bg-emerald-700 pt-[env(safe-area-inset-top)] text-white shadow-md">
-        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-2">
+        <div className="mx-auto flex max-w-[1920px] items-center gap-3 px-4 py-2 lg:px-6">
           {QUA_CONG && <NutTrangChu />}
           <Logo className="h-10 w-10 shrink-0" />
           <div className="min-w-0">
@@ -862,7 +862,7 @@ export default function App() {
         </div>
         {coMay && (loiDangNhap || trangThaiMay || (user && congTyKhach > 0)) && (
           <div className="border-t border-emerald-600/60 bg-emerald-800/60">
-            <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-1.5 text-sm">
+            <div className="mx-auto flex max-w-[1920px] flex-wrap items-center gap-3 px-4 py-1.5 text-sm lg:px-6">
               {(loiDangNhap || trangThaiMay) && <span>{loiDangNhap || trangThaiMay}</span>}
               {user && congTyKhach > 0 && (
                 <span className="flex flex-wrap items-center gap-2 rounded bg-amber-100 px-2 py-1 text-amber-900">
@@ -876,7 +876,7 @@ export default function App() {
         )}
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-5 px-4 py-6">
+      <main className="mx-auto max-w-[1920px] space-y-4 px-3 py-4 sm:px-4 lg:px-6">
         {chiaSe.length > 0 && !dangXem && (
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm">
             👔 Hồ sơ được chia sẻ cho anh (chỉ xem):
@@ -885,7 +885,7 @@ export default function App() {
         )}
         {dangXem && <XemChiaSe cs={dangXem} onDong={() => setDangXem(null)} />}
         {!dangXem && (<>
-        <nav className="flex flex-wrap gap-2">
+        <nav className="sticky top-[60px] z-30 -mx-1 flex flex-wrap gap-2 bg-slate-100/95 px-1 py-1.5 backdrop-blur">
           {/* Máy tính: tab dạng viên ở đây; điện thoại: thanh tab dưới đáy (THANH_TAB, cuối trang) */}
           {THANH_TAB.map(([k, icon, ten]) => (
             <button key={k} onClick={() => setTab(k)} className={`hidden rounded-xl px-4 py-2 font-medium sm:inline-block ${tab === k ? 'bg-emerald-700 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>
@@ -917,6 +917,21 @@ export default function App() {
               Số tấn lấy từ dòng hàng của hoá đơn gốc XML/PDF (nạp ở tab Tổng quan); chưa có thì gõ tay.
             </p>
             {loTong && mst ? <LoHangDN t={loTong} tt={thaoTacLo} dangNhap={!!user} /> : <p className="text-slate-500">Nạp hồ sơ (tờ khai + danh sách hoá đơn) trước.</p>}
+          </section>
+        )}
+
+        {tab === 'bctc' && (
+          <section className="space-y-6 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+            <h2 className="text-xl font-semibold">📑 Báo cáo tài chính {hoSo && <span className="text-base font-normal text-slate-500">— {hoSo.tenNNT}</span>}</h2>
+            {hoSo && mst ? (
+              <>
+                <LapBaoCaoTaiChinh kho={kho} mst={mst} />
+                <div className="border-t border-slate-200 pt-4">
+                  <h3 className="mb-2 text-lg font-semibold">📂 BCTC đã nộp — đọc và soát chéo</h3>
+                  <BaoCaoTaiChinhDN kho={kho} mst={mst} onFiles={(f) => void napHangLoat(f)} />
+                </div>
+              </>
+            ) : <p className="text-slate-500">Chưa có công ty. Nạp hồ sơ ở tab 📊 Tổng quan.</p>}
           </section>
         )}
 
@@ -970,10 +985,6 @@ export default function App() {
                   <h3 className="mb-1 font-semibold">🧾 Hoá đơn điện tử XML — tải lên là lưu kho, xem như bản in</h3>
                   <HoaDonXmlDN kho={kho} mst={hoSo.mst} dangNhap={!!user} coFileGoc={(k) => khoaGocTrenMay.has(k)} onNap={napHoaDonXml} layXml={layXmlGoc} />
                   {tienDo && <p className="mt-1 text-sm text-slate-600">Đang xử lý {tienDo.xong}/{tienDo.tong}: {tienDo.dangLam}</p>}
-                </div>
-                <div>
-                  <h3 className="mb-1 font-semibold">📑 Báo cáo tài chính — đọc và soát chéo</h3>
-                  <BaoCaoTaiChinhDN kho={kho} mst={hoSo.mst} onFiles={(f) => void napHangLoat(f)} />
                 </div>
                 <div>
                   <h3 className="mb-1 font-semibold">☁️ File đã lưu trên mây, theo quý</h3>
@@ -1250,6 +1261,7 @@ const THANH_TAB = [
   ['keKhai', '📝', 'Kê khai quý', 'Kê khai'],
   ['loHang', '📦', 'Lô hàng', 'Lô hàng'],
   ['congNo', '💳', 'Công nợ', 'Công nợ'],
+  ['bctc', '📑', 'Báo cáo tài chính', 'BCTC'],
   ['kho', '🗂', 'Kho hồ sơ', 'Kho HS'],
 ] as const
 
