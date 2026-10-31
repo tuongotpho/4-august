@@ -1,0 +1,9 @@
+{
+  "name": "lethanh-hosting",
+  "private": true,
+  "type": "module",
+  "description": "Dựng và đưa các app lên Firebase Hosting (app-by-lethanh.web.app) — xem build.mjs",
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

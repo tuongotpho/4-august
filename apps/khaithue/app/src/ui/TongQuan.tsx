@@ -21,7 +21,7 @@ function SoiRuiRo({ kq, tt }: { kq: KetQuaSoi | null; tt: TrangThaiRuiRo }) {
     return (
       <p className="text-amber-800">
         Tài khoản này chưa nạp danh sách DN rủi ro nào. Nạp file Excel "PHỤ LỤC QR HDRR" của cơ quan thuế ở{' '}
-        <a className="underline" href="https://hoadon-npsc.vercel.app" target="_blank" rel="noreferrer">app hoá đơn đỏ</a> → Cài đặt; app này tự đọc dùng chung.
+        <a className="underline" href="https://app-by-lethanh.web.app/hoa-don/" target="_blank" rel="noreferrer">app hoá đơn đỏ</a> → Cài đặt; app này tự đọc dùng chung.
       </p>
     )
   }

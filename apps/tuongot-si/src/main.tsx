@@ -6,6 +6,6 @@ import './index.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {location.pathname.startsWith('/ket-noi-ai') ? <AiConsentPage /> : <App />}
+    {location.pathname.replace(/^\/tuong-ot/, '').startsWith('/ket-noi-ai') ? <AiConsentPage /> : <App />}
   </StrictMode>,
 )

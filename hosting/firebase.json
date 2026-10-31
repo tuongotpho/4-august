@@ -2,21 +2,375 @@
   "hosting": {
     "site": "app-by-lethanh",
     "public": "public",
-    "ignore": ["firebase.json", "**/.*"],
+    "ignore": [
+      "firebase.json",
+      "**/.*"
+    ],
     "rewrites": [
-      { "source": "/hoa-don/mcp", "function": { "functionId": "hoadon", "region": "asia-southeast1" } },
-      { "source": "/hoa-don/oauth/**", "function": { "functionId": "hoadon", "region": "asia-southeast1" } },
-      { "source": "/hoa-don/telegram/**", "function": { "functionId": "hoadon", "region": "asia-southeast1" } },
-      { "source": "/hoa-don/.well-known/**", "function": { "functionId": "hoadon", "region": "asia-southeast1" } },
-      { "source": "/.well-known/oauth-protected-resource/hoa-don/**", "function": { "functionId": "hoadon", "region": "asia-southeast1" } },
-      { "source": "/.well-known/oauth-authorization-server/hoa-don", "function": { "functionId": "hoadon", "region": "asia-southeast1" } },
-      { "source": "/.well-known/openid-configuration/hoa-don", "function": { "functionId": "hoadon", "region": "asia-southeast1" } },
-      { "source": "/hoa-don/**", "destination": "/hoa-don/index.html" }
+      {
+        "source": "/hoa-don/mcp",
+        "function": {
+          "functionId": "hoadon",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/hoa-don/oauth/**",
+        "function": {
+          "functionId": "hoadon",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/hoa-don/.well-known/**",
+        "function": {
+          "functionId": "hoadon",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/hoa-don/telegram/**",
+        "function": {
+          "functionId": "hoadon",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/oauth-protected-resource/hoa-don/**",
+        "function": {
+          "functionId": "hoadon",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/oauth-authorization-server/hoa-don",
+        "function": {
+          "functionId": "hoadon",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/openid-configuration/hoa-don",
+        "function": {
+          "functionId": "hoadon",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/khai-thue/mcp",
+        "function": {
+          "functionId": "khaithue",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/khai-thue/oauth/**",
+        "function": {
+          "functionId": "khaithue",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/khai-thue/.well-known/**",
+        "function": {
+          "functionId": "khaithue",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/khai-thue/telegram/**",
+        "function": {
+          "functionId": "khaithue",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/oauth-protected-resource/khai-thue/**",
+        "function": {
+          "functionId": "khaithue",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/oauth-authorization-server/khai-thue",
+        "function": {
+          "functionId": "khaithue",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/openid-configuration/khai-thue",
+        "function": {
+          "functionId": "khaithue",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/quy-phong/mcp",
+        "function": {
+          "functionId": "quyphong",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/quy-phong/oauth/**",
+        "function": {
+          "functionId": "quyphong",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/quy-phong/.well-known/**",
+        "function": {
+          "functionId": "quyphong",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/oauth-protected-resource/quy-phong/**",
+        "function": {
+          "functionId": "quyphong",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/oauth-authorization-server/quy-phong",
+        "function": {
+          "functionId": "quyphong",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/openid-configuration/quy-phong",
+        "function": {
+          "functionId": "quyphong",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/lich-giang/mcp",
+        "function": {
+          "functionId": "antoan",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/lich-giang/oauth/**",
+        "function": {
+          "functionId": "antoan",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/lich-giang/.well-known/**",
+        "function": {
+          "functionId": "antoan",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/lich-giang/telegram/**",
+        "function": {
+          "functionId": "antoan",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/lich-giang/ai/**",
+        "function": {
+          "functionId": "antoan",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/lich-giang/cron/**",
+        "function": {
+          "functionId": "antoan",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/oauth-protected-resource/lich-giang/**",
+        "function": {
+          "functionId": "antoan",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/oauth-authorization-server/lich-giang",
+        "function": {
+          "functionId": "antoan",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/openid-configuration/lich-giang",
+        "function": {
+          "functionId": "antoan",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/tuong-ot/mcp",
+        "function": {
+          "functionId": "tuongotsi",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/tuong-ot/oauth/**",
+        "function": {
+          "functionId": "tuongotsi",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/tuong-ot/.well-known/**",
+        "function": {
+          "functionId": "tuongotsi",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/oauth-protected-resource/tuong-ot/**",
+        "function": {
+          "functionId": "tuongotsi",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/oauth-authorization-server/tuong-ot",
+        "function": {
+          "functionId": "tuongotsi",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/openid-configuration/tuong-ot",
+        "function": {
+          "functionId": "tuongotsi",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/the-visa/mcp",
+        "function": {
+          "functionId": "thevisa",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/the-visa/oauth/**",
+        "function": {
+          "functionId": "thevisa",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/the-visa/.well-known/**",
+        "function": {
+          "functionId": "thevisa",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/the-visa/api/**",
+        "function": {
+          "functionId": "thevisa",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/oauth-protected-resource/the-visa/**",
+        "function": {
+          "functionId": "thevisa",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/oauth-authorization-server/the-visa",
+        "function": {
+          "functionId": "thevisa",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/.well-known/openid-configuration/the-visa",
+        "function": {
+          "functionId": "thevisa",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/hoa-don/**",
+        "destination": "/hoa-don/index.html"
+      },
+      {
+        "source": "/khai-thue/**",
+        "destination": "/khai-thue/index.html"
+      },
+      {
+        "source": "/quy-phong/**",
+        "destination": "/quy-phong/index.html"
+      },
+      {
+        "source": "/lich-giang/**",
+        "destination": "/lich-giang/index.html"
+      },
+      {
+        "source": "/tuong-ot/**",
+        "destination": "/tuong-ot/index.html"
+      },
+      {
+        "source": "/the-visa/**",
+        "destination": "/the-visa/index.html"
+      }
     ],
     "headers": [
-      { "source": "**/*.html", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
-      { "source": "/", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
-      { "source": "**/assets/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] }
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          }
+        ]
+      },
+      {
+        "regex": "^/([a-z-]+/)?(index\\.html)?$",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "**/assets/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "regex": "^/khai-thue/(index\\.html)?$",
+        "headers": [
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'none'; script-src 'self' 'unsafe-inline' https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://firestore.googleapis.com https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://apis.google.com; frame-src https://app-from-ai.firebaseapp.com https://accounts.google.com; form-action 'none'; base-uri 'none'; frame-ancestors 'none'"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "no-referrer"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "camera=(), microphone=(), geolocation=()"
+          }
+        ]
+      }
     ]
   },
   "functions": [
@@ -24,8 +378,23 @@
       "source": "functions",
       "codebase": "lethanh",
       "runtime": "nodejs22",
-      "ignore": ["node_modules", ".git", "*.log"]
+      "ignore": [
+        "node_modules",
+        ".git",
+        "*.log"
+      ]
     }
   ],
-  "emulators": { "hosting": { "port": 5050 }, "functions": { "port": 5051 }, "ui": { "enabled": false }, "singleProjectMode": true }
+  "emulators": {
+    "hosting": {
+      "port": 5050
+    },
+    "functions": {
+      "port": 5051
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true
+  }
 }

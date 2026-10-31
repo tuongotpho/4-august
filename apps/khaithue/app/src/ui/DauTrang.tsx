@@ -87,8 +87,8 @@ export function TaiKhoan({ user, onDangXuat, moSan = false }: { user: User; onDa
   )
 }
 
-/** Địa chỉ gốc của app (máy chủ Kết nối AI ở đây). Mở qua cổng app-by-lethanh thì vẫn là khaithue.vercel.app. */
-const DIA_CHI_GOC = location.hostname === 'app-by-lethanh.vercel.app' ? 'https://khaithue.vercel.app' : location.origin
+/** Địa chỉ gốc của app (máy chủ Kết nối AI ở đây). Mở dưới cổng chung …/khai-thue/ (Firebase) thì máy chủ ở cùng tên miền, dưới /khai-thue. */
+const DIA_CHI_GOC = location.pathname.startsWith('/khai-thue/') ? `${location.origin}/khai-thue` : location.origin
 
 const gio = (d: Date | null) => (d ? d.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : '')
 

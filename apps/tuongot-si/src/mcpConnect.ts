@@ -12,11 +12,12 @@ const env = import.meta.env
 /** Máy chủ MCP = chính tên miền web đang chạy (Vercel). Chạy ở máy thì cho phép máy chủ chạy thử localhost. */
 export function mayChuChoPhep(thamSo: string | null, dev = env.DEV): string {
   if (dev && thamSo && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(thamSo)) return thamSo
-  return location.origin
+  return gocMayChu()
 }
 
-/** Mở qua cổng app-by-lethanh thì máy chủ MCP vẫn ở địa chỉ gốc tuongot-si.vercel.app */
-export const mcpUrl = () => `${location.hostname === 'app-by-lethanh.vercel.app' ? 'https://tuongot-si.vercel.app' : location.origin}/mcp`
+/** Mở dưới cổng chung …/tuong-ot/ (Firebase app-by-lethanh.web.app): máy chủ MCP ở cùng tên miền, dưới /tuong-ot */
+const gocMayChu = () => (location.pathname.startsWith('/tuong-ot/') ? `${location.origin}/tuong-ot` : location.origin)
+export const mcpUrl = () => `${gocMayChu()}/mcp`
 
 const cfg = {
   apiKey: env.VITE_FIREBASE_API_KEY as string,
