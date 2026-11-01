@@ -8,6 +8,8 @@ import { mauCua, soatBctc, type SoLieuBctc } from '../core/bctc'
 import { cheDoGoiY, lapBctcTheoMau, nhanDienSieuNho, type CheDoBctc, type NguonSo, type NhapTayBctc } from '../core/lapBctc'
 import type { GhiChuKiem } from '../core/xemHoaDon'
 import { dienMauWord } from '../core/xuatWordBctc'
+import { tenFileXmlBctc, xmlBctcTT133, xmlBctcTT58 } from '../core/xmlBctc'
+import type { HoSoDN } from '../core/types'
 import { VungThaFile } from './chung'
 
 const tien = (v: number | undefined) => (v == null ? '' : Math.round(v).toLocaleString('vi-VN'))
@@ -156,6 +158,19 @@ async function xuatWord(b: SoLieuBctc, mau: CheDoBctc, hoSo: { tenNNT: string; d
   }
 }
 
+/** Xuất file XML đúng khung HTKK 5.8.1: TT133 = mẫu 683, TT58 = mẫu 1280 (chưa ký số) */
+function xuatXml(b: SoLieuBctc, mau: 'TT133' | 'TT58', hoSo: HoSoDN) {
+  const homNay = new Date()
+  const ngayLap = `${homNay.getFullYear()}-${String(homNay.getMonth() + 1).padStart(2, '0')}-${String(homNay.getDate()).padStart(2, '0')}`
+  const xml = mau === 'TT133' ? xmlBctcTT133(b, hoSo, ngayLap) : xmlBctcTT58(b, hoSo, ngayLap)
+  const url = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = tenFileXmlBctc(mau, b, hoSo.mst)
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 2000)
+}
+
 export function LapBaoCaoTaiChinh({ kho, mst }: { kho: Kho; mst: string }) {
   const [homNay] = useState(() => new Date())
   const nayNam = homNay.getFullYear()
@@ -246,6 +261,18 @@ export function LapBaoCaoTaiChinh({ kho, mst }: { kho: Kho; mst: string }) {
               <span className="text-xs text-slate-500">Điền số vào chính mẫu Word của Thông tư: đơn vị, địa chỉ, ngày, đơn vị tính, người đại diện; chữ ký để trống.</span>
             </div>
           ) : <p className="text-xs text-slate-500">Mẫu {mau}: chưa có file mẫu Word trong app — gửi mẫu Word (như đã gửi cho TT58) để xuất đúng mẫu.</p>}
+          {(mau === 'TT133' || mau === 'TT58') && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => { const h = kho.congTy[mst]?.hoSo; if (h) xuatXml(r.bctc, mau, h) }}
+                className="rounded-lg border border-emerald-600 bg-white px-3 py-1.5 font-medium text-emerald-700"
+              >⬇ Xuất XML (HTKK – mẫu {mau === 'TT133' ? '683' : '1280'})</button>
+              <span className="text-xs text-slate-500">
+                File XML đúng khung HTKK 5.8.1 (đã kiểm bằng .xsd của HTKK), chưa ký số — nạp vào HTKK để xem / bổ sung, hoặc ký và nộp trên thuedientu.
+                {mau === 'TT133' && <> <b>Chưa có Bảng cân đối tài khoản F01-DNN</b> (bắt buộc kèm khi gửi cơ quan thuế): lập thêm trong HTKK sau khi nạp file.</>}
+              </span>
+            </div>
+          )}
           {mau !== 'TT58' && <p className="text-xs text-slate-500">Thuyết minh báo cáo tài chính (B09-DN) app chưa lập — người lập soạn riêng.</p>}
           <BaBang b={r.bctc} nguon={r.nguon} />
           {r.chuaPhanLoai.length > 0 && (

@@ -10,7 +10,13 @@ import sys
 from lxml import etree
 
 HTKK = os.environ.get('HTKK_DIR', r'C:\Program Files (x86)\HTKK\InterfaceTemplates\Validate')
-XSD = {'842': '01_GTGT_TT80_283.xsd', '864': '05_KK_TNCN_TT80_293.xsd'}
+XSD = {
+    '842': '01_GTGT_TT80_283.xsd',
+    '864': '05_KK_TNCN_TT80_293.xsd',
+    # Báo cáo tài chính (HTKK 5.8.1): TT133 B01a-DNN, TT58 doanh nghiệp siêu nhỏ
+    '683': '133_B01A_DNN_BCTC.xsd',
+    '1280': '58_BCTC.xsd',
+}
 NS = {'t': 'http://kekhaithue.gdt.gov.vn/TKhaiThue'}
 
 

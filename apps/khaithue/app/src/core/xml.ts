@@ -201,7 +201,7 @@ ${ten.map((k) => `<${k}>${ct[k] ?? 0}</${k}>`).join('\n')}
 }
 
 /** Thụt lề 2 dấu cách cho dễ đọc, giống file HTKK */
-function dinhDang(xml: string): string {
+export function dinhDang(xml: string): string {
   let cap = 0
   return xml
     .split('\n')
