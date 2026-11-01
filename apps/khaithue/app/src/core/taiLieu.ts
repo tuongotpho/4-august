@@ -40,7 +40,7 @@ export function datChungTu(nhom: Record<string, ChungTu>, ct: ChungTu) {
 }
 
 export type TaiLieu =
-  | { loai: 'toKhai'; tk: ToKhaiDaNop; tenTKhai: string; kieuKy: string; kyChu: string; bctc?: SoLieuBctc }
+  | { loai: 'toKhai'; tk: ToKhaiDaNop; tenTKhai: string; kieuKy: string; kyChu: string; bctc?: SoLieuBctc; rawXml?: string }
   | { loai: 'chungTu'; ct: ChungTu }
   | { loai: 'hoaDon'; hd: Omit<HoaDon, 'loai'> }
   | { loai: 'khac'; goc: string }
@@ -66,7 +66,7 @@ export function docTaiLieu(xml: string): TaiLieu {
     const kieuKy = the(xml, 'kieuKy')
     // Báo cáo tài chính: đọc thêm 3 bảng để xem + soát (core/bctc.ts)
     const bctc = laBctc(tk.maTKhai) ? docBctc(xml) ?? undefined : undefined
-    return { loai: 'toKhai', tk, tenTKhai: the(xml, 'tenTKhai'), kieuKy, kyChu: kyDangChu(kieuKy, the(xml, 'kyKKhai')), ...(bctc ? { bctc } : {}) }
+    return { loai: 'toKhai', tk, tenTKhai: the(xml, 'tenTKhai'), kieuKy, kyChu: kyDangChu(kieuKy, the(xml, 'kyKKhai')), rawXml: xml, ...(bctc ? { bctc } : {}) }
   }
 
   if (goc === 'CHUNGTU') {

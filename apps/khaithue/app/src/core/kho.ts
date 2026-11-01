@@ -58,8 +58,10 @@ export interface ToKhaiKhac {
   soLan: number
   ngayLap: string
   tenFile: string
-  /** Báo cáo tài chính (mẫu 402): số liệu 3 bảng đã đọc để xem + soát — thêm 31/10/2026, bản ghi cũ không có */
+  /** Báo cáo tài chính (mẫu 402, 683, 1280, 1281): số liệu các bảng đã đọc để xem + soát */
   bctc?: SoLieuBctc
+  /** Nội dung XML gốc để xem bản in chuẩn iTax Viewer */
+  rawXml?: string
 }
 
 /** Hoá đơn rút gọn để làm tổng quan (đối chiếu doanh thu tờ khai với hoá đơn) */
@@ -407,7 +409,7 @@ export function napTaiLieu(kho0: Kho, tl: TaiLieu, tenFile: string, id?: string)
     // Cùng mẫu + kỳ + loại + lần = cùng một tờ khai (dù nạp từ file hay từ mây)
     const khoa = khoaKhac(tl.tk.maTKhai, tl.kyChu, tl.tk.loaiTKhai, tl.tk.soLan)
     ;((kho.toKhaiKhac ??= {})[mst] ??= {})[khoa] = {
-      maTKhai: tl.tk.maTKhai, tenTKhai: tl.tenTKhai, ky: tl.kyChu, loaiTKhai: tl.tk.loaiTKhai, soLan: tl.tk.soLan, ngayLap: tl.tk.ngayLap, tenFile, ...(tl.bctc ? { bctc: tl.bctc } : {}),
+      maTKhai: tl.tk.maTKhai, tenTKhai: tl.tenTKhai, ky: tl.kyChu, loaiTKhai: tl.tk.loaiTKhai, soLan: tl.tk.soLan, ngayLap: tl.tk.ngayLap, tenFile, ...(tl.bctc ? { bctc: tl.bctc } : {}), ...(tl.rawXml ? { rawXml: tl.rawXml } : {}),
     }
     return { kho, moTa: `${tl.tenTKhai || 'Tờ khai mã ' + tl.tk.maTKhai} — kỳ ${tl.kyChu} (${tl.bctc ? 'đã đọc số liệu, xem ở mục Báo cáo tài chính' : 'lưu trữ'})` }
   }

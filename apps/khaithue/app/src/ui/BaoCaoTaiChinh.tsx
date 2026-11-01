@@ -8,14 +8,22 @@ import { mauCua, soatBctc, type SoLieuBctc } from '../core/bctc'
 import { cheDoGoiY, lapBctcTheoMau, nhanDienSieuNho, type CheDoBctc, type NguonSo, type NhapTayBctc } from '../core/lapBctc'
 import type { GhiChuKiem } from '../core/xemHoaDon'
 import { dienMauWord } from '../core/xuatWordBctc'
-import { tenFileXmlBctc, xmlBctcTT133, xmlBctcTT58 } from '../core/xmlBctc'
+import { tenFileXmlBctc, xmlBctc } from '../core/xmlBctc'
 import type { HoSoDN } from '../core/types'
 import { VungThaFile } from './chung'
+import { ItaxViewer } from './ItaxViewer'
 
 const tien = (v: number | undefined) => (v == null ? '' : Math.round(v).toLocaleString('vi-VN'))
 const ngayIn = (iso: string) => iso.split('-').reverse().join('/')
 
 type Bang = 'cdkt' | 'kqkd' | 'lctt'
+
+const MA_HTKK: Record<CheDoBctc, string> = {
+  TT133: '683',
+  TT58: '1280',
+  TT99: '1281',
+  TT200: '402',
+}
 
 const GIAI_THICH_MAU: Record<CheDoBctc, string> = {
   TT200: 'Thông tư 200/2014/TT-BTC — dùng cho BCTC năm 2025 trở về trước (như các năm đã nộp).',
@@ -158,12 +166,12 @@ async function xuatWord(b: SoLieuBctc, mau: CheDoBctc, hoSo: { tenNNT: string; d
   }
 }
 
-/** Xuất file XML đúng khung HTKK 5.8.1: TT133 = mẫu 683, TT58 = mẫu 1280 (chưa ký số) */
-function xuatXml(b: SoLieuBctc, mau: 'TT133' | 'TT58', hoSo: HoSoDN) {
+/** Xuất file XML đúng khung HTKK 5.8.1: TT133=683, TT58=1280, TT99=1281, TT200=402 (chưa ký số) */
+function xuatXml(b: SoLieuBctc, mau: CheDoBctc, hoSo: HoSoDN) {
   const homNay = new Date()
   const ngayLap = `${homNay.getFullYear()}-${String(homNay.getMonth() + 1).padStart(2, '0')}-${String(homNay.getDate()).padStart(2, '0')}`
-  const xml = mau === 'TT133' ? xmlBctcTT133(b, hoSo, ngayLap) : xmlBctcTT58(b, hoSo, ngayLap)
-  const url = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }))
+  const xml = xmlBctc(mau, b, hoSo, ngayLap)
+  const url = URL.createObjectURL(new Blob([xml], { type: 'application/xml;charset=utf-8' }))
   const a = document.createElement('a')
   a.href = url
   a.download = tenFileXmlBctc(mau, b, hoSo.mst)
@@ -176,6 +184,7 @@ export function LapBaoCaoTaiChinh({ kho, mst }: { kho: Kho; mst: string }) {
   const nayNam = homNay.getFullYear()
   const [nam, setNam] = useState(homNay.getMonth() < 3 ? nayNam - 1 : nayNam)
   const [mauChon, setMauChon] = useState<CheDoBctc | ''>('')
+  const [cheDoXem, setCheDoXem] = useState<'bang' | 'itax'>('bang')
   // Số nhập tay theo công ty + năm: đổi năm thì đọc lại
   const [nhapTheo, setNhapTheo] = useState<{ khoa: string; nhap: NhapTayBctc }>(() => ({ khoa: khoaNhap(mst, nam), nhap: docNhap(mst, nam) }))
   const nhap = nhapTheo.khoa === khoaNhap(mst, nam) ? nhapTheo.nhap : docNhap(mst, nam)
@@ -197,6 +206,27 @@ export function LapBaoCaoTaiChinh({ kho, mst }: { kho: Kho; mst: string }) {
   const kiem = useMemo(() => soatBctc(r.bctc).filter((x) => !/thuyết minh báo cáo tài chính/.test(x.noiDung)), [r])
   const cacNam = Array.from({ length: nayNam - 2023 }, (_, i) => nayNam - i)
   const mauHopLe: CheDoBctc[] = nam >= 2026 ? ['TT133', 'TT58', 'TT99'] : ['TT200', 'TT133', 'TT58']
+
+  const hoSoDN = useMemo((): HoSoDN => {
+    return kho.congTy[mst]?.hoSo ?? {
+      mst, tenNNT: `Công ty ${mst}`, dchiNNT: 'Trụ sở chính', phuongXa: '', maXaNNT: '',
+      maTinhNNT: '101', tenTinhNNT: 'Hà Nội', dthoaiNNT: '', emailNNT: '',
+      maCQTNoiNop: '10100', tenCQTNoiNop: 'Thuế cơ sở', nguoiKy: '',
+    }
+  }, [kho, mst])
+
+  const ngayLapStr = useMemo(() => {
+    return `${homNay.getFullYear()}-${String(homNay.getMonth() + 1).padStart(2, '0')}-${String(homNay.getDate()).padStart(2, '0')}`
+  }, [homNay])
+
+  const xmlHienTai = useMemo(() => {
+    try {
+      return xmlBctc(mau, r.bctc, hoSoDN, ngayLapStr)
+    } catch (e) {
+      console.warn('Lỗi tạo XML bản in BCTC:', e)
+      return null
+    }
+  }, [mau, r.bctc, hoSoDN, ngayLapStr])
 
   return (
     <div className="space-y-4 text-sm">
@@ -261,20 +291,51 @@ export function LapBaoCaoTaiChinh({ kho, mst }: { kho: Kho; mst: string }) {
               <span className="text-xs text-slate-500">Điền số vào chính mẫu Word của Thông tư: đơn vị, địa chỉ, ngày, đơn vị tính, người đại diện; chữ ký để trống.</span>
             </div>
           ) : <p className="text-xs text-slate-500">Mẫu {mau}: chưa có file mẫu Word trong app — gửi mẫu Word (như đã gửi cho TT58) để xuất đúng mẫu.</p>}
-          {(mau === 'TT133' || mau === 'TT58') && (
-            <div className="flex flex-wrap items-center gap-2">
+
+          {/* Thanh chuyển chế độ xem & Xuất XML chuẩn HTKK */}
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2">
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
               <button
-                onClick={() => { const h = kho.congTy[mst]?.hoSo; if (h) xuatXml(r.bctc, mau, h) }}
-                className="rounded-lg border border-emerald-600 bg-white px-3 py-1.5 font-medium text-emerald-700"
-              >⬇ Xuất XML (HTKK – mẫu {mau === 'TT133' ? '683' : '1280'})</button>
-              <span className="text-xs text-slate-500">
-                File XML đúng khung HTKK 5.8.1 (đã kiểm bằng .xsd của HTKK), chưa ký số — nạp vào HTKK để xem / bổ sung, hoặc ký và nộp trên thuedientu.
-                {mau === 'TT133' && <> <b>Chưa có Bảng cân đối tài khoản F01-DNN</b> (bắt buộc kèm khi gửi cơ quan thuế): lập thêm trong HTKK sau khi nạp file.</>}
-              </span>
+                type="button"
+                onClick={() => setCheDoXem('bang')}
+                className={`px-3 py-1 text-xs rounded-md font-medium transition-colors cursor-pointer ${cheDoXem === 'bang' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                📊 Bảng số liệu & Nguồn gốc
+              </button>
+              <button
+                type="button"
+                onClick={() => setCheDoXem('itax')}
+                className={`px-3 py-1 text-xs rounded-md font-medium transition-colors flex items-center gap-1 cursor-pointer ${cheDoXem === 'itax' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                📑 Bản in chuẩn iTax / HTKK
+              </button>
             </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => { const h = kho.congTy[mst]?.hoSo; if (h) xuatXml(r.bctc, mau, h) }}
+                className="rounded-lg border border-emerald-600 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors flex items-center gap-1 cursor-pointer"
+                title={`Xuất file XML chuẩn HTKK 5.8.1 (mẫu ${MA_HTKK[mau]})`}
+              >
+                ⬇ Xuất XML HTKK (mẫu {MA_HTKK[mau]})
+              </button>
+            </div>
+          </div>
+
+          {cheDoXem === 'itax' ? (
+            xmlHienTai ? (
+              <div className="rounded-xl border border-slate-300 overflow-hidden shadow-sm" style={{ minHeight: '600px' }}>
+                <ItaxViewer xml={xmlHienTai} tenFile={tenFileXmlBctc(mau, r.bctc, mst)} />
+              </div>
+            ) : (
+              <p className="text-xs text-red-600">Chưa tạo được bản in XML cho mẫu này.</p>
+            )
+          ) : (
+            <>
+              {mau !== 'TT58' && <p className="text-xs text-slate-500">Thuyết minh báo cáo tài chính (B09-DN) app chưa lập — người lập soạn riêng.</p>}
+              <BaBang b={r.bctc} nguon={r.nguon} />
+            </>
           )}
-          {mau !== 'TT58' && <p className="text-xs text-slate-500">Thuyết minh báo cáo tài chính (B09-DN) app chưa lập — người lập soạn riêng.</p>}
-          <BaBang b={r.bctc} nguon={r.nguon} />
           {r.chuaPhanLoai.length > 0 && (
             <div className="rounded-xl border border-slate-200 p-3">
               <button className="text-emerald-700 underline" onClick={() => setXemGd(!xemGd)}>{xemGd ? 'Ẩn' : 'Xem'} {r.chuaPhanLoai.length} giao dịch ngân hàng chưa rõ loại</button>
@@ -314,8 +375,24 @@ export function BaoCaoTaiChinhDN({ kho, mst, onFiles }: { kho: Kho; mst: string;
     return [...theoNam.values()].sort((a, b) => b.ky.localeCompare(a.ky))
   }, [kho, mst])
   const [chon, setChon] = useState<string | null>(null)
+  const [cheDoXem, setCheDoXem] = useState<'bang' | 'itax'>('bang')
   const t = ds.find((x) => x.ky === chon) ?? ds[0]
   const kiem = useMemo(() => (t ? soatBctc(t.bctc) : []), [t])
+
+  const xmlNop = useMemo(() => {
+    if (!t) return null
+    if (t.rawXml) return t.rawXml
+    const hoSo = kho.congTy[mst]?.hoSo ?? {
+      mst, tenNNT: `Công ty ${mst}`, dchiNNT: 'Trụ sở chính', phuongXa: '', maXaNNT: '',
+      maTinhNNT: '101', tenTinhNNT: 'Hà Nội', dthoaiNNT: '', emailNNT: '',
+      maCQTNoiNop: '10100', tenCQTNoiNop: 'Thuế cơ sở', nguoiKy: t.bctc.nguoiKy || '',
+    }
+    try {
+      return xmlBctc(t.bctc.cheDo as CheDoBctc, t.bctc, hoSo, t.bctc.ngayLap)
+    } catch {
+      return null
+    }
+  }, [t, kho, mst])
 
   return (
     <div className="space-y-3 text-sm">
@@ -325,7 +402,7 @@ export function BaoCaoTaiChinhDN({ kho, mst, onFiles }: { kho: Kho; mst: string;
         nhan={
           <>
             <div className="font-medium">Kéo thả file XML báo cáo tài chính đã nộp vào đây, hoặc bấm để chọn</div>
-            <div className="mt-1 text-slate-600">File tờ khai <b>402 – BCTC theo TT200</b> (xuất từ HTKK hoặc tải lại trên thuedientu). App đọc 3 bảng và <b>soát chéo</b>: lợi nhuận vào vốn chủ, vốn góp trong lưu chuyển tiền, tiền thu – tiền trả so với doanh thu, hàng mua… BCTC năm trước còn là <b>số đầu năm</b> cho phần lập ở trên.</div>
+            <div className="mt-1 text-slate-600">File tờ khai BCTC theo TT200 (mẫu 402), TT133 (mẫu 683), TT99 (mẫu 1281) hoặc TT58 (mẫu 1280). App đọc các bảng, soát chéo và hiển thị bản in chuẩn form iTax Viewer. BCTC năm trước còn là số đầu năm cho phần lập ở trên.</div>
           </>
         }
       />
@@ -333,25 +410,59 @@ export function BaoCaoTaiChinhDN({ kho, mst, onFiles }: { kho: Kho; mst: string;
         <p className="text-slate-500">Chưa có báo cáo tài chính nào của công ty này. (BCTC nạp trước bản này cần thả lại file để app đọc số liệu.)</p>
       ) : (
         <>
-          {ds.length > 1 && (
-            <div className="flex flex-wrap gap-1.5">
-              {ds.map((x) => (
-                <button key={x.ky} onClick={() => setChon(x.ky)} className={`rounded-full border px-3 py-1 text-xs ${x.ky === t.ky ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-slate-300 bg-white hover:border-emerald-500'}`}>
-                  Năm {x.ky}
-                </button>
-              ))}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {ds.length > 1 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {ds.map((x) => (
+                  <button key={x.ky} onClick={() => setChon(x.ky)} className={`rounded-full border px-3 py-1 text-xs cursor-pointer ${x.ky === t.ky ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-slate-300 bg-white hover:border-emerald-500'}`}>
+                    Năm {x.ky}
+                  </button>
+                ))}
+              </div>
+            ) : <div />}
+
+            {/* Thanh chuyển chế độ xem */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setCheDoXem('bang')}
+                className={`px-3 py-1 text-xs rounded-md font-medium transition-colors cursor-pointer ${cheDoXem === 'bang' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                📊 Bảng số liệu & Soát chéo
+              </button>
+              <button
+                type="button"
+                onClick={() => setCheDoXem('itax')}
+                className={`px-3 py-1 text-xs rounded-md font-medium transition-colors flex items-center gap-1 cursor-pointer ${cheDoXem === 'itax' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                📑 Bản in chuẩn iTax Viewer
+              </button>
             </div>
-          )}
+          </div>
+
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
             <b>BCTC năm {t.bctc.nam}</b> ({t.bctc.tuNgay} – {t.bctc.denNgay}) · chế độ {t.bctc.cheDo} · {t.loaiTKhai === 'B' ? `bổ sung lần ${t.soLan}` : 'chính thức'} · lập {ngayIn(t.bctc.ngayLap)}
             {t.bctc.nguoiKy && <> · ký: {t.bctc.nguoiKy}</>} · {t.bctc.daKiemToan ? 'đã kiểm toán' : 'chưa kiểm toán'}
           </div>
-          <div data-soat-bctc>
-            <DsKiem kiem={kiem} />
-            <p className="mt-1 text-xs text-slate-500">App chỉ soát các con số trên báo cáo với nhau, chưa đối chiếu với hoá đơn, sao kê, sổ quỹ. Có cảnh báo thì xem lại sổ sách và cân nhắc nộp báo cáo bổ sung.</p>
-          </div>
-          <BaBang b={t.bctc} />
-          <p className="text-xs text-slate-500">Số cuối năm {t.bctc.nam} là số đầu năm {Number(t.bctc.nam) + 1} khi lập báo cáo năm sau.</p>
+
+          {cheDoXem === 'itax' ? (
+            xmlNop ? (
+              <div className="rounded-xl border border-slate-300 overflow-hidden shadow-sm" style={{ minHeight: '600px' }}>
+                <ItaxViewer xml={xmlNop} tenFile={t.tenFile} />
+              </div>
+            ) : (
+              <p className="text-xs text-red-600">Chưa dựng được bản in chuẩn từ file này.</p>
+            )
+          ) : (
+            <>
+              <div data-soat-bctc>
+                <DsKiem kiem={kiem} />
+                <p className="mt-1 text-xs text-slate-500">App chỉ soát các con số trên báo cáo với nhau, chưa đối chiếu với hoá đơn, sao kê, sổ quỹ. Có cảnh báo thì xem lại sổ sách và cân nhắc nộp báo cáo bổ sung.</p>
+              </div>
+              <BaBang b={t.bctc} />
+              <p className="text-xs text-slate-500">Số cuối năm {t.bctc.nam} là số đầu năm {Number(t.bctc.nam) + 1} khi lập báo cáo năm sau.</p>
+            </>
+          )}
         </>
       )}
     </div>

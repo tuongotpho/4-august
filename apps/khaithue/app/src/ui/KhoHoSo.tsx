@@ -3,6 +3,7 @@ import { tenKy } from '../core/kho'
 import { tien } from '../core/nhan'
 import { taiTep, type DuLieuMay, type NhomTaiLieu } from '../may/dongBo'
 import { kyCuaChungTu } from '../core/taiLieu'
+import { ItaxViewer } from './ItaxViewer'
 
 function taiVeMay(ten: string, du: ArrayBuffer) {
   const url = URL.createObjectURL(new Blob([du]))
@@ -23,6 +24,7 @@ export function KhoHoSo({ may, mst, onMoLai, onXoa }: {
 }) {
   const [ban, setBan] = useState('')
   const [loi, setLoi] = useState('')
+  const [xemBanIn, setXemBanIn] = useState<{ tenFile: string; xml: string } | null>(null)
   const toKhai = may.toKhai.filter((t) => t.mst === mst)
   const hoaDon = may.tepHoaDon[mst] ?? []
   const daXuat = may.daXuat[mst] ?? []
@@ -40,6 +42,20 @@ export function KhoHoSo({ may, mst, onMoLai, onXoa }: {
       taiVeMay(ten, await taiTep(duongDan))
     } catch (e) {
       setLoi(`Không tải được file từ mây: ${(e as Error).message}`)
+    } finally {
+      setBan('')
+    }
+  }
+
+  async function xemIn(tenFile: string, duongDan: string) {
+    setBan(duongDan)
+    setLoi('')
+    try {
+      const du = await taiTep(duongDan)
+      const xml = new TextDecoder('utf-8').decode(du)
+      setXemBanIn({ tenFile, xml })
+    } catch (e) {
+      setLoi(`Không đọc được file để in: ${(e as Error).message}`)
     } finally {
       setBan('')
     }
@@ -83,6 +99,7 @@ export function KhoHoSo({ may, mst, onMoLai, onXoa }: {
                   {t.maTKhai === '842' && <> — [40] {tien(t.ct.ct40 ?? 0)} · [43] {tien(t.ct.ct43 ?? 0)}</>}
                   {t.khongChapNhan && ' (CQT trả về)'}{' '}
                   <button className="text-emerald-700 underline" disabled={!!ban} onClick={() => tai(t.tenFile, t.duongDan)}>tải XML</button>
+                  <button className="text-blue-700 underline ml-2 cursor-pointer" disabled={!!ban} onClick={() => xemIn(t.tenFile, t.duongDan)}>xem bản in</button>
                   {nutXoa('toKhai', t.id, t.duongDan, t.tenFile)}
                 </li>
               ))}
@@ -97,6 +114,9 @@ export function KhoHoSo({ may, mst, onMoLai, onXoa }: {
                 <li key={x.id} className="text-slate-600">
                   ⬆ App đã xuất: {x.tenFile}{x.ct40 !== null && <> — [40] {tien(x.ct40)}</>}{' '}
                   <button className="text-emerald-700 underline" disabled={!!ban} onClick={() => tai(x.tenFile, x.duongDan)}>tải</button>
+                  {/\.xml$/i.test(x.tenFile) && (
+                    <button className="text-blue-700 underline ml-2 cursor-pointer" disabled={!!ban} onClick={() => xemIn(x.tenFile, x.duongDan)}>xem bản in</button>
+                  )}
                   {nutXoa('daXuat', x.id, x.duongDan, x.tenFile)}
                 </li>
               ))}
@@ -111,6 +131,14 @@ export function KhoHoSo({ may, mst, onMoLai, onXoa }: {
           </div>
         )
       })}
+
+      {xemBanIn && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-5xl h-[90vh] rounded-xl overflow-hidden flex flex-col shadow-2xl">
+            <ItaxViewer xml={xemBanIn.xml} tenFile={xemBanIn.tenFile} onClose={() => setXemBanIn(null)} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

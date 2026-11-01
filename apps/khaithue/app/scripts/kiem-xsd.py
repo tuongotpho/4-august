@@ -13,9 +13,11 @@ HTKK = os.environ.get('HTKK_DIR', r'C:\Program Files (x86)\HTKK\InterfaceTemplat
 XSD = {
     '842': '01_GTGT_TT80_283.xsd',
     '864': '05_KK_TNCN_TT80_293.xsd',
-    # Báo cáo tài chính (HTKK 5.8.1): TT133 B01a-DNN, TT58 doanh nghiệp siêu nhỏ
+    # Báo cáo tài chính (HTKK 5.8.1): TT133 B01a-DNN, TT58 siêu nhỏ, TT99, TT200
     '683': '133_B01A_DNN_BCTC.xsd',
     '1280': '58_BCTC.xsd',
+    '1281': '99_BCTC.xsd',
+    '402': '200_01_CDKT.xsd',
 }
 NS = {'t': 'http://kekhaithue.gdt.gov.vn/TKhaiThue'}
 

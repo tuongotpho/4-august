@@ -3,9 +3,10 @@ import { describe, expect, it } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { docCayXml } from './xemHoaDon.js'
-import { lapBctcTheoMau } from './lapBctc.js'
+import { lapBctcTheoMau, type CheDoBctc } from './lapBctc.js'
 import { khoTrong } from './kho.js'
-import { tenFileXmlBctc, xmlBctcTT133, xmlBctcTT58 } from './xmlBctc.js'
+import { tenFileXmlBctc, xmlBctc, xmlBctcTT133, xmlBctcTT200, xmlBctcTT58, xmlBctcTT99 } from './xmlBctc.js'
+import { docBctc } from './bctc.js'
 import type { HoSoDN } from './types.js'
 
 const RA = path.resolve('.xml-ra')
@@ -17,7 +18,7 @@ const DN: HoSoDN = {
   dthoaiNNT: '0900000000', emailNNT: 'thu@example.com', maCQTNoiNop: '10100', tenCQTNoiNop: 'Thuế cơ sở thử', nguoiKy: 'Nguyễn Văn Thử',
 }
 
-function taoBan(mau: 'TT133' | 'TT58', nam: number) {
+function taoBan(mau: CheDoBctc, nam: number) {
   const k = khoTrong()
   k.congTy[DN.mst] = { hoSo: DN, kyNguon: '', suaTay: true }
   k.hoaDon = { [DN.mst]: {
@@ -53,6 +54,12 @@ describe('XML BCTC theo khung HTKK', () => {
     expect(con(hs, 'PLuc', 'PL_LCTTTT', 'NamNay')?.con.length).toBe(24)
     expect(xml).toContain('<tenNNT>Công ty TNHH Thử &amp; Cộng sự</tenNNT>')
     expect(tenFileXmlBctc('TT133', b, DN.mst)).toBe('0100000001000-133_B01A_DNN_BCTC-01012026_31122026_VND-L00.xml')
+
+    // Kiểm docBctc đọc lại đúng
+    const docLai = docBctc(xml)
+    expect(docLai).not.toBeNull()
+    expect(docLai?.cheDo).toBe('TT133')
+    expect(docLai?.cdkt.cuoi['200']).toBe(b.cdkt.cuoi['200'])
   })
 
   it('mẫu 1280 (TT58): 14 ô B01-DNSN, 5 ô B02-DNSN, phần ký', () => {
@@ -66,10 +73,62 @@ describe('XML BCTC theo khung HTKK', () => {
     expect(Number(con(chinh, 'SoCuoiNam', 'ct500')?.chu)).toBe(b.cdkt.cuoi['500'])
     expect(con(chinh, 'PhanKy', 'thuTruongDonVi')?.chu).toBe('Nguyễn Văn Thử')
     expect(con(hs, 'PLuc', 'PL_BCKQHDKD', 'NamNay')?.con.map((c) => c.ten)).toEqual(['ct01', 'ct02', 'ct03', 'ct10', 'ct20'])
+
+    const docLai = docBctc(xml)
+    expect(docLai).not.toBeNull()
+    expect(docLai?.cheDo).toBe('TT58')
+    expect(docLai?.cdkt.cuoi['500']).toBe(b.cdkt.cuoi['500'])
   })
 
-  it('từ chối nhầm mẫu', () => {
+  it('mẫu 1281 (TT99): 126 ô B01-DN, 21 ô B02-DN, 27 ô B03-DN trực tiếp', () => {
+    const b = taoBan('TT99', 2026)
+    const xml = xmlBctcTT99(b, DN, '2027-03-25', { nguoiLapBieu: 'Người Lập' })
+    fs.writeFileSync(path.join(RA, tenFileXmlBctc('TT99', b, DN.mst)), xml)
+    const hs = con(docCayXml(xml), 'HSoKhaiThue')
+    expect(con(hs, 'TTinChung', 'TTinTKhaiThue', 'TKhaiThue', 'maTKhai')?.chu).toBe('1281')
+    expect(con(hs, 'TTinChung', 'TTinTKhaiThue', 'TKhaiThue', 'pbanTKhaiXML')?.chu).toBe('3.0.5')
+    const chinh = con(hs, 'CTieuTKhaiChinh')
+    expect(con(chinh, 'hoatDongLienTuc')?.chu).toBe('true')
+    const bcthtc = con(chinh, 'BCTHTC_HoatDongLienTuc')
+    expect(con(bcthtc, 'SoCuoiNam')?.con.length).toBe(126)
+    expect(con(bcthtc, 'ThuyetMinh')?.con.length).toBe(126)
+    expect(con(bcthtc, 'giamDoc')?.chu).toBe('Nguyễn Văn Thử')
+    expect(con(hs, 'PLuc', 'PL_KQHDSXKD', 'NamNay')?.con.length).toBe(21)
+    expect(con(hs, 'PLuc', 'PL_LCTTTT', 'NamNay')?.con.length).toBe(27)
+
+    const docLai = docBctc(xml)
+    expect(docLai).not.toBeNull()
+    expect(docLai?.cheDo).toBe('TT99')
+    expect(docLai?.cdkt.cuoi['280']).toBe(b.cdkt.cuoi['280'])
+  })
+
+  it('mẫu 402 (TT200): 115 ô B01-DN, 20 ô B02-DN, 27 ô B03-DN trực tiếp', () => {
+    const b = taoBan('TT200', 2025)
+    const xml = xmlBctcTT200(b, DN, '2026-03-25')
+    fs.writeFileSync(path.join(RA, tenFileXmlBctc('TT200', b, DN.mst)), xml)
+    const hs = con(docCayXml(xml), 'HSoKhaiThue')
+    expect(con(hs, 'TTinChung', 'TTinTKhaiThue', 'TKhaiThue', 'maTKhai')?.chu).toBe('402')
+    expect(con(hs, 'TTinChung', 'TTinTKhaiThue', 'TKhaiThue', 'pbanTKhaiXML')?.chu).toBe('2.2.6')
+    const cdkt = con(hs, 'CTieuTKhaiChinh', 'CDKT_HoatDongLienTuc')
+    expect(con(cdkt, 'SoCuoiNam')?.con.length).toBe(115)
+    expect(con(cdkt, 'ThuyetMinh')?.con.length).toBe(115)
+    expect(con(cdkt, 'giamDoc')?.chu).toBe('Nguyễn Văn Thử')
+    expect(con(hs, 'PLuc', 'PL_KQHDSXKD', 'NamNay')?.con.length).toBe(20)
+    expect(con(hs, 'PLuc', 'PL_LCTTTT', 'NamNay')?.con.length).toBe(27)
+
+    const docLai = docBctc(xml)
+    expect(docLai).not.toBeNull()
+    expect(docLai?.cheDo).toBe('TT200')
+    expect(docLai?.cdkt.cuoi['270']).toBe(b.cdkt.cuoi['270'])
+  })
+
+  it('từ chối nhầm mẫu và hàm đa năng xmlBctc', () => {
     expect(() => xmlBctcTT133(taoBan('TT58', 2027), DN, '2028-01-01')).toThrow()
     expect(() => xmlBctcTT58(taoBan('TT133', 2026), DN, '2027-01-01')).toThrow()
+    expect(() => xmlBctcTT99(taoBan('TT200', 2025), DN, '2026-01-01')).toThrow()
+    expect(() => xmlBctcTT200(taoBan('TT99', 2026), DN, '2027-01-01')).toThrow()
+
+    const xml = xmlBctc('TT133', taoBan('TT133', 2026), DN, '2027-01-01')
+    expect(xml).toContain('<maTKhai>683</maTKhai>')
   })
 })

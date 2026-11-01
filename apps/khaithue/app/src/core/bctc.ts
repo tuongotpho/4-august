@@ -6,8 +6,8 @@ import { CONG_CDKT_TT133, CONG_KQKD_TT133, CONG_LCTT_TT133, TEN_CDKT_TT133, TEN_
 import { CONG_CDKT_TT58, CONG_KQKD_TT58, TEN_CDKT_TT58, TEN_KQKD_TT58 } from './mauBctc58.js'
 import { CONG_CDKT_TT99, CONG_KQKD_TT99, TEN_CDKT_TT99, TEN_KQKD_TT99, TEN_LCTT_TT99 } from './mauBctc99.js'
 
-/** Mẫu tờ khai là BCTC mà app đọc được */
-export const MA_BCTC: Record<string, string> = { '402': 'TT200' }
+/** Mẫu tờ khai là BCTC mà app đọc được (TT200, TT133, TT99, TT58) */
+export const MA_BCTC: Record<string, string> = { '402': 'TT200', '683': 'TT133', '1281': 'TT99', '1280': 'TT58' }
 export const laBctc = (maTKhai: string) => maTKhai in MA_BCTC
 
 export interface SoLieuBctc {
@@ -60,26 +60,27 @@ export function docBctc(xml: string): SoLieuBctc | null {
   const ma = chuCua(tim(goc, 'maTKhai'))
   if (goc.ten !== 'HSoThueDTu' || !laBctc(ma)) return null
   const chinh = tim(goc, 'CTieuTKhaiChinh')
-  // Hoạt động liên tục / không liên tục: hai khối cùng cấu trúc
-  const cd = con(chinh, 'CDKT_HoatDongLienTuc') ?? chinh?.con.find((c) => c.ten.startsWith('CDKT_')) ?? null
+  // Hoạt động liên tục / không liên tục: hai khối cùng cấu trúc, hoặc TT133/TT58 đặt thẳng trong CTieuTKhaiChinh
+  const cd = con(chinh, 'CDKT_HoatDongLienTuc') ?? con(chinh, 'BCTHTC_HoatDongLienTuc') ?? chinh?.con.find((c) => c.ten.startsWith('CDKT_') || c.ten.startsWith('BCTHTC_')) ?? chinh
   if (!cd) return null
   const pl = tim(goc, 'PLuc')
-  const kq = con(pl, 'PL_KQHDSXKD')
+  const kq = con(pl, 'PL_KQHDSXKD') ?? con(pl, 'PL_BCKQHDKD') ?? con(pl, 'PL_KQHDXSKD')
   const ltTT = con(pl, 'PL_LCTTTT')
   const ltGT = con(pl, 'PL_LCTTGT')
   const lt = ltTT ?? ltGT
-  const DA_BIET = new Set(['PL_KQHDSXKD', 'PL_LCTTTT', 'PL_LCTTGT'])
+  const DA_BIET = new Set(['PL_KQHDSXKD', 'PL_BCKQHDKD', 'PL_KQHDXSKD', 'PL_LCTTTT', 'PL_LCTTGT', 'PL_CDTK'])
+  const nguoiKyTen = chuCua(tim(goc, 'nguoiKy')) || chuCua(tim(goc, 'thuTruongDonVi')) || chuCua(tim(goc, 'giamDoc')) || chuCua(tim(goc, 'nguoiDaiDienTheoPhapLuat'))
   return {
     cheDo: MA_BCTC[ma],
     nam: chuCua(tim(goc, 'kyKKhai')),
     tuNgay: chuCua(tim(goc, 'kyKKhaiTuNgay')),
     denNgay: chuCua(tim(goc, 'kyKKhaiDenNgay')),
     ngayLap: chuCua(tim(goc, 'ngayLapTKhai')),
-    nguoiKy: chuCua(tim(goc, 'nguoiKy')),
+    nguoiKy: nguoiKyTen,
     daKiemToan: chuCua(con(chinh, 'bctcDaKiemToan')) === 'true',
     cdkt: { cuoi: bangSo(con(cd, 'SoCuoiNam')), dau: bangSo(con(cd, 'SoDauNam')) },
-    kqkd: { nay: bangSo(con(kq, 'NamNay')), truoc: bangSo(con(kq, 'NamTruoc')) },
-    lctt: lt ? { phuongPhap: ltTT ? 'trucTiep' : 'gianTiep', nay: bangSo(con(lt, 'NamNay')), truoc: bangSo(con(lt, 'NamTruoc')) } : null,
+    kqkd: { nay: bangSo(con(kq, 'NamNay') ?? con(kq, 'SoNamNay')), truoc: bangSo(con(kq, 'NamTruoc') ?? con(kq, 'SoNamTruoc')) },
+    lctt: lt ? { phuongPhap: ltTT ? 'trucTiep' : 'gianTiep', nay: bangSo(con(lt, 'NamNay') ?? con(lt, 'SoNamNay')), truoc: bangSo(con(lt, 'NamTruoc') ?? con(lt, 'SoNamTruoc')) } : null,
     coThuyetMinh: (pl?.con ?? []).some((c) => !DA_BIET.has(c.ten)),
   }
 }

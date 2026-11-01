@@ -5,12 +5,17 @@
 //            PL_CDTK (Bảng cân đối tài khoản F01-DNN) khung cho phép bỏ trống; app chưa lập — xem ghi chú ở giao diện.
 //   Mẫu 1280 "Bộ báo cáo tài chính năm (TT58/2026/TT-BTC)"           — khung 58_BCTC, phiên bản XML 3.0.5
 //            phần chính B01-DNSN (14 ô) + PL_BCKQHDKD (B02-DNSN, 5 ô).
+//   Mẫu 1281 "Bộ báo cáo tài chính năm (TT99/2025/TT-BTC)"           — khung 99_BCTC, phiên bản XML 3.0.5
+//            phần chính B01-DN (126 ô) + PL_KQHDSXKD (B02-DN, 21 ô) + PL_LCTTTT (B03-DN trực tiếp, 27 ô).
+//   Mẫu 402  "Báo cáo tài chính (TT200/2014/TT-BTC)"                 — khung 200_01_CDKT, phiên bản XML 2.2.6
+//            phần chính B01-DN (115 ô) + PL_KQHDSXKD (B02-DN, 20 ô) + PL_LCTTTT (B03-DN trực tiếp, 27 ô).
 // Thứ tự thẻ, tên thẻ chép từ .xsd của HTKK; kiểm lại bằng `npm run kiem-xsd` (lxml) với khung của HTKK.
 import type { SoLieuBctc } from './bctc.js'
+import type { CheDoBctc } from './lapBctc.js'
 import type { HoSoDN } from './types.js'
 import { dinhDang, esc } from './xml.js'
 
-/** Phiên bản HTKK có các mẫu BCTC này (mẫu TT58 chỉ có từ HTKK 5.8.1) */
+/** Phiên bản HTKK có các mẫu BCTC này (mẫu TT58, TT99 chỉ có từ HTKK 5.8.1) */
 const DICH_VU_BCTC = { maDVu: 'HTKK', tenDVu: 'HỖ TRỢ KÊ KHAI THUẾ', pbanDVu: '5.8.1', ttinNhaCCapDVu: '' }
 
 interface MauXml {
@@ -21,7 +26,7 @@ interface MauXml {
   maFile: string
 }
 
-export const MAU_XML_BCTC: Record<'TT133' | 'TT58', MauXml> = {
+export const MAU_XML_BCTC: Record<CheDoBctc, MauXml> = {
   TT133: {
     maTKhai: '683',
     tenTKhai: 'Bộ báo cáo tài chính (B01a - DNN)(TT133/2016/TT-BTC)',
@@ -36,6 +41,20 @@ export const MAU_XML_BCTC: Record<'TT133' | 'TT58', MauXml> = {
     pban: '3.0.5',
     maFile: '58_BCTC',
   },
+  TT99: {
+    maTKhai: '1281',
+    tenTKhai: 'Báo cáo tài chính (TT99/2025/TT-BTC)',
+    moTaBMau: '(Kèm theo Thông tư số 99/2025/TT-BTC ngày 27 tháng 10 năm 2025 của Bộ trưởng Bộ Tài chính)',
+    pban: '3.0.5',
+    maFile: '99_BCTC',
+  },
+  TT200: {
+    maTKhai: '402',
+    tenTKhai: 'Báo cáo tài chính (TT200/2014/TT-BTC)',
+    moTaBMau: '(Ban hành theo Thông tư số 200/2014/TT-BTC Ngày 22/12/2014 của Bộ Tài chính)',
+    pban: '2.2.6',
+    maFile: '200_BCTC',
+  },
 }
 
 // Thứ tự ô theo .xsd của HTKK
@@ -45,6 +64,36 @@ const O_B02_133 = ['01', '02', '10', '11', '20', '21', '22', '23', '24', '30', '
 const O_B03TT_133 = ['01', '02', '03', '04', '05', '06', '07', '20', '21', '22', '23', '24', '25', '30', '31', '32', '33', '34', '35', '40', '50', '60', '61', '70']
 const O_B01_DNSN = ['110', '120', '130', '140', '150', '200', '300', '310', '320', '400', '410', '420', '430', '500']
 const O_B02_DNSN = ['01', '02', '03', '10', '20']
+
+const O_B01_99 = [
+  '100', '110', '111', '112', '120', '121', '122', '123', '124', '125', '126', '130', '131', '132', '133', '134', '135', '136', '137',
+  '140', '141', '142', '150', '151', '152', '153', '160', '161', '162', '163', '164', '165', '200', '210', '211', '212', '213', '214',
+  '215', '216', '220', '221', '222', '223', '224', '225', '226', '227', '228', '229', '230', '231', '232', '233', '234', '235', '236',
+  '237', '238', '240', '241', '242', '250', '251', '252', '260', '261', '262', '263', '264', '265', '266', '270', '271', '272', '273',
+  '274', '280', '300', '310', '311', '312', '313', '314', '315', '316', '317', '318', '319', '320', '321', '322', '323', '324', '325',
+  '330', '331', '332', '333', '334', '335', '336', '337', '338', '339', '340', '341', '342', '343', '344', '400', '411', '411a', '411b',
+  '412', '413', '414', '415', '416', '417', '418', '419', '420', '420a', '420b', '440',
+]
+const O_B02_99 = ['01', '02', '10', '11', '20', '21', '22', '23', '24', '25', '26', '30', '31', '32', '40', '50', '51', '52', '60', '70', '71']
+const O_B03TT_99 = [
+  '01', '02', '03', '04', '05', '06', '07', '20', '21', '22', '23', '24', '25', '26', '27', '30', '31', '32', '33', '34', '35', '36',
+  '40', '50', '60', '61', '70',
+]
+
+const O_B01_200 = [
+  '100', '110', '111', '112', '120', '121', '122', '123', '130', '131', '132', '133', '134', '135', '136', '137', '139', '140', '141',
+  '149', '150', '151', '152', '153', '154', '155', '200', '210', '211', '212', '213', '214', '215', '216', '219', '220', '221', '222',
+  '223', '224', '225', '226', '227', '228', '229', '230', '231', '232', '240', '241', '242', '250', '251', '252', '253', '254', '255',
+  '260', '261', '262', '263', '268', '270', '300', '310', '311', '312', '313', '314', '315', '316', '317', '318', '319', '320', '321',
+  '322', '323', '324', '330', '331', '332', '333', '334', '335', '336', '337', '338', '339', '340', '341', '342', '343', '400', '410',
+  '411', '411a', '411b', '412', '413', '414', '415', '416', '417', '418', '419', '420', '421', '421a', '421b', '422', '430', '431',
+  '432', '440',
+]
+const O_B02_200 = ['01', '02', '10', '11', '20', '21', '22', '23', '25', '26', '30', '31', '32', '40', '50', '51', '52', '60', '70', '71']
+const O_B03TT_200 = [
+  '01', '02', '03', '04', '05', '06', '07', '20', '21', '22', '23', '24', '25', '26', '27', '30', '31', '32', '33', '34', '35', '36',
+  '40', '50', '60', '61', '70',
+]
 
 const the = (tag: string, v: string | number | undefined | null) => (v === undefined || v === null || v === '' ? `<${tag}/>` : `<${tag}>${esc(v)}</${tag}>`)
 /** Khối số: mỗi ô một thẻ ctXXX, thiếu số ghi 0 (khung kiểu long) */
@@ -176,7 +225,99 @@ ${khoiSo('NamTruoc', O_B02_DNSN, b.kqkd.truoc)}
   return dinhDang(bocNgoai(body))
 }
 
-/** Tên file theo cách HTKK đặt cho BCTC: <MST>000-<mã file>-<từ ngày>_<đến ngày>_VND-L00.xml (vd BCTC 2025: …-200_BCTC-01012025_31122025_VND-L00.xml) */
-export function tenFileXmlBctc(mau: 'TT133' | 'TT58', b: SoLieuBctc, mst: string): string {
+/** Mẫu 1281 — BCTC theo TT99/2025/TT-BTC (B01-DN + B02-DN + B03-DN trực tiếp) */
+export function xmlBctcTT99(b: SoLieuBctc, dn: HoSoDN, ngayLap: string, ky: NguoiKyBctc = {}): string {
+  if (b.cheDo !== 'TT99') throw new Error('Cần BCTC đã đổi sang mẫu TT99')
+  const mau = MAU_XML_BCTC.TT99
+  const lc = b.lctt?.phuongPhap === 'trucTiep' ? b.lctt : null
+  const body = `${phanChung(mau, b, dn, ngayLap)}
+<CTieuTKhaiChinh>
+<hoatDongLienTuc>true</hoatDongLienTuc>
+<hoatDongKhongLienTuc>false</hoatDongKhongLienTuc>
+<BCTHTC_HoatDongLienTuc>
+${khoiTrong('ThuyetMinh', O_B01_99)}
+${khoiSo('SoCuoiNam', O_B01_99, b.cdkt.cuoi)}
+${khoiSo('SoDauNam', O_B01_99, b.cdkt.dau)}
+${the('nguoiLapBieu', ky.nguoiLapBieu)}
+${the('keToanTruong', ky.keToanTruong)}
+${the('ngayLap', ngayLap)}
+${the('giamDoc', dn.nguoiKy)}
+</BCTHTC_HoatDongLienTuc>
+</CTieuTKhaiChinh>
+<PLuc>
+<PL_KQHDSXKD>
+${khoiTrong('ThuyetMinh', O_B02_99)}
+${khoiSo('NamNay', O_B02_99, b.kqkd.nay)}
+${khoiSo('NamTruoc', O_B02_99, b.kqkd.truoc)}
+</PL_KQHDSXKD>
+${lc ? `<PL_LCTTTT>
+${khoiTrong('ThuyetMinh', O_B03TT_99)}
+${khoiSo('NamNay', O_B03TT_99, lc.nay)}
+${khoiSo('NamTruoc', O_B03TT_99, lc.truoc)}
+</PL_LCTTTT>` : ''}
+</PLuc>`
+  return dinhDang(bocNgoai(body))
+}
+
+/** Mẫu 402 — BCTC theo TT200/2014/TT-BTC (B01-DN + B02-DN + B03-DN trực tiếp) */
+export function xmlBctcTT200(b: SoLieuBctc, dn: HoSoDN, ngayLap: string, ky: NguoiKyBctc = {}): string {
+  if (b.cheDo !== 'TT200') throw new Error('Cần BCTC đã đổi sang mẫu TT200')
+  const mau = MAU_XML_BCTC.TT200
+  const lc = b.lctt?.phuongPhap === 'trucTiep' ? b.lctt : null
+  const phanKy = `<PhanKy>
+${the('nguoiLapBieu', ky.nguoiLapBieu)}
+${the('keToanTruong', ky.keToanTruong)}
+${the('ngayLap', ngayLap)}
+${the('giamDoc', dn.nguoiKy)}
+</PhanKy>`
+  const body = `${phanChung(mau, b, dn, ngayLap)}
+<CTieuTKhaiChinh>
+<bctcDaKiemToan>${b.daKiemToan ? 'true' : 'false'}</bctcDaKiemToan>
+<maYKienKToan/>
+<tenYKienKToan/>
+<hoatDongLienTuc>true</hoatDongLienTuc>
+<hoatDongKhongLienTuc>false</hoatDongKhongLienTuc>
+<CDKT_HoatDongLienTuc>
+${khoiTrong('ThuyetMinh', O_B01_200)}
+${khoiSo('SoCuoiNam', O_B01_200, b.cdkt.cuoi)}
+${khoiSo('SoDauNam', O_B01_200, b.cdkt.dau)}
+${the('nguoiLapBieu', ky.nguoiLapBieu)}
+${the('keToanTruong', ky.keToanTruong)}
+${the('ngayLap', ngayLap)}
+${the('giamDoc', dn.nguoiKy)}
+<soChungChiHanhNghe/>
+<donViCCapDVuKToan/>
+</CDKT_HoatDongLienTuc>
+</CTieuTKhaiChinh>
+<PLuc>
+<PL_KQHDSXKD>
+${khoiTrong('ThuyetMinh', O_B02_200)}
+${khoiSo('NamNay', O_B02_200, b.kqkd.nay)}
+${khoiSo('NamTruoc', O_B02_200, b.kqkd.truoc)}
+${phanKy}
+</PL_KQHDSXKD>
+${lc ? `<PL_LCTTTT>
+${khoiTrong('ThuyetMinh', O_B03TT_200)}
+${khoiSo('NamNay', O_B03TT_200, lc.nay)}
+${khoiSo('NamTruoc', O_B03TT_200, lc.truoc)}
+${phanKy}
+</PL_LCTTTT>` : ''}
+</PLuc>`
+  return dinhDang(bocNgoai(body))
+}
+
+/** Xuất chuỗi XML chuẩn HTKK cho bất kỳ chế độ nào được hỗ trợ */
+export function xmlBctc(mau: CheDoBctc, b: SoLieuBctc, dn: HoSoDN, ngayLap: string, ky: NguoiKyBctc = {}): string {
+  switch (mau) {
+    case 'TT133': return xmlBctcTT133(b, dn, ngayLap, ky)
+    case 'TT58': return xmlBctcTT58(b, dn, ngayLap, ky)
+    case 'TT99': return xmlBctcTT99(b, dn, ngayLap, ky)
+    case 'TT200': return xmlBctcTT200(b, dn, ngayLap, ky)
+    default: throw new Error(`Chế độ không hỗ trợ xuất XML: ${mau}`)
+  }
+}
+
+/** Tên file theo cách HTKK đặt cho BCTC: <MST>000-<mã file>-<từ ngày>_<đến ngày>_VND-L00.xml */
+export function tenFileXmlBctc(mau: CheDoBctc, b: SoLieuBctc, mst: string): string {
   return `${mst}000-${MAU_XML_BCTC[mau].maFile}-${ddmmyyyy(b.tuNgay)}_${ddmmyyyy(b.denNgay)}_VND-L00.xml`
 }
