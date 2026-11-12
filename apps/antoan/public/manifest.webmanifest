@@ -1,6 +1,6 @@
 {
-  "name": "Lịch giảng ATLĐ",
-  "short_name": "Lịch giảng",
+  "name": "Quản lý công việc",
+  "short_name": "Công việc",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f8fafc",

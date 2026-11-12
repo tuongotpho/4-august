@@ -1,7 +1,7 @@
 // Đồng bộ lớp giảng lên Google Calendar của anh qua một Apps Script nhỏ (apps-script/Lich.gs) chạy bằng tài khoản Google của anh.
 // Không cần xin quyền OAuth riêng cho app: script đã có sẵn quyền với lịch của chính chủ, app chỉ gọi script kèm khóa bí mật.
 // Dùng chung cho web app (trình duyệt gọi thẳng) và máy chủ bot Telegram.
-import { dinhDangTien, GIO_MAC_DINH, ngayCuoi, TEN_HINH_THUC, type CaiDat, type LopGiang } from './model.js'
+import { dinhDangTien, GIO_MAC_DINH, ngayCuoi, TEN_HINH_THUC, tenLop, type CaiDat, type LopGiang } from './model.js'
 
 export interface SuKien {
   tieuDe: string
@@ -21,7 +21,12 @@ export const THE_APP = (id: string) => `[atld:${id}]`
 export function suKienTu(l: LopGiang, appUrl = ''): SuKien {
   const caNgay = l.soNgay > 1 || !l.gioBD
   const kt = l.gioKT || congGio(l.gioBD || GIO_MAC_DINH[l.buoi][0], 180)
-  const dong = [
+  const dong = l.congViec ? [
+    'Lịch công việc chính',
+    l.ghiChu && `Ghi chú: ${l.ghiChu}`,
+    appUrl && `Mở trong app: ${appUrl}/?lop=${l.id}`,
+    THE_APP(l.id),
+  ].filter(Boolean) : [
     l.doiTac && `Đối tác: ${l.doiTac}`,
     l.lienHe && `Liên hệ: ${l.lienHe}`,
     `Hình thức: ${TEN_HINH_THUC[l.hinhThuc]}`,
@@ -32,14 +37,14 @@ export function suKienTu(l: LopGiang, appUrl = ''): SuKien {
     THE_APP(l.id),
   ].filter(Boolean)
   return {
-    tieuDe: `${l.hinhThuc === 'online' ? '💻 ' : ''}Giảng ATLĐ – ${l.khachHang || '(chưa rõ khách hàng)'}${l.doiTac ? ` (${l.doiTac})` : ''}`,
+    tieuDe: l.congViec ? `💼 ${tenLop(l)}` : `${l.hinhThuc === 'online' ? '💻 ' : ''}Giảng ATLĐ – ${l.khachHang || '(chưa rõ khách hàng)'}${l.doiTac ? ` (${l.doiTac})` : ''}`,
     moTa: dong.join('\n'),
     diaDiem: l.diaDiem,
     caNgay,
     batDau: caNgay ? l.ngay : `${l.ngay}T${l.gioBD}:00+07:00`,
     ketThuc: caNgay ? ngaySau(ngayCuoi(l)) : `${ngayCuoi(l)}T${kt}:00+07:00`,
     ngay: l.ngay,
-    tim: l.khachHang,
+    tim: l.congViec ? '' : l.khachHang,
   }
 }
 

@@ -4,7 +4,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import {
-  chuanDiaDiem, chuanDoiTac, congNgay, doanBuoi, docTien, GIO_MAC_DINH, homNay, lopMoi, ngayCuoi, TEN_BUOI, TEN_HINH_THUC, TEN_TRANG_THAI, thu, trangThai,
+  chuanDiaDiem, chuanDoiTac, congNgay, doanBuoi, docTien, GIO_MAC_DINH, homNay, lopMoi, ngayCuoi, TEN_BUOI, TEN_HINH_THUC, TEN_TRANG_THAI, tenLop, thu, thuLao, trangThai,
   type Buoi, type CaiDat, type LopGiang, type TrangThai,
 } from '../src/lib/model.js'
 import { congNo, sapXepTheoNgay, theoDoiTac, theoNam, theoThang, timLopChoTien, timTrung, trungGio } from '../src/lib/tinh.js'
@@ -12,6 +12,8 @@ import { congNo, sapXepTheoNgay, theoDoiTac, theoNam, theoThang, timLopChoTien, 
 const HUONG_DAN = `Lịch giảng an toàn lao động (ATLĐ) của một giảng viên. Mỗi LỚP = một buổi / đợt giảng do một ĐỐI TÁC (công ty đào tạo: TIEC, ESC, KTQT…) mời,
 qua một NGƯỜI LIÊN HỆ, giảng cho một KHÁCH HÀNG (đơn vị được đào tạo), giảng viên nhận THÙ LAO.
 - Tiền: đồng (VND), số nguyên. Ngày: yyyy-mm-dd. Giờ: HH:mm (giờ Việt Nam).
+- LỊCH CÔNG VIỆC (congViec=true, trạng thái cong_viec): ngày bận công việc chính của người dùng, KHÔNG phải lớp giảng — không có thù lao,
+  không tính doanh thu / công nợ; tên việc ở noi_dung. Khi xếp lớp mới, ngày có lịch công việc là ngày KHÔNG nhận dạy.
 - Trạng thái tự suy ra: sap_toi (chưa giảng), cho_tien (đã giảng, chưa nhận tiền), thieu_thu_lao (đã giảng nhưng chưa ghi thù lao), xong (đã nhận tiền), huy.
 - Bắt đầu bằng tong_quan. Số liệu chỉ lấy từ dữ liệu — thiếu thì nói thiếu, KHÔNG đoán.
 - Công cụ ghi (tao_lop, sua_lop, danh_dau_thanh_toan, xoa_lop) thay đổi dữ liệu THẬT và tự cập nhật Google Calendar — chỉ gọi khi người dùng yêu cầu rõ.
@@ -42,7 +44,7 @@ function gon(l: LopGiang) {
   return {
     id: l.id, ngay: l.ngay, thu: thu(l.ngay), ...(l.soNgay > 1 ? { soNgay: l.soNgay, denNgay: ngayCuoi(l) } : {}),
     gio: l.gioBD ? `${l.gioBD}–${l.gioKT}` : TEN_BUOI[l.buoi], hinhThuc: TEN_HINH_THUC[l.hinhThuc],
-    khachHang: l.khachHang, doiTac: l.doiTac, lienHe: l.lienHe, diaDiem: l.diaDiem, thuLao: l.chiPhi,
+    ...(l.congViec ? { congViec: true, tenViec: tenLop(l) } : { khachHang: l.khachHang, doiTac: l.doiTac, lienHe: l.lienHe, thuLao: l.chiPhi }), diaDiem: l.diaDiem,
     trangThai: TEN_TRANG_THAI[trangThai(l)], ...(l.ngayTT ? { ngayNhanTien: l.ngayTT } : {}),
     ...(l.noiDung ? { noiDung: l.noiDung } : {}), ...(l.ghiChu ? { ghiChu: l.ghiChu } : {}),
   }
@@ -71,6 +73,7 @@ const oLop = {
   thu_lao: z.union([z.number(), z.string()]).nullable().optional().describe('Số đồng, hoặc "1tr5"; null = chưa rõ'),
   ghi_chu: z.string().optional(),
   huy: z.boolean().optional().describe('true = lớp bị hủy (giữ để tra cứu, xoá khỏi Google Calendar)'),
+  cong_viec: z.boolean().optional().describe('true = lịch công việc chính (ngày bận, không có thù lao); tên việc ghi ở noi_dung'),
 }
 type OLop = { [K in keyof typeof oLop]?: z.infer<(typeof oLop)[K]> }
 
@@ -95,6 +98,8 @@ function apDung(l: LopGiang, a: OLop, cd: CaiDat): LopGiang {
   if (a.noi_dung !== undefined) n.noiDung = a.noi_dung.trim()
   if (a.ghi_chu !== undefined) n.ghiChu = a.ghi_chu.trim()
   if (a.huy !== undefined) n.huy = a.huy
+  if (a.cong_viec !== undefined) n.congViec = a.cong_viec
+  if (n.congViec) (n.chiPhi = null), (n.thanhToan = 'chua'), (n.ngayTT = '')
   if (a.thu_lao !== undefined) {
     n.chiPhi = a.thu_lao === null ? null : docTien(a.thu_lao)
     if (a.thu_lao !== null && n.chiPhi === null) throw new LoiNguoiDung(`Thù lao "${a.thu_lao}" không hiểu được`)
@@ -143,7 +148,7 @@ export function taoMayChu(nguon: NguonMcp) {
       tu_ngay: ngay.optional(), den_ngay: ngay.optional(),
       nam: z.number().int().min(2000).max(2100).optional(), thang: z.number().int().min(1).max(12).optional(),
       doi_tac: z.string().optional(),
-      trang_thai: z.enum(['sap_toi', 'cho_tien', 'thieu_thu_lao', 'xong', 'huy']).optional(),
+      trang_thai: z.enum(['cong_viec', 'sap_toi', 'cho_tien', 'thieu_thu_lao', 'xong', 'huy']).optional(),
       tim: z.string().optional(),
       gioi_han: z.number().int().min(1).max(500).optional().describe('Mặc định 50'),
     },
@@ -158,7 +163,7 @@ export function taoMayChu(nguon: NguonMcp) {
       .filter((l) => !a.trang_thai || trangThai(l) === a.trang_thai)
       .filter((l) => !k || bd([l.khachHang, l.lienHe, l.doiTac, l.diaDiem, l.noiDung, l.ghiChu].join(' ')).includes(k))
       .sort(sapXepTheoNgay)
-    return { soLop: kq.length, tongThuLao: kq.filter((l) => !l.huy).reduce((s, l) => s + (l.chiPhi ?? 0), 0), lop: kq.slice(-(a.gioi_han ?? 50)).map(gon) }
+    return { soLop: kq.length, tongThuLao: kq.reduce((s, l) => s + thuLao(l), 0), lop: kq.slice(-(a.gioi_han ?? 50)).map(gon) }
   }))
 
   server.registerTool('xem_lop', {
@@ -190,10 +195,11 @@ export function taoMayChu(nguon: NguonMcp) {
 
   server.registerTool('tao_lop', {
     title: 'Tạo lớp mới',
-    description: 'Thêm một lớp giảng (cần ít nhất ngay + khach_hang). Đối tác tự điền theo người liên hệ nếu để trống. Nghi trùng lớp đã có thì KHÔNG tạo mà trả về lớp nghi trùng — hỏi người dùng rồi gửi lại với bo_qua_trung=true.',
-    inputSchema: { ...oLop, ngay, khach_hang: z.string().min(1), bo_qua_trung: z.boolean().optional() },
+    description: 'Thêm một lớp giảng (cần ít nhất ngay + khach_hang), hoặc lịch công việc chính (cong_viec=true + noi_dung = tên việc). Đối tác tự điền theo người liên hệ nếu để trống. Nghi trùng lớp đã có thì KHÔNG tạo mà trả về lớp nghi trùng — hỏi người dùng rồi gửi lại với bo_qua_trung=true.',
+    inputSchema: { ...oLop, ngay, khach_hang: z.string().optional().describe('Đơn vị được đào tạo — bắt buộc với lớp giảng'), bo_qua_trung: z.boolean().optional() },
     annotations: ghiDuoc,
-  }, boc(async (d, a: OLop & { ngay: string; khach_hang: string; bo_qua_trung?: boolean }) => {
+  }, boc(async (d, a: OLop & { ngay: string; bo_qua_trung?: boolean }) => {
+    if (a.cong_viec ? !a.noi_dung?.trim() : !a.khach_hang?.trim()) throw new LoiNguoiDung(a.cong_viec ? 'Lịch công việc cần noi_dung (tên việc)' : 'Lớp giảng cần khach_hang')
     let l = apDung(lopMoi({ ngay: a.ngay, nguon: 'web', gioBD: '', gioKT: '' }), a, d.caiDat)
     if (!l.gioBD) [l.gioBD, l.gioKT] = GIO_MAC_DINH[l.buoi]
     if (!l.doiTac && l.lienHe) {
@@ -203,7 +209,7 @@ export function taoMayChu(nguon: NguonMcp) {
     const trung = timTrung(d.lop, l)
     if (trung && !a.bo_qua_trung) return { daTao: false, nghiTrung: gon(trung), loiNhan: 'Có vẻ trùng lớp đã có — hỏi người dùng; muốn vẫn tạo thì gửi lại với bo_qua_trung=true' }
     const lich = await nguon.luu(l)
-    await nguon.nhatKy('tao_lop', `${l.ngay} · ${l.khachHang}`)
+    await nguon.nhatKy('tao_lop', `${l.ngay} · ${tenLop(l)}`)
     return { daTao: true, lop: gon(l), googleCalendar: lich || undefined, trungGio: trungGio(d.lop, l).map(gon) }
   }))
 
@@ -232,7 +238,7 @@ export function taoMayChu(nguon: NguonMcp) {
     annotations: ghiDuoc,
   }, boc(async (d, a: { ids?: string[]; tim?: string; so_tien?: number; ngay_nhan?: string; da_nhan?: boolean }) => {
     let chon: LopGiang[]
-    if (a.ids?.length) chon = a.ids.map((id) => tim(d.lop, id))
+    if (a.ids?.length) chon = a.ids.map((id) => tim(d.lop, id)).filter((l) => !l.congViec) // lịch công việc không có tiền
     else if (a.tim) {
       const ung = timLopChoTien(d.lop, a.tim)
       const tong = ung.reduce((s, l) => s + (l.chiPhi ?? 0), 0)
@@ -248,14 +254,14 @@ export function taoMayChu(nguon: NguonMcp) {
 
   server.registerTool('xoa_lop', {
     title: 'Xoá lớp',
-    description: 'Xoá HẲN một lớp (và sự kiện Google Calendar). Không hoàn tác được — hỏi người dùng trước; xac_nhan phải đúng tên khách hàng của lớp. Muốn giữ lại để tra cứu thì dùng sua_lop với huy=true.',
+    description: 'Xoá HẲN một lớp (và sự kiện Google Calendar). Không hoàn tác được — hỏi người dùng trước; xac_nhan phải đúng tên khách hàng của lớp (lịch công việc: đúng tên việc). Muốn giữ lại để tra cứu thì dùng sua_lop với huy=true.',
     inputSchema: { id: z.string(), xac_nhan: z.string() },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
   }, boc(async (d, a: { id: string; xac_nhan: string }) => {
     const l = tim(d.lop, a.id)
-    if (a.xac_nhan.trim() !== l.khachHang.trim()) return { daXoa: false, canXacNhan: l.khachHang }
+    if (a.xac_nhan.trim() !== tenLop(l).trim()) return { daXoa: false, canXacNhan: tenLop(l) }
     await nguon.xoa(l)
-    await nguon.nhatKy('xoa_lop', `${l.ngay} · ${l.khachHang}`)
+    await nguon.nhatKy('xoa_lop', `${l.ngay} · ${tenLop(l)}`)
     return { daXoa: true }
   }))
 

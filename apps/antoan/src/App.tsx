@@ -65,7 +65,7 @@ export default function App() {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="card w-full max-w-md space-y-4 text-center">
-          <h1 className="flex items-center justify-center gap-2 text-xl font-bold text-slate-800"><img src="icon.svg" alt="" className="h-9 w-9" />Lịch giảng ATLĐ</h1>
+          <h1 className="flex items-center justify-center gap-2 text-xl font-bold text-slate-800"><img src="icon.svg" alt="" className="h-9 w-9" />Quản lý công việc</h1>
           <p className="text-sm text-slate-600">Đăng nhập Google để dữ liệu được cất trên mạng: máy tính, điện thoại đều thấy cùng một lịch. Chỉ tài khoản của anh xem được dữ liệu của anh.</p>
           <button className="btn-primary w-full py-2.5 text-base" onClick={() => void dangNhap()}>Đăng nhập bằng Google</button>
           {loiDN && <p className="rounded bg-red-50 p-2 text-left text-xs text-red-700">{loiDN}</p>}
@@ -121,13 +121,14 @@ function ManHinh({ user }: { user: User }) {
     ...(QUA_CONG ? [] : [['caiDat', '⚙️', 'Cài đặt'] as [Tab, string, string]]),
   ]
   const mo = (l: LopGiang) => setSua({ lop: l, moi: !ds.some((x) => x.id === l.id) })
-  const them = (ngay = homNay()) => setSua({ lop: lopMoi({ ngay, gioBD: GIO_MAC_DINH.sang[0], gioKT: GIO_MAC_DINH.sang[1] }), moi: true })
+  const them = (ngay = homNay(), congViec = false) =>
+    setSua({ lop: lopMoi({ ngay, congViec, ...(congViec ? { buoi: 'ca_ngay', gioBD: GIO_MAC_DINH.ca_ngay[0], gioKT: GIO_MAC_DINH.ca_ngay[1] } : { gioBD: GIO_MAC_DINH.sang[0], gioKT: GIO_MAC_DINH.sang[1] }) }), moi: true })
 
   return (
     <div className="mx-auto max-w-7xl p-2 pb-24 sm:p-4">
       <header className="mb-3 flex items-center gap-2 pt-[env(safe-area-inset-top)]">
         {QUA_CONG && <NutTrangChu />}
-        <h1 className="flex items-center gap-2 text-lg font-bold text-slate-800"><img src="icon.svg" alt="" className="h-7 w-7" />Lịch giảng ATLĐ</h1>
+        <h1 className="flex items-center gap-2 text-lg font-bold text-slate-800"><img src="icon.svg" alt="" className="h-7 w-7" />Quản lý công việc</h1>
         {/* máy tính: tab ở trên; điện thoại: thanh tab dưới đáy */}
         <nav className="ml-4 hidden gap-1 sm:flex">
           {TABS.map(([k, icon, ten]) => (

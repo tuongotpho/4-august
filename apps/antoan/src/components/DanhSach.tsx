@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { luuNhieuLop, taiFile } from '../lib/hooks'
 import {
-  boDau, dinhDangTien, homNay, ngayVN, TEN_BUOI, TEN_HINH_THUC, TEN_TRANG_THAI, thu, trangThai, type LopGiang, type TrangThai,
+  boDau, dinhDangTien, homNay, ngayVN, TEN_BUOI, TEN_HINH_THUC, TEN_TRANG_THAI, tenLop, thu, thuLao, trangThai, type LopGiang, type TrangThai,
 } from '../lib/model'
 import { NhanTrangThai } from './TheLop'
 
@@ -45,12 +45,13 @@ export default function DanhSach({ ds, onMo, locBanDau }: { ds: LopGiang[]; onMo
       .reverse()
   }, [ds, nam, doiTac, lienHe, tt, tim])
 
-  const tong = loc.filter((l) => !l.huy).reduce((s, l) => s + (l.chiPhi ?? 0), 0)
+  const tong = loc.reduce((s, l) => s + thuLao(l), 0)
+  const soViec = loc.filter((l) => l.congViec).length
   const daChon = loc.filter((l) => chon.has(l.id))
   const tatCaChon = loc.length > 0 && daChon.length === loc.length
 
   async function danhDauDaTT() {
-    const can = daChon.filter((l) => l.thanhToan !== 'da')
+    const can = daChon.filter((l) => l.thanhToan !== 'da' && !l.congViec)
     if (!can.length) return
     if (!confirm(`Đánh dấu ĐÃ NHẬN TIỀN ${can.length} lớp (${dinhDangTien(can.reduce((s, l) => s + (l.chiPhi ?? 0), 0))} đ), ngày nhận ${ngayVN(ngayTT)}?`)) return
     await luuNhieuLop(can.map((l) => ({ ...l, thanhToan: 'da', ngayTT })))
@@ -60,14 +61,14 @@ export default function DanhSach({ ds, onMo, locBanDau }: { ds: LopGiang[]; onMo
   function xuatCsv() {
     const o = (s: string | number) => `"${String(s).replace(/"/g, '""')}"`
     const dong = [
-      ['Ngày giảng', 'Thứ', 'Số ngày', 'Giờ bắt đầu', 'Giờ kết thúc', 'Buổi', 'Hình thức', 'Đối tác', 'Người liên hệ', 'Khách hàng', 'Địa điểm', 'Nội dung', 'Thù lao', 'Trạng thái', 'Ngày thanh toán', 'Ghi chú'],
+      ['Ngày', 'Loại', 'Thứ', 'Số ngày', 'Giờ bắt đầu', 'Giờ kết thúc', 'Buổi', 'Hình thức', 'Đối tác', 'Người liên hệ', 'Khách hàng', 'Địa điểm', 'Nội dung', 'Thù lao', 'Trạng thái', 'Ngày thanh toán', 'Ghi chú'],
       ...loc.map((l) => [
-        ngayVN(l.ngay), thu(l.ngay), l.soNgay, l.gioBD, l.gioKT, TEN_BUOI[l.buoi], TEN_HINH_THUC[l.hinhThuc], l.doiTac, l.lienHe, l.khachHang,
-        l.diaDiem, l.noiDung, l.chiPhi ?? '', TEN_TRANG_THAI[trangThai(l)], ngayVN(l.ngayTT), l.ghiChu,
+        ngayVN(l.ngay), l.congViec ? 'Công việc' : 'Lớp giảng', thu(l.ngay), l.soNgay, l.gioBD, l.gioKT, TEN_BUOI[l.buoi], TEN_HINH_THUC[l.hinhThuc], l.doiTac, l.lienHe, l.khachHang,
+        l.diaDiem, l.noiDung, l.congViec ? '' : l.chiPhi ?? '', TEN_TRANG_THAI[trangThai(l)], ngayVN(l.ngayTT), l.ghiChu,
       ]),
     ]
     // BOM để Excel mở đúng tiếng Việt
-    taiFile('﻿' + dong.map((d) => d.map(o).join(',')).join('\r\n'), `lich-giang-${nam || 'tat-ca'}.csv`, 'text/csv;charset=utf-8')
+    taiFile('﻿' + dong.map((d) => d.map(o).join(',')).join('\r\n'), `lich-${nam || 'tat-ca'}.csv`, 'text/csv;charset=utf-8')
   }
 
   return (
@@ -110,7 +111,7 @@ export default function DanhSach({ ds, onMo, locBanDau }: { ds: LopGiang[]; onMo
 
       {daChon.length > 0 && (
         <div className="card flex flex-wrap items-center gap-2 !bg-teal-50 !p-2 text-sm">
-          <b>Đã chọn {daChon.length} lớp</b> · {dinhDangTien(daChon.reduce((s, l) => s + (l.chiPhi ?? 0), 0))} đ
+          <b>Đã chọn {daChon.length} mục</b> · {dinhDangTien(daChon.reduce((s, l) => s + thuLao(l), 0))} đ
           <span className="ml-2">Ngày nhận tiền</span>
           <input type="date" className="inp !w-40" value={ngayTT} onChange={(e) => setNgayTT(e.target.value)} />
           <button className="btn-primary" onClick={() => void danhDauDaTT()}>✓ Đánh dấu đã nhận tiền</button>
@@ -148,7 +149,7 @@ export default function DanhSach({ ds, onMo, locBanDau }: { ds: LopGiang[]; onMo
                   {l.soNgay > 1 && <span className="text-xs text-slate-500"> ({l.soNgay} ngày)</span>}
                 </td>
                 <td className="p-2">
-                  <span className="font-medium text-slate-800">{l.khachHang}</span>
+                  <span className="font-medium text-slate-800">{l.congViec && '💼 '}{tenLop(l)}</span>
                   {l.diaDiem && <span className="block text-xs text-slate-500">{l.diaDiem}</span>}
                 </td>
                 <td className="p-2 text-slate-600">{[l.doiTac, l.lienHe].filter(Boolean).join(' · ')}</td>
@@ -156,14 +157,14 @@ export default function DanhSach({ ds, onMo, locBanDau }: { ds: LopGiang[]; onMo
                   {l.gioBD ? `${l.gioBD}–${l.gioKT}` : TEN_BUOI[l.buoi]}
                   {l.hinhThuc === 'online' && <span className="ml-1 text-xs text-sky-700">online</span>}
                 </td>
-                <td className="whitespace-nowrap p-2 text-right">{dinhDangTien(l.chiPhi)}</td>
+                <td className="whitespace-nowrap p-2 text-right">{l.congViec ? '' : dinhDangTien(l.chiPhi)}</td>
                 <td className="p-2"><NhanTrangThai l={l} /></td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr className="border-t border-slate-200 bg-slate-50 text-sm font-medium">
-              <td className="p-2" colSpan={5}>{loc.length} lớp</td>
+              <td className="p-2" colSpan={5}>{loc.length - soViec} lớp{soViec > 0 && ` · ${soViec} lịch công việc (không tính tiền)`}</td>
               <td className="p-2 text-right">{dinhDangTien(tong)}</td>
               <td />
             </tr>

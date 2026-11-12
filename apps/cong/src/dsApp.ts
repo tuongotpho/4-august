@@ -39,9 +39,9 @@ export const DS_APP: AppCon[] = [
   },
   {
     ma: 'antoan',
-    ten: 'Lịch giảng ATLĐ',
-    moTa: 'Lịch lớp, thù lao, công nợ đối tác',
-    kyHieu: 'LG',
+    ten: 'Quản lý công việc',
+    moTa: 'Lịch công việc, thù lao, công nợ đối tác',
+    kyHieu: 'CV',
     mau: '#0f766e',
     duongDan: '/lich-giang/',
     diaChiGoc: 'https://quanly-at.vercel.app',

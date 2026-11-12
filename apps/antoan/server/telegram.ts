@@ -11,7 +11,7 @@
 
 import { createHash } from 'node:crypto'
 import {
-  congNgay, dinhDangTien, homNay, ngayCuoi, ngayVN, TEN_BUOI, thu, type CaiDat, type LopGiang,
+  congNgay, dinhDangTien, homNay, ngayCuoi, ngayVN, TEN_BUOI, tenLop, thu, thuLao, type CaiDat, type LopGiang,
 } from '../src/lib/model.js'
 import { lopTuAI, type KetQuaAI } from '../src/lib/trichTin.js'
 import { congNo, goiY, sapXepTheoNgay, timLopChoTien, timTrung, trungGio } from '../src/lib/tinh.js'
@@ -64,6 +64,13 @@ const THE_MA = (id: string) => `Mã lớp: ${id}`
 const docMa = (s?: string) => /Mã lớp: ([\w-]+)/.exec(s ?? '')?.[1]
 
 export function moTaLop(l: LopGiang): string {
+  if (l.congViec) {
+    return [
+      `📅 ${thu(l.ngay)} ${ngayVN(l.ngay)}${l.soNgay > 1 ? ` → ${ngayVN(ngayCuoi(l))} (${l.soNgay} ngày)` : ''}${l.gioBD ? `, ${l.gioBD}–${l.gioKT || '?'}` : `, ${TEN_BUOI[l.buoi]}`}`,
+      `💼 ${tenLop(l)} (lịch công việc)`,
+      l.diaDiem ? `📍 ${l.diaDiem}` : '',
+    ].filter(Boolean).join('\n')
+  }
   return [
     `📅 ${thu(l.ngay)} ${ngayVN(l.ngay)}${l.soNgay > 1 ? ` → ${ngayVN(ngayCuoi(l))} (${l.soNgay} ngày)` : ''}${l.gioBD ? `, ${l.gioBD}–${l.gioKT || '?'}` : `, ${TEN_BUOI[l.buoi]}`}`,
     `🏢 ${l.khachHang || '(chưa rõ khách hàng)'}`,
@@ -203,7 +210,7 @@ export async function xuLyTelegram(req: Request, duong: string, bc: BoiCanh): Pr
       const lop = ds.filter((l) => !l.huy && ngayCuoi(l) >= tu && l.ngay <= den).sort(sapXepTheoNgay)
       const tieuDe = lenh === 'tuan' ? `🗓 Lịch 7 ngày tới (${ngayVN(hn, false)}–${ngayVN(den, false)})` : `🗓 Lịch tháng ${hn.slice(5, 7)}/${hn.slice(0, 4)}`
       return void (await gui(chat, [tieuDe, '', ...(lop.length ? lop.map(dongNgan) : ['Không có lớp nào.']),
-        lenh === 'thang' && lop.length ? `\nTổng: ${lop.length} lớp · ${dinhDangTien(lop.reduce((s, l) => s + (l.chiPhi ?? 0), 0))} đ` : ''].join('\n')))
+        lenh === 'thang' && lop.some((l) => !l.congViec) ? `\nTổng: ${lop.filter((l) => !l.congViec).length} lớp · ${dinhDangTien(lop.reduce((s, l) => s + thuLao(l), 0))} đ` : ''].join('\n')))
     }
 
     if (lenh === 'congno') {
@@ -350,6 +357,7 @@ function pick(l: LopGiang) {
 }
 
 export function dongNgan(l: LopGiang): string {
+  if (l.congViec) return `${thu(l.ngay)} ${ngayVN(l.ngay, false)}${l.gioBD ? ` ${l.gioBD}` : ''} · 💼 ${tenLop(l)}`
   return `${thu(l.ngay)} ${ngayVN(l.ngay, false)}${l.gioBD ? ` ${l.gioBD}` : ''} · ${l.khachHang}${l.doiTac ? ` (${l.doiTac})` : ''}${l.chiPhi !== null ? ` · ${dinhDangTien(l.chiPhi)}` : ''}`
 }
 

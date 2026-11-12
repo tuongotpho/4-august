@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { congNgay, dinhDangTien, homNay, ngayCuoi, ngayVN, TEN_BUOI, thu, trangThai, type LopGiang } from '../lib/model'
+import { congNgay, dinhDangTien, homNay, ngayCuoi, ngayVN, TEN_BUOI, tenLop, thu, thuLao, trangThai, type LopGiang } from '../lib/model'
 import { MAU_TRANG_THAI, NhanTrangThai, VIEN_TRANG_THAI } from './TheLop'
 
 const THU = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
@@ -9,11 +9,13 @@ function TheLopNgay({ l, onMo, coNgay = false }: { l: LopGiang; onMo: (l: LopGia
   const tt = trangThai(l)
   const hn = homNay()
   const tenNgay = l.ngay === hn ? 'Hôm nay' : l.ngay === congNgay(hn, 1) ? 'Mai' : `${thu(l.ngay)} ${ngayVN(l.ngay, false)}`
-  const dong: [string, string][] = [
-    ['Đối tác', [l.doiTac, l.lienHe].filter(Boolean).join(' · ')],
-    ['Ở đâu', l.hinhThuc === 'online' ? 'Online' : l.diaDiem],
-    ['Nội dung', l.noiDung],
-  ]
+  const dong: [string, string][] = l.congViec
+    ? [['Ở đâu', l.diaDiem], ['Ghi chú', l.ghiChu]]
+    : [
+        ['Đối tác', [l.doiTac, l.lienHe].filter(Boolean).join(' · ')],
+        ['Ở đâu', l.hinhThuc === 'online' ? 'Online' : l.diaDiem],
+        ['Nội dung', l.noiDung],
+      ]
   return (
     <button
       className={`block w-full rounded-md border border-l-4 border-slate-200 ${VIEN_TRANG_THAI[tt]} px-3 py-2 text-left hover:bg-slate-50 ${l.huy ? 'opacity-60' : ''}`}
@@ -28,8 +30,8 @@ function TheLopNgay({ l, onMo, coNgay = false }: { l: LopGiang; onMo: (l: LopGia
         <span className="ml-auto"><NhanTrangThai l={l} /></span>
       </div>
       <div className={`mt-0.5 font-semibold leading-snug text-slate-900 ${l.huy ? 'line-through' : ''}`}>
-        {l.hinhThuc === 'online' && '💻 '}
-        {l.khachHang || '(chưa rõ khách hàng)'}
+        {l.congViec ? '💼 ' : l.hinhThuc === 'online' && '💻 '}
+        {tenLop(l)}
       </div>
       <dl className="mt-1 grid grid-cols-[4.5rem_1fr] gap-x-2 gap-y-0.5 text-xs">
         {dong.filter(([, v]) => v).map(([k, v]) => (
@@ -38,14 +40,18 @@ function TheLopNgay({ l, onMo, coNgay = false }: { l: LopGiang; onMo: (l: LopGia
             <dd className="text-slate-700">{v}</dd>
           </div>
         ))}
-        <dt className="text-slate-400">Thù lao</dt>
-        <dd className="font-medium text-slate-800">{l.chiPhi === null ? 'chưa ghi' : `${dinhDangTien(l.chiPhi)} đ`}</dd>
+        {!l.congViec && (
+          <>
+            <dt className="text-slate-400">Thù lao</dt>
+            <dd className="font-medium text-slate-800">{l.chiPhi === null ? 'chưa ghi' : `${dinhDangTien(l.chiPhi)} đ`}</dd>
+          </>
+        )}
       </dl>
     </button>
   )
 }
 
-export default function LichThang({ ds, onMo, onThem }: { ds: LopGiang[]; onMo: (l: LopGiang) => void; onThem: (ngay: string) => void }) {
+export default function LichThang({ ds, onMo, onThem }: { ds: LopGiang[]; onMo: (l: LopGiang) => void; onThem: (ngay: string, congViec?: boolean) => void }) {
   const hn = homNay()
   const [thang, setThang] = useState(hn.slice(0, 7))
   const [chon, setChon] = useState(hn)
@@ -76,7 +82,13 @@ export default function LichThang({ ds, onMo, onThem }: { ds: LopGiang[]; onMo: 
     setThang(d.toISOString().slice(0, 7))
   }
   const trongThang = ds.filter((l) => l.ngay.startsWith(thang) && !l.huy)
+  const lopThang = trongThang.filter((l) => !l.congViec)
+  const viecThang = trongThang.length - lopThang.length
   const lopChon = [...(theoNgay.get(chon) ?? [])].sort((a, b) => (a.gioBD || '99').localeCompare(b.gioBD || '99'))
+  const soLopChon = lopChon.filter((l) => !l.congViec).length
+  const soViecChon = lopChon.length - soLopChon
+  /** Ngày bận công việc chính (không tính việc đã hủy) -> tô nền ô ngày */
+  const banViec = (n: string) => (theoNgay.get(n) ?? []).some((l) => l.congViec && !l.huy)
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -87,7 +99,7 @@ export default function LichThang({ ds, onMo, onThem }: { ds: LopGiang[]; onMo: 
           <button className="btn !px-2" onClick={() => doiThang(1)} aria-label="Tháng sau">›</button>
           <button className="btn whitespace-nowrap" onClick={() => { setThang(hn.slice(0, 7)); setChon(hn) }}>Hôm nay</button>
           <span className="ml-auto text-right text-xs text-slate-500">
-            {trongThang.length} lớp · {trongThang.reduce((s, l) => s + (l.chiPhi ?? 0), 0).toLocaleString('vi-VN')} đ
+            {lopThang.length} lớp · {lopThang.reduce((s, l) => s + thuLao(l), 0).toLocaleString('vi-VN')} đ{viecThang > 0 && ` · ${viecThang} việc`}
           </span>
         </div>
         <div className="grid grid-cols-7 gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 text-xs">
@@ -100,12 +112,12 @@ export default function LichThang({ ds, onMo, onThem }: { ds: LopGiang[]; onMo: 
                 key={n}
                 onClick={() => setChon(n)}
                 onDoubleClick={() => onThem(n)}
-                className={`min-h-16 bg-white p-1 text-left align-top sm:min-h-24 ${ngoai ? 'opacity-40' : ''} ${chon === n ? 'ring-2 ring-inset ring-teal-600' : ''}`}
+                className={`min-h-16 p-1 text-left align-top sm:min-h-24 ${banViec(n) ? 'bg-violet-50' : 'bg-white'} ${ngoai ? 'opacity-40' : ''} ${chon === n ? 'ring-2 ring-inset ring-teal-600' : ''}`}
               >
                 <span className={`mb-0.5 inline-block rounded px-1 ${n === hn ? 'bg-teal-700 font-bold text-white' : 'text-slate-600'}`}>{Number(n.slice(8))}</span>
                 {lop.slice(0, 3).map((l) => (
                   <span key={l.id} className={`mb-0.5 block truncate rounded px-1 leading-4 ${MAU_TRANG_THAI[trangThai(l)]}`}>
-                    <span className="hidden sm:inline">{l.gioBD} </span>{l.khachHang}
+                    <span className="hidden sm:inline">{l.gioBD} </span>{l.congViec && '💼'}{tenLop(l)}
                   </span>
                 ))}
                 {lop.length > 3 && <span className="block text-slate-400">+{lop.length - 3}</span>}
@@ -113,7 +125,10 @@ export default function LichThang({ ds, onMo, onThem }: { ds: LopGiang[]; onMo: 
             )
           })}
         </div>
-        <p className="mt-2 text-xs text-slate-400">Chạm vào ngày để xem lớp; nút “+ Thêm lớp” ở khung ngày để thêm (máy tính: bấm đúp vào ngày).</p>
+        <p className="mt-2 text-xs text-slate-400">
+          Chạm vào ngày để xem lịch; nút “+ Lớp” / “+ Việc” ở khung ngày để thêm (máy tính: bấm đúp vào ngày).
+          <span className="ml-1 inline-flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-sm border border-violet-200 bg-violet-50" /> nền tím = ngày bận công việc chính.</span>
+        </p>
       </div>
 
       <div className="space-y-4">
@@ -122,12 +137,17 @@ export default function LichThang({ ds, onMo, onThem }: { ds: LopGiang[]; onMo: 
             <div className="min-w-0 flex-1">
               <h3 className="font-semibold text-slate-800">{thu(chon) === 'CN' ? 'Chủ nhật' : `Thứ ${Number(thu(chon).slice(1))}`}, {ngayVN(chon)}</h3>
               {lopChon.length > 0 && (
-                <p className="text-xs text-slate-500">{lopChon.length} lớp · {lopChon.reduce((s, l) => s + (l.huy ? 0 : l.chiPhi ?? 0), 0).toLocaleString('vi-VN')} đ</p>
+                <p className="text-xs text-slate-500">
+                  {soLopChon > 0 && `${soLopChon} lớp · ${lopChon.reduce((s, l) => s + thuLao(l), 0).toLocaleString('vi-VN')} đ`}
+                  {soLopChon > 0 && soViecChon > 0 && ' · '}
+                  {soViecChon > 0 && <span className="font-medium text-violet-700">💼 bận công việc</span>}
+                </p>
               )}
             </div>
-            <button className="btn shrink-0 !py-1 !text-xs" onClick={() => onThem(chon)}>+ Thêm lớp</button>
+            <button className="btn shrink-0 !py-1 !text-xs" onClick={() => onThem(chon)}>+ Lớp</button>
+            <button className="btn shrink-0 !py-1 !text-xs" onClick={() => onThem(chon, true)}>+ Việc</button>
           </div>
-          {lopChon.length === 0 && <p className="text-sm text-slate-400">Không có lớp.</p>}
+          {lopChon.length === 0 && <p className="text-sm text-slate-400">Trống lịch.</p>}
           <div className="space-y-2">
             {lopChon.map((l) => <TheLopNgay key={l.id} l={l} onMo={onMo} />)}
           </div>

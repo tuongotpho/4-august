@@ -21,6 +21,9 @@ export interface LopGiang {
   noiDung: string // chủ đề / ghi chú công việc
   chiPhi: number | null // thù lao (đồng); null = chưa thỏa thuận
   huy: boolean // lớp bị hủy (giữ lại để tra cứu)
+  /** Lịch CÔNG VIỆC CHÍNH (không phải lớp giảng): chỉ để biết ngày bận, không có thù lao, không tính doanh thu / công nợ.
+   *  Tên việc ghi ở `noiDung`. Trường thêm 11/2026 — bản ghi cũ không có = false. */
+  congViec: boolean
   thanhToan: ThanhToan
   ngayTT: string // ngày nhận tiền, '' nếu chưa
   ghiChu: string
@@ -72,6 +75,7 @@ export function lopMoi(p: Partial<LopGiang> = {}): LopGiang {
     noiDung: '',
     chiPhi: null,
     huy: false,
+    congViec: false,
     thanhToan: 'chua',
     ngayTT: '',
     ghiChu: '',
@@ -95,6 +99,7 @@ export function chuanLop(x: Partial<LopGiang> & { id: string }): LopGiang {
   l.chiPhi = x.chiPhi === null || x.chiPhi === undefined || x.chiPhi === ('' as unknown) ? null : Number(x.chiPhi) || 0
   l.canDongBo = !!x.canDongBo
   l.huy = !!x.huy
+  l.congViec = !!x.congViec
   return l
 }
 
@@ -169,10 +174,11 @@ export function daGiang(l: LopGiang, bayGio = new Date()): boolean {
   return !!l.gioKT && l.gioKT <= gioVN
 }
 
-export type TrangThai = 'huy' | 'sap_toi' | 'cho_tien' | 'thieu_thu_lao' | 'xong'
+export type TrangThai = 'huy' | 'cong_viec' | 'sap_toi' | 'cho_tien' | 'thieu_thu_lao' | 'xong'
 
 export function trangThai(l: LopGiang, bayGio = new Date()): TrangThai {
   if (l.huy) return 'huy'
+  if (l.congViec) return 'cong_viec'
   if (l.thanhToan === 'da') return 'xong'
   if (!daGiang(l, bayGio)) return 'sap_toi'
   if (l.chiPhi === null) return 'thieu_thu_lao'
@@ -181,11 +187,21 @@ export function trangThai(l: LopGiang, bayGio = new Date()): TrangThai {
 
 export const TEN_TRANG_THAI: Record<TrangThai, string> = {
   huy: 'Đã hủy',
+  cong_viec: 'Lịch công việc',
   sap_toi: 'Sắp giảng',
   cho_tien: 'Chờ thanh toán',
   thieu_thu_lao: 'Thiếu thù lao',
   xong: 'Đã thanh toán',
 }
+
+/** Tên hiển thị: lớp giảng = khách hàng; lịch công việc = tên việc */
+export function tenLop(l: Pick<LopGiang, 'congViec' | 'khachHang' | 'noiDung'>): string {
+  if (l.congViec) return l.noiDung.trim() || l.khachHang.trim() || 'Công việc'
+  return l.khachHang.trim() || '(chưa rõ khách hàng)'
+}
+
+/** Thù lao tính vào doanh thu: lịch công việc và lớp hủy = 0 */
+export const thuLao = (l: LopGiang): number => (l.huy || l.congViec ? 0 : l.chiPhi ?? 0)
 
 // ---------------- Tiền ----------------
 

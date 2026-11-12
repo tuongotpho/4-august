@@ -40,7 +40,7 @@ export interface DongTongHop {
 function gom(ds: LopGiang[], khoa: (l: LopGiang) => string): DongTongHop[] {
   const m = new Map<string, DongTongHop>()
   for (const l of ds) {
-    if (l.huy) continue
+    if (l.huy || l.congViec) continue // lịch công việc không tính doanh thu
     const k = khoa(l)
     const d = m.get(k) ?? { khoa: k, soLop: 0, tien: 0, daTT: 0 }
     d.soLop++
@@ -71,7 +71,7 @@ export interface DongLienHe extends DongTongHop {
 
 /** Theo người liên hệ (bỏ trống -> '(chưa rõ)'), kèm đối tác của họ */
 export function theoLienHe(ds: LopGiang[], nam?: string): DongLienHe[] {
-  const loc = nam ? ds.filter((l) => l.ngay.startsWith(nam)) : ds
+  const loc = (nam ? ds.filter((l) => l.ngay.startsWith(nam)) : ds).filter((l) => !l.congViec)
   const ten = (l: LopGiang) => l.lienHe.trim() || '(chưa rõ)'
   const dt = new Map<string, Map<string, number>>()
   for (const l of loc) {
@@ -105,7 +105,7 @@ const KHOA_CHIA: Record<CachChia, (l: LopGiang) => string> = {
 
 /** Tổng toàn bộ các lớp ĐÃ GIẢNG tính đến hôm nay (bỏ lớp huỷ, lớp sắp tới), chia theo một cách */
 export function tongDenNay(ds: LopGiang[], chia: CachChia, bayGio = new Date()): DongTong[] {
-  const loc = ds.filter((l) => daGiang(l, bayGio))
+  const loc = ds.filter((l) => daGiang(l, bayGio) && !l.congViec)
   const f = KHOA_CHIA[chia]
   const k = (l: LopGiang) => (chia === 'khachHang' ? boDau(f(l)) : f(l))
   const m = new Map<string, DongTong & { dem: Map<string, number> }>()
@@ -133,7 +133,8 @@ export interface GoiY {
 }
 
 /** Danh mục gợi ý rút ra từ chính dữ liệu: dùng nhiều xếp trước. Người liên hệ gắn với đối tác hay đi cùng nhất. */
-export function goiY(ds: LopGiang[]): GoiY {
+export function goiY(tatCa: LopGiang[]): GoiY {
+  const ds = tatCa.filter((l) => !l.congViec)
   const dem = (f: (l: LopGiang) => string) => {
     const m = new Map<string, number>()
     for (const l of ds) {
@@ -158,10 +159,10 @@ export function goiY(ds: LopGiang[]): GoiY {
 }
 
 /** Lớp có thể trùng: cùng ngày và tên khách hàng gần giống (bỏ dấu, chứa nhau) */
-export function timTrung(ds: LopGiang[], l: Pick<LopGiang, 'id' | 'ngay' | 'khachHang'>): LopGiang | undefined {
+export function timTrung(ds: LopGiang[], l: Pick<LopGiang, 'id' | 'ngay' | 'khachHang'> & { congViec?: boolean }): LopGiang | undefined {
   const k = boDau(l.khachHang)
-  if (!k) return undefined
-  return ds.find((x) => x.id !== l.id && !x.huy && x.ngay === l.ngay && (boDau(x.khachHang).includes(k) || k.includes(boDau(x.khachHang))))
+  if (!k || l.congViec) return undefined
+  return ds.find((x) => x.id !== l.id && !x.huy && !x.congViec && boDau(x.khachHang) && x.ngay === l.ngay && (boDau(x.khachHang).includes(k) || k.includes(boDau(x.khachHang))))
 }
 
 /** Lớp trùng giờ (cùng ngày, khoảng giờ giao nhau) */
@@ -178,7 +179,7 @@ export function timLopChoTien(ds: LopGiang[], tu: string, bayGio = new Date()): 
   const k = boDau(tu)
   if (k.length < 3) return []
   return ds
-    .filter((l) => !l.huy && l.thanhToan === 'chua' && daGiang(l, bayGio))
+    .filter((l) => !l.huy && !l.congViec && l.thanhToan === 'chua' && daGiang(l, bayGio))
     .filter((l) => [l.khachHang, l.doiTac, l.lienHe].some((v) => v && boDau(v).length >= 3 && (boDau(v).includes(k) || k.includes(boDau(v)))))
     .sort(sapXepTheoNgay)
 }
@@ -187,7 +188,7 @@ export function timLopChoTien(ds: LopGiang[], tu: string, bayGio = new Date()): 
 export function lienHeGanDay(ds: LopGiang[], n = 8): { ten: string; doiTac: string }[] {
   const gap = new Map<string, LopGiang>()
   for (const l of ds) {
-    if (!l.lienHe) continue
+    if (!l.lienHe || l.congViec) continue
     const cu = gap.get(l.lienHe)
     if (!cu || l.ngay > cu.ngay) gap.set(l.lienHe, l)
   }
@@ -196,13 +197,13 @@ export function lienHeGanDay(ds: LopGiang[], n = 8): { ten: string; doiTac: stri
 
 /** Lớp gần nhất với người liên hệ này — để điền sẵn đối tác, hình thức, thù lao như lần trước */
 export function lanTruoc(ds: LopGiang[], lienHe: string): LopGiang | undefined {
-  return ds.filter((l) => l.lienHe === lienHe && !l.huy).sort((a, b) => b.ngay.localeCompare(a.ngay))[0]
+  return ds.filter((l) => l.lienHe === lienHe && !l.huy && !l.congViec).sort((a, b) => b.ngay.localeCompare(a.ngay))[0]
 }
 
 /** Các mức thù lao hay gặp trong 12 tháng gần đây */
 export function mucTienHayGap(ds: LopGiang[], n = 5, bayGio = new Date()): number[] {
   const tu = homNay(new Date(bayGio.getTime() - 365 * 86400_000))
   const dem = new Map<number, number>()
-  for (const l of ds) if (l.chiPhi && l.ngay >= tu) dem.set(l.chiPhi, (dem.get(l.chiPhi) ?? 0) + 1)
+  for (const l of ds) if (l.chiPhi && !l.congViec && l.ngay >= tu) dem.set(l.chiPhi, (dem.get(l.chiPhi) ?? 0) + 1)
   return [...dem.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([k]) => k).sort((a, b) => a - b)
 }

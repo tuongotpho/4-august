@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { luuLop, useGoiY, xoaLop } from '../lib/hooks'
 import {
-  congNgay, doanBuoi, docTien, dinhDangTien, GIO_MAC_DINH, homNay, ngayVN, TEN_BUOI, TEN_TRANG_THAI, thu, trangThai, type Buoi, type LopGiang,
+  congNgay, doanBuoi, docTien, dinhDangTien, GIO_MAC_DINH, homNay, ngayVN, TEN_BUOI, TEN_TRANG_THAI, tenLop, thu, trangThai, type Buoi, type LopGiang,
 } from '../lib/model'
 import { lanTruoc, lienHeGanDay, mucTienHayGap, timTrung, trungGio } from '../lib/tinh'
 
@@ -49,7 +49,10 @@ export default function SuaLop({ lop, tatCa, moi, onDong }: Props) {
     const ds: string[] = []
     const t = timTrung(tatCa, l)
     if (t) ds.push(`Có thể trùng lớp đã có: ${t.khachHang} (${ngayVN(t.ngay)})`)
-    for (const x of trungGio(tatCa, l)) if (x.id !== t?.id) ds.push(`Trùng giờ với lớp ${x.khachHang} ${x.gioBD}–${x.gioKT}`)
+    for (const x of trungGio(tatCa, l)) {
+      if (x.id === t?.id) continue
+      ds.push(x.congViec ? `Ngày này bận công việc: ${tenLop(x)} ${x.gioBD}–${x.gioKT}` : `Trùng giờ với lớp ${tenLop(x)} ${x.gioBD}–${x.gioKT}`)
+    }
     return ds
   }, [tatCa, l])
 
@@ -84,14 +87,17 @@ export default function SuaLop({ lop, tatCa, moi, onDong }: Props) {
   }
 
   async function luu() {
-    if (!l.khachHang.trim()) return setLoi('Nhập tên khách hàng (đơn vị được đào tạo)')
-    const chiPhi = tien.trim() ? docTien(tien) : null
+    if (l.congViec && !l.noiDung.trim()) return setLoi('Nhập tên công việc')
+    if (!l.congViec && !l.khachHang.trim()) return setLoi('Nhập tên khách hàng (đơn vị được đào tạo)')
+    // lịch công việc: không có thù lao, không thanh toán
+    const chiPhi = l.congViec ? null : tien.trim() ? docTien(tien) : null
     if (tien.trim() && chiPhi === null) return setLoi('Thù lao không hiểu được — gõ số, vd 1500000 hoặc 1tr5')
     setDangLuu(true)
     try {
-      const doiLich = moi || ['ngay', 'soNgay', 'gioBD', 'gioKT', 'khachHang', 'doiTac', 'lienHe', 'diaDiem', 'noiDung', 'hinhThuc', 'huy', 'ghiChu']
+      const doiLich = moi || ['ngay', 'soNgay', 'gioBD', 'gioKT', 'khachHang', 'doiTac', 'lienHe', 'diaDiem', 'noiDung', 'hinhThuc', 'huy', 'ghiChu', 'congViec']
         .some((k) => l[k as keyof LopGiang] !== lop[k as keyof LopGiang]) || chiPhi !== lop.chiPhi
-      await luuLop({ ...l, khachHang: l.khachHang.trim(), chiPhi, ngayTT: l.thanhToan === 'da' ? l.ngayTT || homNay() : '' }, doiLich)
+      const daTT = !l.congViec && l.thanhToan === 'da'
+      await luuLop({ ...l, khachHang: l.khachHang.trim(), noiDung: l.noiDung.trim(), chiPhi, thanhToan: daTT ? 'da' : 'chua', ngayTT: daTT ? l.ngayTT || homNay() : '' }, doiLich)
       onDong()
     } catch (e) {
       setLoi((e as Error).message)
@@ -100,7 +106,7 @@ export default function SuaLop({ lop, tatCa, moi, onDong }: Props) {
   }
 
   async function xoa() {
-    if (!confirm(`Xoá hẳn lớp "${l.khachHang}" ngày ${ngayVN(l.ngay)}? (Muốn giữ lại để tra cứu thì đánh dấu "Lớp bị hủy")`)) return
+    if (!confirm(l.congViec ? `Xoá lịch công việc "${tenLop(l)}" ngày ${ngayVN(l.ngay)}?` : `Xoá hẳn lớp "${l.khachHang}" ngày ${ngayVN(l.ngay)}? (Muốn giữ lại để tra cứu thì đánh dấu "Lớp bị hủy")`)) return
     await xoaLop(lop)
     onDong()
   }
@@ -112,7 +118,7 @@ export default function SuaLop({ lop, tatCa, moi, onDong }: Props) {
       <div className="flex h-full w-full max-w-2xl flex-col bg-white sm:h-auto sm:rounded-lg sm:shadow-xl">
         <header className="flex items-center gap-2 border-b border-slate-200 px-2 py-2 sm:px-4">
           <button className="rounded px-2 py-1 text-xl text-slate-500" onClick={onDong} aria-label="Đóng">←</button>
-          <h2 className="flex-1 text-lg font-semibold text-slate-800">{moi ? 'Thêm lớp' : 'Sửa lớp'}</h2>
+          <h2 className="flex-1 text-lg font-semibold text-slate-800">{l.congViec ? (moi ? 'Thêm lịch công việc' : 'Sửa lịch công việc') : moi ? 'Thêm lớp' : 'Sửa lớp'}</h2>
           <span className="chip bg-slate-100 text-slate-600">{TEN_TRANG_THAI[tt]}</span>
         </header>
 
@@ -122,9 +128,18 @@ export default function SuaLop({ lop, tatCa, moi, onDong }: Props) {
         <datalist id="dl-diadiem">{gy.diaDiem.map((x) => <option key={x} value={x} />)}</datalist>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-3">
+          {/* ----- Loại lịch: lớp giảng (có thù lao) hay công việc chính (chỉ đánh dấu ngày bận) ----- */}
+          <section className="space-y-1">
+            <div className="flex gap-1.5">
+              <Chip chon={!l.congViec} onClick={() => dat({ congViec: false })}>🎓 Lớp giảng</Chip>
+              <Chip chon={l.congViec} onClick={() => dat({ congViec: true })}>💼 Lịch công việc</Chip>
+            </div>
+            {l.congViec && <p className="text-xs text-violet-700">Đánh dấu ngày bận công việc chính — không có thù lao, không cộng vào doanh thu, công nợ.</p>}
+          </section>
+
           {/* ----- Khi nào ----- */}
           <section className="space-y-2">
-            <span className="lbl">Ngày giảng — {thu(l.ngay)} {ngayVN(l.ngay)}</span>
+            <span className="lbl">{l.congViec ? 'Ngày' : 'Ngày giảng'} — {thu(l.ngay)} {ngayVN(l.ngay)}</span>
             <Hang>
               {ngayNhanh.map((n, i) => (
                 <Chip key={n} chon={l.ngay === n} onClick={() => dat({ ngay: n })}>
@@ -151,6 +166,24 @@ export default function SuaLop({ lop, tatCa, moi, onDong }: Props) {
             </div>
           </section>
 
+          {l.congViec && (
+            <section className="space-y-2">
+              <label className="block">
+                <span className="lbl">Tên công việc *</span>
+                <input className="inp" enterKeyHint="next" value={l.noiDung} onChange={(e) => dat({ noiDung: e.target.value })} placeholder="vd: Họp giao ban, đi công trường…" />
+              </label>
+              <label className="block">
+                <span className="lbl">Địa điểm</span>
+                <input className="inp" list="dl-diadiem" value={l.diaDiem} onChange={(e) => dat({ diaDiem: e.target.value })} />
+              </label>
+              <label className="block">
+                <span className="lbl">Ghi chú</span>
+                <textarea className="inp h-16" value={l.ghiChu} onChange={(e) => dat({ ghiChu: e.target.value })} />
+              </label>
+            </section>
+          )}
+
+          {!l.congViec && (<>
           {/* ----- Ai mời, dạy ở đâu ----- */}
           <section className="space-y-2">
             <span className="lbl">Người liên hệ</span>
@@ -243,6 +276,7 @@ export default function SuaLop({ lop, tatCa, moi, onDong }: Props) {
               )}
             </section>
           )}
+          </>)}
 
           {canhBao.map((c) => <p key={c} className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">⚠️ {c}</p>)}
         </div>
