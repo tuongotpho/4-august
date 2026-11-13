@@ -112,7 +112,7 @@ export default function LichThang({ ds, onMo, onThem }: { ds: LopGiang[]; onMo: 
                 key={n}
                 onClick={() => setChon(n)}
                 onDoubleClick={() => onThem(n)}
-                className={`min-h-16 p-1 text-left align-top sm:min-h-24 xl:min-h-28${banViec(n) ? 'bg-violet-50' : 'bg-white'} ${ngoai ? 'opacity-40' : ''} ${chon === n ? 'ring-2 ring-inset ring-teal-600' : ''}`}
+                className={`min-h-16 p-1 text-left align-top sm:min-h-24 xl:min-h-28 ${banViec(n) ? 'bg-violet-50' : 'bg-white'} ${ngoai ? 'opacity-40' : ''} ${chon === n ? 'ring-2 ring-inset ring-teal-600' : ''}`}
               >
                 <span className={`mb-0.5 inline-block rounded px-1 ${n === hn ? 'bg-teal-700 font-bold text-white' : 'text-slate-600'}`}>{Number(n.slice(8))}</span>
                 {lop.slice(0, 3).map((l) => (
