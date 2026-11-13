@@ -33,6 +33,8 @@ export default function CongNo({ ds, onMo }: { ds: LopGiang[]; onMo: (l: LopGian
           Ngày nhận tiền <input type="date" className="inp !w-40" value={ngayTT} onChange={(e) => setNgayTT(e.target.value)} />
         </label>
       </div>
+      {/* màn rộng: 2 cột để số tiền không bị đẩy xa tên lớp */}
+      <div className="grid items-start gap-3 xl:grid-cols-2">
       {nhom.map((n) => (
         <div key={n.doiTac} className="card !p-3">
           <div className="mb-1 flex flex-wrap items-center gap-2">
@@ -44,6 +46,7 @@ export default function CongNo({ ds, onMo }: { ds: LopGiang[]; onMo: (l: LopGian
           {n.lop.map((l) => <DongLop key={l.id} l={l} onMo={onMo} />)}
         </div>
       ))}
+      </div>
     </div>
   )
 }

@@ -125,7 +125,7 @@ function ManHinh({ user }: { user: User }) {
     setSua({ lop: lopMoi({ ngay, congViec, ...(congViec ? { buoi: 'ca_ngay', gioBD: GIO_MAC_DINH.ca_ngay[0], gioKT: GIO_MAC_DINH.ca_ngay[1] } : { gioBD: GIO_MAC_DINH.sang[0], gioKT: GIO_MAC_DINH.sang[1] }) }), moi: true })
 
   return (
-    <div className="mx-auto max-w-7xl p-2 pb-24 sm:p-4">
+    <div className="w-full p-2 pb-24 sm:p-4 lg:px-6">
       <header className="mb-3 flex items-center gap-2 pt-[env(safe-area-inset-top)]">
         {QUA_CONG && <NutTrangChu />}
         <h1 className="flex items-center gap-2 text-lg font-bold text-slate-800"><img src="icon.svg" alt="" className="h-7 w-7" />Quản lý công việc</h1>
