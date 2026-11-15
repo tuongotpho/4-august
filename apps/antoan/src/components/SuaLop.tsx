@@ -115,7 +115,7 @@ export default function SuaLop({ lop, tatCa, moi, onDong }: Props) {
 
   return (
     <div className="fixed inset-0 z-40 flex justify-center bg-black/40 sm:items-start sm:overflow-y-auto sm:p-6" onMouseDown={(e) => e.target === e.currentTarget && onDong()}>
-      <div className="flex h-full w-full max-w-2xl flex-col bg-white sm:h-auto sm:rounded-lg sm:shadow-xl">
+      <div className="flex h-full w-full max-w-2xl flex-col bg-white sm:h-auto sm:rounded-lg sm:shadow-xl lg:max-w-5xl">
         <header className="flex items-center gap-2 border-b border-slate-200 px-2 py-2 sm:px-4">
           <button className="rounded px-2 py-1 text-xl text-slate-500" onClick={onDong} aria-label="Đóng">←</button>
           <h2 className="flex-1 text-lg font-semibold text-slate-800">{l.congViec ? (moi ? 'Thêm lịch công việc' : 'Sửa lịch công việc') : moi ? 'Thêm lớp' : 'Sửa lớp'}</h2>
@@ -130,13 +130,17 @@ export default function SuaLop({ lop, tatCa, moi, onDong }: Props) {
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-3">
           {/* ----- Loại lịch: lớp giảng (có thù lao) hay công việc chính (chỉ đánh dấu ngày bận) ----- */}
           <section className="space-y-1">
-            <div className="flex gap-1.5">
-              <Chip chon={!l.congViec} onClick={() => dat({ congViec: false })}>🎓 Lớp giảng</Chip>
-              <Chip chon={l.congViec} onClick={() => dat({ congViec: true })}>💼 Lịch công việc</Chip>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex gap-1.5">
+                <Chip chon={!l.congViec} onClick={() => dat({ congViec: false })}>🎓 Lớp giảng</Chip>
+                <Chip chon={l.congViec} onClick={() => dat({ congViec: true })}>💼 Lịch công việc</Chip>
+              </div>
+              {l.congViec && <p className="text-xs text-violet-700">Đánh dấu ngày bận công việc chính — không có thù lao, không cộng vào doanh thu, công nợ.</p>}
             </div>
-            {l.congViec && <p className="text-xs text-violet-700">Đánh dấu ngày bận công việc chính — không có thù lao, không cộng vào doanh thu, công nợ.</p>}
           </section>
 
+          <div className="grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-6">
+          <div className="space-y-4">
           {/* ----- Khi nào ----- */}
           <section className="space-y-2">
             <span className="lbl">{l.congViec ? 'Ngày' : 'Ngày giảng'} — {thu(l.ngay)} {ngayVN(l.ngay)}</span>
@@ -166,6 +170,29 @@ export default function SuaLop({ lop, tatCa, moi, onDong }: Props) {
             </div>
           </section>
 
+          {!l.congViec && (
+          /* ----- Ai mời ----- */
+          <section className="space-y-2">
+            <span className="lbl">Người liên hệ</span>
+            {ganDay.length > 0 && (
+              <Hang>
+                {ganDay.map((x) => (
+                  <Chip key={x.ten} chon={l.lienHe === x.ten} onClick={() => chonLienHe(x.ten)}>
+                    {x.ten}{x.doiTac && <span className="opacity-60"> · {x.doiTac}</span>}
+                  </Chip>
+                ))}
+              </Hang>
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              <input className="inp" list="dl-lienhe" placeholder="Tên khác…" value={l.lienHe} onChange={(e) => dat({ lienHe: e.target.value })} onBlur={(e) => e.target.value && e.target.value !== lop.lienHe && chonLienHe(e.target.value)} />
+              <input className="inp" list="dl-doitac" placeholder="Đối tác" value={l.doiTac} onChange={(e) => dat({ doiTac: e.target.value })} />
+            </div>
+            {goiYTruoc && <p className="text-xs text-teal-700">✓ {goiYTruoc}</p>}
+          </section>
+          )}
+          </div>
+
+          <div className="space-y-4">
           {l.congViec && (
             <section className="space-y-2">
               <label className="block">
@@ -184,25 +211,6 @@ export default function SuaLop({ lop, tatCa, moi, onDong }: Props) {
           )}
 
           {!l.congViec && (<>
-          {/* ----- Ai mời, dạy ở đâu ----- */}
-          <section className="space-y-2">
-            <span className="lbl">Người liên hệ</span>
-            {ganDay.length > 0 && (
-              <Hang>
-                {ganDay.map((x) => (
-                  <Chip key={x.ten} chon={l.lienHe === x.ten} onClick={() => chonLienHe(x.ten)}>
-                    {x.ten}{x.doiTac && <span className="opacity-60"> · {x.doiTac}</span>}
-                  </Chip>
-                ))}
-              </Hang>
-            )}
-            <div className="grid grid-cols-2 gap-2">
-              <input className="inp" list="dl-lienhe" placeholder="Tên khác…" value={l.lienHe} onChange={(e) => dat({ lienHe: e.target.value })} onBlur={(e) => e.target.value && e.target.value !== lop.lienHe && chonLienHe(e.target.value)} />
-              <input className="inp" list="dl-doitac" placeholder="Đối tác" value={l.doiTac} onChange={(e) => dat({ doiTac: e.target.value })} />
-            </div>
-            {goiYTruoc && <p className="text-xs text-teal-700">✓ {goiYTruoc}</p>}
-          </section>
-
           <section className="space-y-2">
             <label className="block">
               <span className="lbl">Khách hàng (đơn vị được đào tạo) *</span>
@@ -277,6 +285,8 @@ export default function SuaLop({ lop, tatCa, moi, onDong }: Props) {
             </section>
           )}
           </>)}
+          </div>
+          </div>
 
           {canhBao.map((c) => <p key={c} className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">⚠️ {c}</p>)}
         </div>
