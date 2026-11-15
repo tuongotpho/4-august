@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "the-visa": { "type": "http", "url": "https://the-visa-lethanh.vercel.app/mcp" }
+  }
+}

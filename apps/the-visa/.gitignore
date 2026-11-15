@@ -1,0 +1,11 @@
+node_modules
+dist
+.env*
+!.env.example
+.vercel
+# Sao kê và số liệu thật KHÔNG BAO GIỜ vào repo (repo công khai)
+*.pdf
+du-lieu/
+.claude
+*.traineddata
+public/thu/
