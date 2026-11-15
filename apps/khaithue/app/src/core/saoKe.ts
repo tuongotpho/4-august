@@ -55,7 +55,7 @@ function soTien(o: O): number {
 
 function ngayGD(o: O): string {
   if (typeof o === 'number' && o > 20000 && o < 80000) {
-    const d = new Date(Date.UTC(1899, 11, 30) + Math.round(o) * 86400000)
+    const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(o) * 86400000)
     return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`
   }
   const s = chuan(o)

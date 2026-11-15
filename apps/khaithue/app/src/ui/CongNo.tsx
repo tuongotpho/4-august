@@ -88,7 +88,8 @@ export function CongNoDN({ k, dsSaoKe, tt }: { k: KetQuaCongNo; dsSaoKe: SaoKe[]
                   <thead className="sticky top-0 bg-slate-50 text-left text-slate-500"><tr><th className="p-1">Ngày</th><th className="p-1 text-right">Vào</th><th className="p-1 text-right">Ra</th><th className="p-1">Nội dung</th><th className="p-1">Gán cho hoá đơn</th></tr></thead>
                   <tbody>
                     {k.chuaGhep.slice(0, 300).map(({ saoKe, gd }) => {
-                      const sk = theoTen.get(saoKe)!
+                      const sk = theoTen.get(saoKe)
+                      if (!sk) return null
                       const cung = conNo.filter((h) => (gd.vao ? h.l === 'ban' : h.l === 'mua'))
                       return (
                         <tr key={`${saoKe}-${gd.id}`} className="border-t border-slate-100">

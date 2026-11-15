@@ -163,6 +163,12 @@ export async function taiDuLieuMay(uid: string): Promise<DuLieuMay> {
     kq.tepHoaDon[mst] = hd.docs.map((x) => ({ id: x.id, ...(x.data() as Omit<TepHoaDonMay, 'id'>) }))
     kq.daXuat[mst] = xu.docs.map((x) => ({ id: x.id, ...(x.data() as Omit<DaXuatMay, 'id'>) }))
   }))
+  kq.congTy.sort((a, b) => a.hoSo.mst.localeCompare(b.hoSo.mst))
+  kq.toKhai.sort((a, b) => a.id.localeCompare(b.id))
+  kq.chungTu.sort((a, b) => a.id.localeCompare(b.id))
+  kq.loHang.sort((a, b) => a.lo.id.localeCompare(b.lo.id))
+  kq.saoKe.sort((a, b) => a.sk.id.localeCompare(b.sk.id))
+  kq.soQuy.sort((a, b) => a.mst.localeCompare(b.mst))
   return kq
 }
 

@@ -13,7 +13,7 @@
 //   KHAITHUE_TELE_VE    vé kết nối (web app tạo ở Kho hồ sơ → Nhắc hạn qua Telegram); nhiều vé cách nhau dấu phẩy
 //   CRON_SECRET         (bí mật) Vercel tự gửi kèm khi chạy lịch — thiếu thì /telegram/nhac từ chối
 
-import { createHash } from 'node:crypto'
+import { createHash, timingSafeEqual } from 'node:crypto'
 import * as cc from '../congCu.js'
 import { tenKy } from '../../src/core/kho.js'
 import { tien } from '../../src/core/nhan.js'
@@ -40,6 +40,14 @@ interface TinNhan {
   message_id: number
   chat: { id: number; type: string }
   text?: string
+}
+
+/** So sánh chuỗi bí mật theo thời gian hằng, tránh rò rỉ độ dài / ký tự */
+function khopBiMat(a: string | null | undefined, b: string): boolean {
+  if (!a) return false
+  const ba = Buffer.from(a)
+  const bb = Buffer.from(b)
+  return ba.length === bb.length && timingSafeEqual(ba, bb)
 }
 
 /** Mật khẩu webhook: suy ra từ khoá bí mật, khỏi thêm biến môi trường. Telegram gửi kèm mỗi lần gọi. */
@@ -124,7 +132,7 @@ export async function xuLyTelegram(req: Request, duong: string, bc: BoiCanhTele)
   }
 
   if (duong === '/telegram/nhan' && req.method === 'POST') {
-    if (req.headers.get('x-telegram-bot-api-secret-token') !== matKhauWebhook(khoa)) return json({ loi: 'Sai mật khẩu webhook' }, 401)
+    if (!khopBiMat(req.headers.get('x-telegram-bot-api-secret-token'), matKhauWebhook(khoa))) return json({ loi: 'Sai mật khẩu webhook' }, 401)
     if (!token) return json({ ok: true })
     const m = ((await req.json().catch(() => ({}))) as { message?: TinNhan }).message
     if (m && m.chat?.type === 'private') {
@@ -147,7 +155,7 @@ export async function xuLyTelegram(req: Request, duong: string, bc: BoiCanhTele)
 
   if (duong === '/telegram/nhac' && (req.method === 'GET' || req.method === 'POST')) {
     const bimat = env.CRON_SECRET?.trim()
-    if (!bimat || req.headers.get('authorization') !== `Bearer ${bimat}`) return json({ loi: 'Chỉ lịch chạy của Vercel (CRON_SECRET) mới gọi được' }, 401)
+    if (!bimat || !khopBiMat(req.headers.get('authorization'), `Bearer ${bimat}`)) return json({ loi: 'Chỉ lịch chạy của Vercel (CRON_SECRET) mới gọi được' }, 401)
     if (!token) return json({ loi: 'Chưa có KHAITHUE_TELE_TOKEN' }, 400)
     const homNay = bc.homNay ?? new Date()
     const kq: { chat: string; daGui: number; loi?: string }[] = []

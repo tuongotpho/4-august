@@ -1,27 +1,28 @@
-# 4.August — app chung gom 5 app cá nhân
+# 4.August — app chung gom 6 app cá nhân
 
-> Đọc hết file này trước khi làm. Phương án đã CHỐT ngày 24/10/2026 (lý do và bằng chứng: `F:\AI\4.August\bao-cao\01-BAO-CAO-WEB-TONG-QUAN-LY.md`, `F:\AI\4.August\bao-cao\02-BAO-CAO-CHOT-GOM-5-APP.md`). Đừng bàn lại từ đầu, cứ làm tiếp theo mục "Tiến độ".
+> Đọc hết file này trước khi làm. Phương án ban đầu (5 app) đã CHỐT ngày 24/10/2026 (`F:\AI\4.August\bao-cao\01-BAO-CAO-WEB-TONG-QUAN-LY.md`, `F:\AI\4.August\bao-cao\02-BAO-CAO-CHOT-GOM-5-APP.md`), sau đó mở rộng thêm app thứ 6 (`the-visa`) ngày 30/10/2026 và chuyển sang Firebase Hosting (`https://app-by-lethanh.web.app`) ngày 31/10/2026. Đừng bàn lại từ đầu, cứ làm tiếp theo mục "Tiến độ".
 >
 > **Báo cáo của dự án** nằm ở `F:\AI\4.August\bao-cao\` (đánh số `NN-BAO-CAO-…md`, mục lục `00-MUC-LUC-BAO-CAO.md`). Thư mục này bị `.gitignore` chặn — có số liệu thật (mã số thuế, doanh thu, tồn quỹ), không đưa lên GitHub.
 
 ## Mục tiêu
-Gom **dần dần** 5 app cá nhân thành **một app chung** (một giao diện, một lần đăng nhập Google). Không gấp: mỗi đợt chuyển một app. **Địa chỉ web cũ, kết nối AI (MCP) cũ, bot Telegram cũ vẫn phải chạy suốt quá trình.**
+Gom **6 app cá nhân** thành **một app chung** (một giao diện, một lần đăng nhập Google tại `https://app-by-lethanh.web.app`). **Địa chỉ web cũ, kết nối AI (MCP) cũ, bot Telegram cũ vẫn được giữ tương thích khi cần.**
 
 Không gom các app công việc / công cộng: Sáng kiến NPSC, QLDA, atld-connect (antoan.web.app), bóng đá, phmix, shop tương ớt bán lẻ.
 
-## 5 app trong phạm vi
+## 6 app trong phạm vi
 
-**Cả 5 app đã chuyển xong (24/10/2026)** — code ở `apps/<app>` (bảng thư mục + Root Directory: `README.md`). Cột "thư mục gốc" dưới đây giờ là bản **ĐÓNG BĂNG**, không sửa ở đó nữa.
+**Cả 6 app đã tích hợp vào app chung** — nằm gọn trong `apps/<app>` (các thư mục gốc cũ trên máy đều ở trạng thái **ĐÓNG BĂNG**, không sửa ở đó nữa).
 
-| App | Thư mục gốc (ĐÃ ĐÓNG BĂNG) | Vercel project → địa chỉ | Database Firestore (project `app-from-ai`) | Telegram (ở máy chủ) | Quy mô (đo 24/10/2026) |
+| App | Mã nguồn / Thư mục | Đường dẫn chung (`app-by-lethanh.web.app`) & địa chỉ cũ | Database / Storage (project `app-from-ai`) | Telegram (ở máy chủ) | Quy mô (đo 24/10/2026) |
 |---|---|---|---|---|---|
-| Quỹ phòng KTAT | `F:\AI\3.Quyphong\webapp` | `quyphong` → quyphong.vercel.app | `quyphong` | không | 2.043 dòng giao diện, 1.180 máy chủ, 5 file test |
-| Lịch giảng ATLĐ | `F:\AI\ATLD\antoan` | `antoan` → quanly-at.vercel.app (cron 20h `/cron/nhac`) | `antoan` | có (`server/telegram.ts`) | 3.087 / 1.538 / 5 |
-| Bán buôn tương ớt (**có đơn thật**) | `F:\AI\2.Ban_ot` | `tuongot-si` → tuongot-si.vercel.app | `tuongot-sale` | không | 5.101 / 1.116 / 3 |
-| Hoá đơn NPSC | `F:\AI\hoadon` | `hoadon` → hoadon-npsc.vercel.app | (db hoá đơn) + Storage `hoadon-npsc` | có (`mcp/telegram.ts`) | 5.486 / 1.587 / 17 |
-| Khai thuế | `F:\AI\HTKK-thanh\app` | `khaithue` → khaithue.vercel.app | `khaithue` + Storage `khaithue` | có (`mcp/may/telegram.ts`) | 9.415 / 2.090 / 19 |
+| Quỹ phòng KTAT | `apps/quyphong` (gốc `F:\AI\3.Quyphong\webapp` ĐÓNG BĂNG) | `/quy-phong/` · `quyphong.vercel.app` | `quyphong` | không | 2.043 dòng giao diện, 1.180 máy chủ, 5 file test |
+| Quản lý công việc (trước là Lịch giảng ATLĐ) | `apps/antoan` (gốc `F:\AI\ATLD\antoan` ĐÓNG BĂNG) | `/lich-giang/` · `quanly-at.vercel.app` (cron 20h `antoanNhac`) | `antoan` | có (`server/telegram.ts`) | 3.087 / 1.538 / 5 |
+| Bán buôn tương ớt (**có đơn thật**) | `apps/tuongot-si` (gốc `F:\AI\2.Ban_ot` ĐÓNG BĂNG) | `/tuong-ot/` · `tuongot-si.vercel.app` | `tuongot-sale` | không | 5.101 / 1.116 / 3 |
+| Hoá đơn NPSC | `apps/hoadon` (gốc `F:\AI\hoadon` ĐÓNG BĂNG) | `/hoa-don/` · `hoadon-npsc.vercel.app` | (db hoá đơn) + Storage `hoadon-npsc` | có (`mcp/telegram.ts`) | 5.486 / 1.587 / 17 |
+| Khai thuế | `apps/khaithue` (gốc `F:\AI\HTKK-thanh\app` ĐÓNG BĂNG) | `/khai-thue/` · `khaithue.vercel.app` (cron 8h `khaithueNhac`) | `khaithue` + Storage `khaithue` | có (`mcp/may/telegram.ts`) | 9.415 / 2.090 / 19 |
+| Chi tiêu thẻ (`the-visa`) | `apps/the-visa` (gốc `F:\AI\VISA\webapp` ĐÓNG BĂNG) | `/the-visa/` · `the-visa-lethanh.vercel.app` | Storage `hoadon-npsc` dưới `the-visa/` | không | Nhập bằng `git subtree` (15/11/2026) |
 
-Chung: React + Vite + TypeScript, đăng nhập Google qua Firebase Auth `app-from-ai.firebaseapp.com`, mỗi app có máy chủ MCP "Kết nối AI" trên Vercel (`/mcp`, OAuth theo skill `mcp-ket-noi-app`). Đừng nhầm với project Vercel cũ `tuongot-buon` (không đụng).
+Chung: React + Vite + TypeScript, đăng nhập Google qua Firebase Auth `app-from-ai.firebaseapp.com`, mỗi app có máy chủ MCP "Kết nối AI" (`/mcp`, OAuth theo skill `mcp-ket-noi-app`). Đừng nhầm với project Vercel cũ `tuongot-buon` (không đụng).
 
 ## 4 quy tắc bắt buộc
 

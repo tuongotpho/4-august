@@ -7,6 +7,8 @@ export interface AppCon {
   moTa: string
   kyHieu: string
   mau: string
+  /** Đường dẫn icon riêng của app (trong public/icons/) */
+  icon?: string
   duongDan: string
   diaChiGoc: string
   /** Địa chỉ Kết nối AI khi app đã chuyển sang Firebase (cùng tên miền với cổng); chưa có thì dùng diaChiGoc + '/mcp' */
@@ -31,6 +33,7 @@ export const DS_APP: AppCon[] = [
     moTa: 'Sổ thu – chi, công nợ ứng',
     kyHieu: 'QP',
     mau: '#1f4e78',
+    icon: './icons/quyphong.png',
     duongDan: '/quy-phong/',
     diaChiGoc: 'https://quyphong.vercel.app',
     mcp: 'https://app-by-lethanh.web.app/quy-phong/mcp',
@@ -43,6 +46,7 @@ export const DS_APP: AppCon[] = [
     moTa: 'Lịch công việc, thù lao, công nợ đối tác',
     kyHieu: 'CV',
     mau: '#0f766e',
+    icon: './icons/antoan.svg',
     duongDan: '/lich-giang/',
     diaChiGoc: 'https://quanly-at.vercel.app',
     mcp: 'https://app-by-lethanh.web.app/lich-giang/mcp',
@@ -55,6 +59,7 @@ export const DS_APP: AppCon[] = [
     moTa: 'Đơn hàng, khách, tồn kho',
     kyHieu: 'TƠ',
     mau: '#b91c1c',
+    icon: './icons/tuongot-si.svg',
     duongDan: '/tuong-ot/',
     diaChiGoc: 'https://tuongot-si.vercel.app',
     mcp: 'https://app-by-lethanh.web.app/tuong-ot/mcp',
@@ -67,6 +72,7 @@ export const DS_APP: AppCon[] = [
     moTa: 'Hồ sơ hoá đơn, tờ trình, ĐNTT',
     kyHieu: 'HĐ',
     mau: '#2563eb',
+    icon: './icons/hoadon.png',
     duongDan: '/hoa-don/',
     diaChiGoc: 'https://hoadon-npsc.vercel.app',
     mcp: 'https://app-by-lethanh.web.app/hoa-don/mcp',
@@ -79,20 +85,22 @@ export const DS_APP: AppCon[] = [
     moTa: 'Tờ khai quý, hoá đơn, sổ quỹ',
     kyHieu: 'KT',
     mau: '#047857',
+    icon: './icons/khaithue.svg',
     duongDan: '/khai-thue/',
     diaChiGoc: 'https://khaithue.vercel.app',
     mcp: 'https://app-by-lethanh.web.app/khai-thue/mcp',
     caiDat: 'Kết nối AI, nhắc hạn nộp qua Telegram, người xem chung',
   },
   {
-    // App riêng, mã ở repo tuongotpho/visa (KHÔNG nằm trong apps/ của 4.August) — chỉ nối qua cổng.
     ma: 'the-visa',
     ten: 'Chi tiêu thẻ',
     moTa: 'Sao kê thẻ tín dụng, biểu đồ, nhận xét',
     kyHieu: 'TV',
     mau: '#0b8a5f',
+    icon: './icons/the-visa.svg',
     duongDan: '/the-visa/',
     diaChiGoc: 'https://the-visa-lethanh.vercel.app',
+    mcp: 'https://app-by-lethanh.web.app/the-visa/mcp',
     caiDat: 'Tải sao kê PDF, các kỳ đã lưu, đổi nhóm giao dịch, Kết nối AI (MCP)',
   },
 ]

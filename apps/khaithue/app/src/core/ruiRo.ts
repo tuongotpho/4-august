@@ -337,7 +337,7 @@ const thuong = (s: O) => nfc(s).toLowerCase()
 /** Ngày: số seri Excel hoặc chữ "06.08.2026" / "06/08/2026" -> yyyy-mm-dd */
 function ngayO(o: O): string {
   if (o === null || o === undefined || o === '') return ''
-  if (typeof o === 'number' && o > 1000 && o < 100000) return new Date(Date.UTC(1899, 11, 30) + Math.round(o) * 86400000).toISOString().slice(0, 10)
+  if (typeof o === 'number' && o > 1000 && o < 100000) return new Date(Date.UTC(1899, 11, 30) + Math.floor(o) * 86400000).toISOString().slice(0, 10)
   const s = nfc(o)
   const m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})/)
   if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`

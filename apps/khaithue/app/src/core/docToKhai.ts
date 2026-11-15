@@ -32,7 +32,7 @@ export interface ToKhaiDaNop {
 }
 
 export function docToKhai(xml: string): ToKhaiDaNop {
-  const ky = /^(\d)\/(\d{4})$/.exec(layThe(xml, 'kyKKhai'))
+  const ky = /^(\d{1,2})\/(\d{4})$/.exec(layThe(xml, 'kyKKhai'))
   const chinh = /<CTieuTKhaiChinh>([\s\S]*?)<\/CTieuTKhaiChinh>/.exec(xml)?.[1] ?? ''
   const ct: Record<string, number> = {}
   for (const m of chinh.matchAll(/<(ct\w+)>([^<]*)<\/\1>/g)) ct[m[1]] = so(m[2].trim())

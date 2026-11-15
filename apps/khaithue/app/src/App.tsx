@@ -118,7 +118,18 @@ export default function App() {
       setTrangThaiMay(`☁️ Đã bổ sung dữ liệu cho ${thieuPL.length} tờ khai và ${thieu.length} file hoá đơn cũ.`)
       const moi = await taiDuLieuMay(uid)
       setMay(moi)
-      capNhatKho((k) => gopTuMay(k, moi.congTy, moi.toKhai, moi.chungTu, []))
+      capNhatKho((k) =>
+        gopTuMay(
+          k,
+          moi.congTy,
+          moi.toKhai,
+          moi.chungTu,
+          Object.entries(moi.tepHoaDon).flatMap(([m, ds]) => ds.map((d) => ({ mst: m, hd: d.hd ?? [], phu: d.phu, goc: d.goc }))),
+          moi.loHang,
+          moi.saoKe,
+          moi.soQuy,
+        ),
+      )
     } catch (e) {
       setTrangThaiMay(`⚠️ Chưa bổ sung được dữ liệu hoá đơn cho file cũ: ${(e as Error).message}`)
     } finally {
@@ -217,7 +228,7 @@ export default function App() {
       mst: congTyTrongHoaDon, tenNNT: plTuDo.tenCongTy, dchiNNT: plTuDo.dchiCongTy, phuongXa: '', maXaNNT: '', maTinhNNT: '', tenTinhNNT: '',
       dthoaiNNT: '', emailNNT: '', maCQTNoiNop: '', tenCQTNoiNop: '', nguoiKy: '',
     }
-    setKho({ ...kho, chon: tam.mst, congTy: { ...kho.congTy, [tam.mst]: { hoSo: tam, kyNguon: '', suaTay: false } } })
+    capNhatKho((cu) => ({ ...cu, chon: tam.mst, congTy: { ...cu.congTy, [tam.mst]: { hoSo: tam, kyNguon: '', suaTay: false } } }))
   }, [congTyTrongHoaDon]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tự chọn quý theo ngày hoá đơn (nếu người dùng chưa tự chọn)
@@ -942,7 +953,7 @@ export default function App() {
             {mst && (
               <div className="space-y-2 border-t border-slate-200 pt-4">
                 <h3 className="text-lg font-semibold">💵 Sổ quỹ tiền mặt</h3>
-                <SoQuyDN kho={kho} mst={mst} quy={quy} tt={thaoTacQuy} hoSo={hoSo} dsSaoKe={dsSaoKe} congNo={congNo} />
+                <SoQuyDN key={mst} kho={kho} mst={mst} quy={quy} tt={thaoTacQuy} hoSo={hoSo} dsSaoKe={dsSaoKe} congNo={congNo} />
               </div>
             )}
           </section>

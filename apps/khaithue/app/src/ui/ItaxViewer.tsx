@@ -8,6 +8,23 @@ export interface ItaxViewerProps {
   onClose?: () => void;
 }
 
+/** Loại bỏ thẻ/thuộc tính có thể chạy JS khi gắn HTML từ XSLT vào Shadow DOM */
+function lamSachHtmlItax(html: string): string {
+  if (typeof DOMParser === 'undefined') return html;
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll('script, iframe, object, embed, base, meta').forEach((el) => el.remove());
+  doc.querySelectorAll('*').forEach((el) => {
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      const val = attr.value.trim().toLowerCase();
+      if (name.startsWith('on') || ((name === 'href' || name === 'src' || name === 'xlink:href') && val.startsWith('javascript:'))) {
+        el.removeAttribute(attr.name);
+      }
+    }
+  });
+  return doc.body.innerHTML;
+}
+
 export function ItaxViewer({ xml, tenFile, onClose }: ItaxViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const shadowRootRef = useRef<ShadowRoot | null>(null);
@@ -19,11 +36,11 @@ export function ItaxViewer({ xml, tenFile, onClose }: ItaxViewerProps) {
     return transformXmlToItaxSheets(xml);
   }, [xml]);
 
-  // Thiết lập Shadow DOM một lần
+  // Thiết lập Shadow DOM một lần (an toàn khi StrictMode / remount)
   useEffect(() => {
     if (!containerRef.current) return;
     if (!shadowRootRef.current) {
-      shadowRootRef.current = containerRef.current.attachShadow({ mode: 'open' });
+      shadowRootRef.current = containerRef.current.shadowRoot || containerRef.current.attachShadow({ mode: 'open' });
     }
   }, []);
 
@@ -120,7 +137,7 @@ export function ItaxViewer({ xml, tenFile, onClose }: ItaxViewerProps) {
       const isNgang = s.orient === '1';
       return `
         <div class="itax-sheet ${isNgang ? 'ngang' : ''}">
-          ${s.html}
+          ${lamSachHtmlItax(s.html)}
         </div>
       `;
     }).join('\n');
@@ -144,7 +161,7 @@ export function ItaxViewer({ xml, tenFile, onClose }: ItaxViewerProps) {
     a.href = url;
     a.download = tenFile || 'BaoCaoTaiChinh.xml';
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   };
 
   return (

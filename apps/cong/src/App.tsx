@@ -195,9 +195,21 @@ function CaiDatApp({ a }: { a: AppCon }) {
 }
 
 function KyHieu({ a, nho = false }: { a: AppCon; nho?: boolean }) {
+  const [loi, setLoi] = useState(false)
+  const co = nho ? 'h-9 w-9 text-sm' : 'h-11 w-11'
+  if (a.icon && !loi) {
+    return (
+      <img
+        src={a.icon}
+        alt={a.ten}
+        onError={() => setLoi(true)}
+        className={`shrink-0 rounded-lg object-contain ${co}`}
+      />
+    )
+  }
   return (
     <span
-      className={`grid shrink-0 place-items-center rounded-lg font-bold text-white ${nho ? 'h-9 w-9 text-sm' : 'h-11 w-11'}`}
+      className={`grid shrink-0 place-items-center rounded-lg font-bold text-white ${co}`}
       style={{ background: a.mau }}
     >
       {a.kyHieu}

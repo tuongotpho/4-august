@@ -17,7 +17,7 @@ function mst(v: O): string {
 /** Ngày lập: giữ dd/MM/yyyy. Nếu ô Excel là kiểu ngày (số sê-ri) thì đổi về dd/MM/yyyy */
 export function ngayLap(v: O): string {
   if (typeof v === 'number' && v > 20000 && v < 80000) {
-    const d = new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000)
+    const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(v) * 86400000)
     const hai = (n: number) => String(n).padStart(2, '0')
     return `${hai(d.getUTCDate())}/${hai(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`
   }
@@ -29,7 +29,7 @@ export function soTien(v: O): number {
   if (typeof v === 'number') return Math.round(v)
   const s = chuan(v)
   if (!s) return 0
-  const am = s.startsWith('-')
+  const am = s.startsWith('-') || /^\(.*\)$/.test(s)
   const chiSo = s.replace(/[^\d]/g, '')
   if (!chiSo) return 0
   return am ? -Number(chiSo) : Number(chiSo)

@@ -44,16 +44,28 @@ const chuCuaO = (tc: string) => [...tc.matchAll(/<w:t(?:\s[^>]*)?>([^<]*)<\/w:t>
 function dienBang(xml: string, cot1: Record<string, number>, cot2: Record<string, number>): { xml: string; daDien: string[] } {
   const daDien: string[] = []
   const moi = xml.replace(/<w:tr[ >][\s\S]*?<\/w:tr>/g, (tr) => {
-    const o = [...tr.matchAll(/<w:tc>[\s\S]*?<\/w:tc>/g)].map((m) => m[0])
-    if (o.length < 3) return tr
+    const matches = [...tr.matchAll(/<w:tc>[\s\S]*?<\/w:tc>/g)]
+    if (matches.length < 3) return tr
+    const o = matches.map((m) => m[0])
     const ma = o.map(chuCuaO).find((t, i) => i > 0 && /^\d{2,3}[ab]?$/.test(t))
     if (!ma || !(ma in cot1 || ma in cot2)) return tr
     const iA = o.length - 2
     const iB = o.length - 1
     if (chuCuaO(o[iA]) || chuCuaO(o[iB])) return tr // ô đã có chữ: không ghi đè mẫu
+    // Thay theo đúng vị trí index để không replace nhầm ô trống giống nhau (vd Thuyết minh / Số cuối năm)
+    const thay: { start: number; end: number; val: string }[] = []
+    if (ma in cot1) {
+      const m = matches[iA]
+      thay.push({ start: m.index!, end: m.index! + m[0].length, val: ghiVaoO(m[0], soBaoCao(cot1[ma])) })
+    }
+    if (ma in cot2) {
+      const m = matches[iB]
+      thay.push({ start: m.index!, end: m.index! + m[0].length, val: ghiVaoO(m[0], soBaoCao(cot2[ma])) })
+    }
     let kq = tr
-    if (ma in cot1) kq = kq.replace(o[iA], ghiVaoO(o[iA], soBaoCao(cot1[ma])))
-    if (ma in cot2) kq = kq.replace(o[iB], ghiVaoO(o[iB], soBaoCao(cot2[ma])))
+    for (const t of thay.sort((a, b) => b.start - a.start)) {
+      kq = kq.slice(0, t.start) + t.val + kq.slice(t.end)
+    }
     daDien.push(ma)
     return kq
   })

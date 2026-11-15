@@ -150,8 +150,8 @@ export function taoXuLy(env: Env = process.env) {
       if (f.get('grant_type') === 'authorization_code') {
         const m = moVe<Ve & { u: string; rt: string; p: string; tm: string; cc: string; r: string; c: string }>(khoa, f.get('code'), 'ma')
         if (!m) return loiOAuth('invalid_grant', 'Mã không hợp lệ hoặc đã hết hạn')
-        if (f.get('redirect_uri') && f.get('redirect_uri') !== m.r) return loiOAuth('invalid_grant', 'Sai địa chỉ trả về')
-        if (f.get('client_id') && f.get('client_id') !== m.c) return loiOAuth('invalid_grant', 'Sai mã khách')
+        if (!f.get('redirect_uri') || f.get('redirect_uri') !== m.r) return loiOAuth('invalid_grant', 'Thiếu hoặc sai địa chỉ trả về')
+        if (m.c && (!f.get('client_id') || f.get('client_id') !== m.c)) return loiOAuth('invalid_grant', 'Thiếu hoặc sai mã khách')
         if (!khopPKCE(f.get('code_verifier'), m.cc)) return loiOAuth('invalid_grant', 'Sai code_verifier')
         return phatVe({ u: m.u, rt: m.rt, p: m.p, tm: m.tm })
       }
@@ -205,7 +205,12 @@ export function taoXuLy(env: Env = process.env) {
       })
       const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true })
       await server.connect(transport)
-      return transport.handleRequest(r)
+      try {
+        return await transport.handleRequest(r)
+      } finally {
+        await transport.close().catch(() => undefined)
+        await server.close().catch(() => undefined)
+      }
     }
   }
 }
